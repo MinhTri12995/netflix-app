@@ -1,0 +1,31 @@
+#==================================================
+#NETFLIX ACCOUNT DETAILS
+#SOFTWARE: CookiesSentinal - Advanced Cookies module
+#VERSION: V1.0.9
+#BUILD BY: @HYDRA_x001
+#==================================================
+#USERNAME       : P1 NO MODIFICAR
+#EMAIL          : gouravpatial526@gmail.com
+#PHONE          : +918219663593
+#EMAIL VERIFIED : Yes
+#CREATED        : mayo de 2026
+#COUNTRY        : India 🇮🇳
+#PLAN           : Premium [UHD] [Streams: 4]
+#PAYMENT METHOD : CC (1883)
+#SOURCE         : Netflix
+#EXPIRE         : 2026-07-02
+#DAYS LEFT      : 3 Days
+#PROFILE PIN    : N/A
+#LANGUAGE       : N/A
+#CHECKED AT     : 2026-06-28 09:30:03
+#==================================================
+
+.netflix.com	TRUE	/	TRUE	1782427871	gsid	59a639ed-a7f6-410f-8215-24d8dd3cbc21
+.netflix.com	TRUE	/	FALSE	1782427871	flwssn	85f2da7c-6051-4ad7-8038-ed8ead473caa
+.netflix.com	TRUE	/	TRUE	1806115115	NetflixId	v%3D3%26ct%3DBgjHlOvcAxKsA2wlDMoURLEEmGDPfB0rNgSelEw66EGTxIlOEMuzH0OVwlNFqnVfH_fC91jVoBi0R_KCu5gTz-d8KmozB3zRDXuHvRJWJX_VKQKFePi9uhlBk7bEYAo3meGSQzYyxqvZ7LjdYaRO9RfSSvouLIVDlSs7xwo1gdAaNkR9DBruRlcG0AdSyoOkRZMsUQVvtHZb-0o9ejUqpGGXRnyhbCUI1hEOc1OtgYwufksa1bmfuIWhDD-CGR1S-TB-gCjH9p966jNvT6c_5sMudPHwpApSztl81yZg1XCvmw9KinU15aXWDJl_vgi4M2aKvYqtKdVmaIBoqIPT13k3XILe1qUyr5NTXpNzOIN5nBSsnARLm9m9hlkwUAjFprlKWCz1JgqFPrK8KcExUdbNIXjL0qJ-uiSbhBQqymMxpPFSdomR1FVq8yM5DbbmQNaYEY3ZOC10-UsYMz01Vx7yXaX6ZZHFsa-1qM-ApwVf87BKU7aXM74IjXyblvBpAwipMu0VRhmnRRouz7c6VS4-Rsv531kNrrHKIqK75iPnkmQwdhS9eRyC2DotNfI6ieUiP8wWGAYiDgoMefTcxL7mqYKHenEn%26pg%3DA67LROQ5BFDGRJ3C57LRZE55JI%26ch%3DAQEAEAABABT-aOYkzGGHkiU7mq9nvG6_qNmFMiazPHU.
+.netflix.com	TRUE	/	FALSE	1806115116	OptanonConsent	isGpcEnabled=0&datestamp=Fri+Mar+27+2026+08%3A08%3A36+GMT%2B0530+(India+Standard+Time)&version=202602.1.0&browserGpcFlag=0&isIABGlobal=false&hosts=&consentId=4f358ad0-9ce1-4d3b-93dd-4d04109e2402&interactionCount=1&isAnonUser=1&prevHadToken=0&landingPath=NotLandingPage&groups=C0001%3A1%2CC0002%3A1%2CC0003%3A1%2CC0004%3A1&crTime=1774578886559&AwaitingReconsent=false
+.netflix.com	TRUE	/	TRUE	1806115115	SecureNetflixId	v%3D3%26mac%3DAQEAEQABABRh0PvWBFWUwYtAdmy_y_cRSSkuJTSifj4.%26dt%3D1774579116528
+.netflix.com	TRUE	/	FALSE	1784984033	netflix-sans-bold-3-loaded	true
+.netflix.com	TRUE	/	FALSE	1784984033	netflix-sans-normal-3-loaded	true
+.netflix.com	TRUE	/	FALSE	1806115115	nfvdid	BQFmAAEBEGQmpAIQTFUhjggmO8MN2uVgJtrJ_oHha_QPsDvs_NwhE1YInG55yTCxcLuHvRW0_JdQO2JIdaMlbhJkCVOHkxAoAbOFHYO-swalj3L9ILmbSyhfRIbtegzrEWaWIvk8Oa_YOXihGGvKmY2EIk_DoZI4
+.netflix.com	TRUE	/	FALSE	1782427871	profilesNewSession	0

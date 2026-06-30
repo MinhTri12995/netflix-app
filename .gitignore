@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+ENV/
+.env
+.venv
+
+# VS Code
+.vscode/
+
+# We will NOT ignore accounts.db because the user might want to keep their current cookies
+# (If they wanted to start fresh, they would delete it)
