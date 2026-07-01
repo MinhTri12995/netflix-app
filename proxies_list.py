@@ -12,8 +12,11 @@ ROTATING_PROXIES = [
     # Tài khoản 3
     "http://skzzzhhr-rotate:hu333jds9h3a@p.webshare.io:80",
     
-    # Tài khoản 4 (Mới thêm)
-    "http://qfcfflym-rotate:bnfu8ype49yu@p.webshare.io:80"
+    # Tài khoản 4
+    "http://qfcfflym-rotate:bnfu8ype49yu@p.webshare.io:80",
+    
+    # Tài khoản 5 (Mới thêm)
+    "http://xktamdun-rotate:985qtdjr7nnw@p.webshare.io:80"
 ]
 
 def get_random_proxy():
