@@ -260,7 +260,15 @@ ADMIN_TEMPLATE = r"""
                     <button type="submit" style="background: #27ae60;">+ Sinh Mã 6 Ký Tự Mới</button>
                 </form>
             </div>
+            
+            <form action="/admin" method="GET" style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <input type="text" name="search_code" class="search-box" placeholder="Nhập Mã 6 số để tìm..." value="{{ request.args.get('search_code', '') }}">
+                <button type="submit" style="background: #3498db; white-space: nowrap;">🔍 Tìm theo Mã</button>
+            </form>
+            
+            {% if search_code or access_keys|length < 20 %}
             <div style="overflow-x: auto;">
+
                 <table>
                     <thead>
                         <tr>
@@ -289,6 +297,9 @@ ADMIN_TEMPLATE = r"""
                     </tbody>
                 </table>
             </div>
+            {% else %}
+            <p style="text-align: center; color: #888; margin-top: 10px;">Danh sách mã đang được ẩn. Vui lòng sử dụng ô tìm kiếm phía trên.</p>
+            {% endif %}
         </div>
 
         <div class="glass-panel">
@@ -301,14 +312,20 @@ ADMIN_TEMPLATE = r"""
 
         <div class="glass-panel">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h3 style="margin: 0; font-weight: 400;">Kho Cookie Gốc <span style="font-size: 0.9rem; color: #888;">({{ accounts|length }} accounts)</span></h3>
-                {% if accounts|length > 0 %}
+                <h3 style="margin: 0; font-weight: 400;">Kho Cookie Gốc <span style="font-size: 0.9rem; color: #888;">({{ total_accounts }} accounts)</span></h3>
+                {% if total_accounts > 0 %}
                 <form action="/check_all" method="POST" onsubmit="showLoading(this.querySelector('button'))" style="margin: 0;">
                     <button type="submit" style="background: #10ac84; padding: 8px 15px; font-size: 0.9rem;">⚡ KIỂM TRA & XÓA COOKIE DIE</button>
                 </form>
                 {% endif %}
             </div>
             
+            <form action="/admin" method="GET" style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <input type="text" name="search_email" class="search-box" placeholder="Nhập Email để tìm Cookie..." value="{{ request.args.get('search_email', '') }}">
+                <button type="submit" style="background: #3498db; white-space: nowrap;">🔍 Tìm theo Email</button>
+            </form>
+            
+            {% if search_email or accounts|length < 20 %}
             <div style="overflow-x: auto; max-height: 400px; overflow-y: auto;">
                 <table>
                     <thead>
@@ -335,6 +352,9 @@ ADMIN_TEMPLATE = r"""
                     </tbody>
                 </table>
             </div>
+            {% else %}
+            <p style="text-align: center; color: #888; margin-top: 10px;">Danh sách Cookie đang được ẩn để tránh quá tải. Vui lòng sử dụng ô tìm kiếm phía trên.</p>
+            {% endif %}
         </div>
     </div>
 </body>
@@ -399,9 +419,32 @@ def logout():
 @login_required
 def admin():
     database.init_db()
-    accounts = database.get_all_accounts()
-    access_keys = database.get_all_access_keys()
-    return render_template_string(ADMIN_TEMPLATE, accounts=accounts, access_keys=access_keys)
+    all_accounts = database.get_all_accounts()
+    all_access_keys = database.get_all_access_keys()
+    
+    search_email = request.args.get("search_email", "").strip().lower()
+    search_code = request.args.get("search_code", "").strip().upper()
+    
+    # Filter keys
+    if search_code:
+        access_keys = [k for k in all_access_keys if search_code in k[0].upper()]
+    else:
+        access_keys = all_access_keys
+        
+    # Filter accounts
+    if search_email:
+        accounts = [a for a in all_accounts if search_email in a[0].lower()]
+    else:
+        accounts = all_accounts
+        
+    return render_template_string(
+        ADMIN_TEMPLATE, 
+        accounts=accounts, 
+        access_keys=access_keys,
+        total_accounts=len(all_accounts),
+        search_email=search_email,
+        search_code=search_code
+    )
 
 @app.route("/admin/generate_key", methods=["POST"])
 @login_required

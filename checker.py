@@ -1,10 +1,11 @@
 import requests
 import time
+import proxies_list
 
 def check_account_live(netflix_id, secure_netflix_id=""):
     """
     Kiểm tra cookie Netflix có còn sống không.
-    Trả về True nếu LIVE, False nếu DIE.
+    Trả về True/LIVE nếu LIVE, DIE nếu chết hoặc bắt Update Payment.
     """
     url = "https://www.netflix.com/YourAccount"
     
@@ -15,30 +16,54 @@ def check_account_live(netflix_id, secure_netflix_id=""):
         cookies["SecureNetflixId"] = secure_netflix_id
         
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate"  # Ép nén gzip để tiết kiệm cực độ dung lượng
     }
 
+    # Dùng Proxy để không bị lộ IP thật và bị Block
+    proxy_dict = proxies_list.get_random_proxy()
+
     try:
-        # Tạm nghỉ 1s tránh bị lock IP
         time.sleep(1)
+        response = requests.get(
+            url, 
+            cookies=cookies, 
+            headers=headers, 
+            proxies=proxy_dict,
+            allow_redirects=True, # Cho phép chuyển hướng để xem có bị đá ra trang đăng nhập không
+            timeout=15
+        )
         
-        # Đặt allow_redirects=False để bắt các lệnh chuyển hướng
-        response = requests.get(url, cookies=cookies, headers=headers, allow_redirects=False, timeout=10)
+        # Nếu bị ném ra trang login
+        if "netflix.com/login" in response.url:
+            return "DIE"
+            
+        html_text = response.text.lower()
         
-        # Nếu mã trả về là 200 OK -> Trang Account load thành công -> LIVE
+        # Nhận diện lỗi Update Payment, Restart Membership
+        bad_keywords = [
+            "update payment",
+            "restart membership",
+            "cập nhật phương thức thanh toán",
+            "khôi phục tư cách thành viên",
+            "update your payment",
+            "finish sign-up"
+        ]
+        
+        for kw in bad_keywords:
+            if kw in html_text:
+                print(f"Cookie dính lỗi thanh toán ({kw}) -> Xóa!")
+                return "DIE"
+                
+        # Nếu trang Account load thành công và không có từ khóa lỗi -> LIVE
         if response.status_code == 200:
             return "LIVE"
-        # Nếu bị redirect (302, 301) thường là do bắt đăng nhập lại -> DIE
-        elif response.status_code in [301, 302]:
-            return "DIE"
-        # Mã lỗi 403, 429, v.v.. do Netflix chặn IP VPN -> ERROR (không xóa)
-        else:
-            print(f"Bị chặn bởi Netflix (Status {response.status_code})")
-            return "ERROR"
+            
+        return "ERROR"
             
     except Exception as e:
         print(f"Lỗi khi kiểm tra cookie: {e}")
-        # Lỗi mạng, VPN đứt... -> ERROR
         return "ERROR"
+
