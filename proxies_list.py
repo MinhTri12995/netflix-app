@@ -6,9 +6,11 @@ ROTATING_PROXIES = [
     # Tài khoản 1
     "http://nodzxvcx-rotate:tton2hgnp5so@p.webshare.io:80",
     
-    # Tài khoản 2 (Mới thêm)
-    # Vì Webshare hỗ trợ cả HTTP và SOCKS5 trên cùng 1 port, dùng http cho ổn định thư viện requests
-    "http://nsbwpxnr-rotate:07dg8zrp2h74@p.webshare.io:80"
+    # Tài khoản 2
+    "http://nsbwpxnr-rotate:07dg8zrp2h74@p.webshare.io:80",
+    
+    # Tài khoản 3 (Mới thêm)
+    "http://skzzzhhr-rotate:hu333jds9h3a@p.webshare.io:80"
 ]
 
 def get_random_proxy():
