@@ -546,18 +546,35 @@ NETFLIX_BASE_HEADERS = {
     "x-netflix.request.client.timezoneid": "Asia/Dhaka",
 }
 
+class ProxyError(Exception): pass
+class CookieError(Exception): pass
+
+import proxies_list
+
 def fetch_netflix_nftoken_api(netflix_id):
     headers = dict(NETFLIX_BASE_HEADERS)
     headers["Cookie"] = f"NetflixId={netflix_id}"
-    response = requests.get(
-        NETFLIX_API_URL, params=NETFLIX_QUERY_PARAMS, headers=headers, timeout=15, verify=False
-    )
+    
+    proxy_dict = proxies_list.get_random_proxy()
+    
+    try:
+        response = requests.get(
+            NETFLIX_API_URL, params=NETFLIX_QUERY_PARAMS, headers=headers,
+            proxies=proxy_dict, timeout=15, verify=False
+        )
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.ProxyError) as e:
+        print(f"Lỗi Proxy / Mạng: {e}")
+        raise ProxyError("Không thể kết nối qua Proxy")
+        
+    if response.status_code in [403, 429]:
+        raise ProxyError("Proxy bị Netflix block (403/429)")
+        
     response.raise_for_status()
     data = response.json()
     token_data = ((((data.get("value") or {}).get("account") or {}).get("token") or {}).get("default") or {})
     token = token_data.get("token")
     if not token:
-        raise ValueError("Netflix API không trả về token. Cookie có thể đã DIE.")
+        raise CookieError("Netflix API không trả về token. Cookie có thể đã DIE.")
     return token
 
 @app.route("/api/generate_nftoken", methods=["POST"])
@@ -583,7 +600,6 @@ def api_generate_nftoken():
             acc = next((a for a in accounts if a[0] == assigned_email), None)
             
             if not acc:
-                # Assigned cookie is missing from DB, rotate
                 rotated = database.rotate_access_key(code)
                 if not rotated:
                     return jsonify({"success": False, "error": "Hệ thống đã hết Cookie dự phòng!"}), 500
@@ -603,16 +619,20 @@ def api_generate_nftoken():
                     "mobile_link": mobile_link,
                     "tv_link": tv_link
                 })
+            except ProxyError as e:
+                # Lỗi proxy, ta giữ nguyên Cookie và thử lại ngay lập tức (không rotate Cookie)
+                print(f"Lỗi Proxy ({e}), thử lại...")
+                continue
             except Exception as e:
-                # Cookie is dead, delete it and rotate
-                print(f"Cookie {assigned_email} DIE, attempting rotation...")
+                # Các lỗi khác (hoặc CookieError) -> Cookie is dead, delete it and rotate
+                print(f"Cookie {assigned_email} DIE, attempting rotation... (Lỗi: {e})")
                 database.delete_account(assigned_email)
                 rotated = database.rotate_access_key(code)
                 if not rotated:
                     return jsonify({"success": False, "error": "Cookie hỏng và hệ thống đã hết Cookie dự phòng!"}), 500
                 assigned_email = database.get_access_key(code)[1]
                 
-        return jsonify({"success": False, "error": "Quá tải xoay vòng Cookie. Vui lòng thử lại sau."}), 500
+        return jsonify({"success": False, "error": "Quá tải máy chủ hoặc toàn bộ Proxy chết. Vui lòng thử lại sau."}), 500
 
     # 2. Fallback: Parse raw tokens for admin testing
     netflix_id = None
@@ -650,6 +670,8 @@ def api_generate_nftoken():
         mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"
         tv_link = f"https://www.netflix.com/tv8?nftoken={token}"
         return jsonify({"success": True, "pc_link": pc_link, "mobile_link": mobile_link, "tv_link": tv_link})
+    except ProxyError as e:
+        return jsonify({"success": False, "error": f"Lỗi Proxy. Vui lòng bấm thử lại. Chi tiết: {str(e)}"}), 500
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 

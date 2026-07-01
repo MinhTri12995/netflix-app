@@ -1,4 +1,5 @@
 flask
 requests
+requests[socks]
 gunicorn
 supabase
