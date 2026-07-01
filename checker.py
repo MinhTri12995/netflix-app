@@ -42,14 +42,20 @@ def check_account_live(netflix_id, secure_netflix_id=""):
             
         html_text = response.text.lower()
         
-        # Nhận diện lỗi Update Payment, Restart Membership
+        # Nhận diện lỗi bằng các mã kỹ thuật (KHÔNG phụ thuộc vào ngôn ngữ)
+        # Các mã này (data-uia hoặc biến React) giống nhau trên toàn cầu dù là tiếng Anh, Tây Ban Nha hay Ả Rập
         bad_keywords = [
             "update payment",
             "restart membership",
             "cập nhật phương thức thanh toán",
             "khôi phục tư cách thành viên",
-            "update your payment",
-            "finish sign-up"
+            "action_update_payment",         # Nút Update Payment (Global)
+            "account-restart-membership",    # Nút Restart Membership (Global)
+            '"membershipstatus":"past_due"', # Biến hệ thống báo trễ hạn (Global)
+            '"membershipstatus":"former_member"', # Biến hệ thống báo đã hủy (Global)
+            "payment-update",
+            "finish sign-up",
+            "finish_sign_up"                 # Nút Finish Sign Up (Global)
         ]
         
         for kw in bad_keywords:
