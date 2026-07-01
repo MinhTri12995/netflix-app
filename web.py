@@ -284,8 +284,11 @@ ADMIN_TEMPLATE = r"""
                             <td style="font-weight: bold; font-family: monospace; font-size: 1.3rem; color: #f1c40f; letter-spacing: 2px;">{{ key[0] }}</td>
                             <td>{{ key[1] }}</td>
                             <td style="font-size: 0.85rem; color: #888;">{{ key[2] }}</td>
-                            <td style="display: flex; gap: 10px;">
+                            <td style="display: flex; gap: 10px; flex-wrap: wrap;">
                                 <button class="btn-copy" onclick="copyCookie('{{ key[0] }}', this)">Copy Mã</button>
+                                <form action="/admin/rotate_key/{{ key[0] }}" method="POST" style="margin: 0;" onsubmit="return confirm('Bạn muốn đổi tài khoản mới cho mã này?');">
+                                    <button type="submit" style="background: #f39c12; padding: 6px 12px; font-size: 0.8rem;">Đổi Acc</button>
+                                </form>
                                 <form action="/admin/delete_key/{{ key[0] }}" method="POST" style="margin: 0;" onsubmit="return confirm('Xóa mã này? Khách hàng sẽ không dùng được nữa.');">
                                     <button type="submit" style="background: #e74c3c; padding: 6px 12px; font-size: 0.8rem;">Xóa</button>
                                 </form>
@@ -456,6 +459,16 @@ def generate_key():
         flash(f"Đã tạo mã thành công: {code}", "success")
     else:
         flash(f"Lỗi tạo mã: {msg}", "error")
+    return redirect(url_for("admin"))
+
+@app.route("/admin/rotate_key/<code>", methods=["POST"])
+@login_required
+def rotate_key(code):
+    success = database.rotate_access_key(code)
+    if success:
+        flash(f"Đã đổi sang Account mới cho mã: {code}", "success")
+    else:
+        flash(f"Lỗi: Không còn Account nào khả dụng trong kho để đổi.", "error")
     return redirect(url_for("admin"))
 
 @app.route("/admin/delete_key/<code>", methods=["POST"])
