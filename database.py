@@ -47,13 +47,13 @@ def get_random_available_account(plan_type=None):
     import random
     
     # Lấy toàn bộ account có trong kho
-    acc_response = get_supabase().table("netflix_accounts").select("email, plan").execute()
+    acc_response = get_supabase().table("netflix_accounts").select("*").execute()
     if not acc_response.data:
         return None
         
     # Lọc tài khoản theo gói cước nếu có yêu cầu
     if plan_type:
-        all_emails = [r["email"] for r in acc_response.data if r.get("plan") and plan_type.lower() in r["plan"].lower()]
+        all_emails = [r["email"] for r in acc_response.data if r.get("plan") and plan_type.lower() in str(r["plan"]).lower()]
     else:
         all_emails = [r["email"] for r in acc_response.data]
     
@@ -87,8 +87,11 @@ def create_access_key(code):
         "code": code,
         "assigned_email": email
     }
-    get_supabase().table("access_keys").insert(data).execute()
-    return True, "Thành công"
+    try:
+        get_supabase().table("access_keys").insert(data).execute()
+        return True, "Thành công"
+    except Exception as e:
+        return False, f"Lỗi Database: {e}"
 
 def get_access_key(code):
     response = get_supabase().table("access_keys").select("*").eq("code", code).execute()
@@ -113,8 +116,12 @@ def rotate_access_key(code):
         return False
     
     data = {"assigned_email": email}
-    get_supabase().table("access_keys").update(data).eq("code", code).execute()
-    return True
+    try:
+        get_supabase().table("access_keys").update(data).eq("code", code).execute()
+        return True
+    except Exception as e:
+        print(f"Lỗi Rotate DB: {e}")
+        return False
 
 def delete_access_key(code):
     get_supabase().table("access_keys").delete().eq("code", code).execute()
