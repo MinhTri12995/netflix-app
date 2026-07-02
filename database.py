@@ -1,10 +1,17 @@
 import os
 from supabase import create_client, Client
 
+import threading
+
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://zzdlmwhmhjofqmhfknbv.supabase.co")
 SUPABASE_KEY = os.environ.get("SUPABASE_SECRET_KEY", "sb_secret_wbXnaO_AN5UCJmZoyZzMCw_VjBZDclc")
 
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+_local = threading.local()
+
+def get_supabase() -> Client:
+    if not hasattr(_local, "client"):
+        _local.client = create_client(SUPABASE_URL, SUPABASE_KEY)
+    return _local.client
 
 def init_db():
     # Bảng sẽ được tạo bằng tay trên giao diện Supabase
@@ -19,17 +26,17 @@ def save_account(email, expire_date, netflix_id, secure_netflix_id="", plan=None
     }
     if plan:
         data["plan"] = plan
-    supabase.table("netflix_accounts").upsert(data).execute()
+    get_supabase().table("netflix_accounts").upsert(data).execute()
     
 def delete_account(email):
-    supabase.table("netflix_accounts").delete().eq("email", email).execute()
+    get_supabase().table("netflix_accounts").delete().eq("email", email).execute()
 
 def update_plan(email, plan):
     data = {"plan": plan}
-    supabase.table("netflix_accounts").update(data).eq("email", email).execute()
+    get_supabase().table("netflix_accounts").update(data).eq("email", email).execute()
 
 def get_all_accounts():
-    response = supabase.table("netflix_accounts").select("*").execute()
+    response = get_supabase().table("netflix_accounts").select("*").execute()
     # Chuyển đổi list of dicts thành list of tuples cho code cũ tương thích
     rows = []
     for r in response.data:
@@ -40,7 +47,7 @@ def get_random_available_account(plan_type=None):
     import random
     
     # Lấy toàn bộ account có trong kho
-    acc_response = supabase.table("netflix_accounts").select("email, plan").execute()
+    acc_response = get_supabase().table("netflix_accounts").select("email, plan").execute()
     if not acc_response.data:
         return None
         
@@ -51,7 +58,7 @@ def get_random_available_account(plan_type=None):
         all_emails = [r["email"] for r in acc_response.data]
     
     # Lấy toàn bộ email ĐÃ ĐƯỢC GÁN cho các mã truy cập (đang sử dụng)
-    keys_response = supabase.table("access_keys").select("assigned_email").execute()
+    keys_response = get_supabase().table("access_keys").select("assigned_email").execute()
     used_emails = [r["assigned_email"] for r in keys_response.data if r.get("assigned_email")]
     
     # Lọc ra những email CHƯA ĐƯỢC AI XÀI (Tạo mảng riêng biệt, không trùng nhau)
@@ -72,7 +79,7 @@ def create_access_key(code):
         return False, f"Không còn Cookie {plan_type} nào khả dụng trong kho."
     
     # Kiểm tra mã đã tồn tại chưa
-    exist = supabase.table("access_keys").select("code").eq("code", code).execute()
+    exist = get_supabase().table("access_keys").select("code").eq("code", code).execute()
     if exist.data:
         return False, "Mã này đã tồn tại."
         
@@ -80,18 +87,18 @@ def create_access_key(code):
         "code": code,
         "assigned_email": email
     }
-    supabase.table("access_keys").insert(data).execute()
+    get_supabase().table("access_keys").insert(data).execute()
     return True, "Thành công"
 
 def get_access_key(code):
-    response = supabase.table("access_keys").select("*").eq("code", code).execute()
+    response = get_supabase().table("access_keys").select("*").eq("code", code).execute()
     if response.data:
         r = response.data[0]
         return (r["code"], r["assigned_email"])
     return None
 
 def get_all_access_keys():
-    response = supabase.table("access_keys").select("*").order("created_at", desc=True).execute()
+    response = get_supabase().table("access_keys").select("*").order("created_at", desc=True).execute()
     rows = []
     for r in response.data:
         rows.append((r["code"], r["assigned_email"], r.get("created_at")))
@@ -106,8 +113,8 @@ def rotate_access_key(code):
         return False
     
     data = {"assigned_email": email}
-    supabase.table("access_keys").update(data).eq("code", code).execute()
+    get_supabase().table("access_keys").update(data).eq("code", code).execute()
     return True
 
 def delete_access_key(code):
-    supabase.table("access_keys").delete().eq("code", code).execute()
+    get_supabase().table("access_keys").delete().eq("code", code).execute()
