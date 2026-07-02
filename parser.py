@@ -13,6 +13,28 @@ def parse_lines(lines):
         if not line:
             continue
             
+        # Hỗ trợ định dạng DEADFLIX CHECKER: "– Email: example@gmail.com"
+        deadflix_email_match = re.search(r'^(?:–|-)\s*Email:\s*(.+)', line, re.IGNORECASE)
+        if deadflix_email_match:
+            if current_email and current_netflix_id:
+                accounts.append({
+                    'email': current_email,
+                    'expire': current_expire,
+                    'netflix_id': current_netflix_id,
+                    'secure_netflix_id': current_secure_netflix_id
+                })
+            current_email = deadflix_email_match.group(1).strip()
+            current_expire = None
+            current_netflix_id = None
+            current_secure_netflix_id = ""
+            continue
+
+        # Hỗ trợ định dạng DEADFLIX CHECKER: "– Next Billing: 2026-07-06"
+        deadflix_expire_match = re.search(r'^(?:–|-)\s*Next Billing:\s*(.+)', line, re.IGNORECASE)
+        if deadflix_expire_match:
+            current_expire = deadflix_expire_match.group(1).strip()
+            continue
+            
         # Hỗ trợ cả định dạng cũ (#EMAIL) và mới (Email:)
         email_match = re.search(r'^(?:#EMAIL\s*:|Email:)\s*(.+)', line, re.IGNORECASE)
         if email_match:
@@ -40,7 +62,7 @@ def parse_lines(lines):
             current_netflix_id = netflixid_match.group(1).strip()
             continue
 
-        # Vẫn giữ hỗ trợ định dạng Netscape cũ
+        # Vẫn giữ hỗ trợ định dạng Netscape cũ (áp dụng cho DEADFLIX CHECKER)
         if '.netflix.com' in line:
             parts = line.split('\t')
             if len(parts) >= 7:
