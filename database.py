@@ -24,6 +24,10 @@ def save_account(email, expire_date, netflix_id, secure_netflix_id="", plan=None
 def delete_account(email):
     supabase.table("netflix_accounts").delete().eq("email", email).execute()
 
+def update_plan(email, plan):
+    data = {"plan": plan}
+    supabase.table("netflix_accounts").update(data).eq("email", email).execute()
+
 def get_all_accounts():
     response = supabase.table("netflix_accounts").select("*").execute()
     # Chuyển đổi list of dicts thành list of tuples cho code cũ tương thích

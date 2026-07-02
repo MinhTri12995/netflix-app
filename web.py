@@ -323,7 +323,7 @@ ADMIN_TEMPLATE = r"""
                 <h3 style="margin: 0; font-weight: 400;">Kho Cookie Gốc <span style="font-size: 0.9rem; color: #888;">({{ total_accounts }} accounts)</span></h3>
                 {% if total_accounts > 0 %}
                 <form action="/check_all" method="POST" onsubmit="showLoading(this.querySelector('button'))" style="margin: 0;">
-                    <button type="submit" style="background: #10ac84; padding: 8px 15px; font-size: 0.9rem;">⚡ KIỂM TRA & XÓA COOKIE DIE</button>
+                    <button type="submit" style="background: #10ac84; padding: 8px 15px; font-size: 0.9rem;">⚡ KIỂM TRA LIVE & CẬP NHẬT GÓI CƯỚC</button>
                 </form>
                 {% endif %}
             </div>
@@ -542,8 +542,10 @@ def background_check_all():
             email = acc[0]
             netflix_id = acc[2]
             secure_netflix_id = acc[3]
-            status = checker.check_account_live(netflix_id, secure_netflix_id)
-            if status == "DIE":
+            status, plan = checker.check_account_live(netflix_id, secure_netflix_id)
+            if status == "LIVE" and plan:
+                database.update_plan(email, plan)
+            elif status == "DIE":
                 database.delete_account(email)
 
 @app.route("/check_all", methods=["POST"])
@@ -555,11 +557,13 @@ def check_all():
         flash("Không có tài khoản nào để kiểm tra.", "warning")
         return redirect(url_for("admin"))
         
+    import threading
     t = threading.Thread(target=background_check_all)
     t.daemon = True
     t.start()
+    
     estimated_time = len(accounts) * 2
-    flash(f"🔄 Đang kiểm tra ngầm {len(accounts)} tài khoản (khoảng {estimated_time}s). Các cookie DIE sẽ tự xóa.", "warning")
+    flash(f"🔄 Đang kiểm tra ngầm và cập nhật Gói Cước (khoảng {estimated_time}s). Các cookie DIE sẽ tự xóa.", "warning")
     return redirect(url_for("admin"))
 
 
@@ -682,7 +686,7 @@ def api_generate_nftoken():
             try:
                 # --- [MỚI] KIỂM TRA REALTIME TRƯỚC KHI XUẤT LINK ---
                 print(f"Bắt đầu Check Realtime cho tài khoản: {assigned_email}")
-                live_status = checker.check_account_live(netflix_id, secure_netflix_id)
+                live_status, live_plan = checker.check_account_live(netflix_id, secure_netflix_id)
                 
                 if live_status == "DIE":
                     # Cookie dính Update Payment hoặc bị văng -> Ném lỗi ra để nó chạy vòng lặp đổi acc mới (Rotation)

@@ -38,7 +38,7 @@ def check_account_live(netflix_id, secure_netflix_id=""):
         
         # Nếu bị ném ra trang login
         if "netflix.com/login" in response.url:
-            return "DIE"
+            return "DIE", None
             
         html_text = response.text.lower()
         
@@ -61,15 +61,25 @@ def check_account_live(netflix_id, secure_netflix_id=""):
         for kw in bad_keywords:
             if kw in html_text:
                 print(f"Cookie dính lỗi thanh toán ({kw}) -> Xóa!")
-                return "DIE"
+                return "DIE", None
                 
         # Nếu trang Account load thành công và không có từ khóa lỗi -> LIVE
         if response.status_code == 200:
-            return "LIVE"
+            import re
+            plan = "Unknown"
+            plan_match = re.search(r'"planname":"([^"]+)"', html_text)
+            if plan_match:
+                plan = plan_match.group(1).title()
+            else:
+                if 'premium' in html_text:
+                    plan = "Premium"
+                elif 'standard' in html_text:
+                    plan = "Standard"
+            return "LIVE", plan
             
-        return "ERROR"
+        return "ERROR", None
             
     except Exception as e:
         print(f"Lỗi khi kiểm tra cookie: {e}")
-        return "ERROR"
+        return "ERROR", None
 
