@@ -256,9 +256,14 @@ ADMIN_TEMPLATE = r"""
         <div class="glass-panel">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <h3 style="margin: 0; font-weight: 400;">Quản lý Mã Truy Cập (License Keys)</h3>
-                <form action="/admin/generate_key" method="POST" style="margin: 0;" onsubmit="showLoading(this.querySelector('button'))">
-                    <button type="submit" style="background: #27ae60;">+ Sinh Mã 6 Ký Tự Mới</button>
-                </form>
+                <div style="display: flex; gap: 10px;">
+                    <form action="/admin/generate_key/standard" method="POST" style="margin: 0;" onsubmit="showLoading(this.querySelector('button'))">
+                        <button type="submit" style="background: #2980b9; font-size: 0.9rem; padding: 10px 15px;">+ Sinh Mã Standard (10)</button>
+                    </form>
+                    <form action="/admin/generate_key/premium" method="POST" style="margin: 0;" onsubmit="showLoading(this.querySelector('button'))">
+                        <button type="submit" style="background: #27ae60; font-size: 0.9rem; padding: 10px 15px;">+ Sinh Mã Premium 4K (15)</button>
+                    </form>
+                </div>
             </div>
             
             <form action="/admin" method="GET" style="display: flex; gap: 10px; margin-bottom: 20px;">
@@ -334,6 +339,7 @@ ADMIN_TEMPLATE = r"""
                     <thead>
                         <tr>
                             <th>Email</th>
+                            <th>Gói Cước</th>
                             <th>Cookie</th>
                             <th>Hành động</th>
                         </tr>
@@ -342,6 +348,7 @@ ADMIN_TEMPLATE = r"""
                         {% for acc in accounts %}
                         <tr>
                             <td style="font-weight: 600;">{{ acc[0] }}</td>
+                            <td style="font-weight: bold; color: {% if 'Premium' in (acc[5] or '') %}#f1c40f{% else %}#bdc3c7{% endif %};">{{ acc[5] if acc[5] else 'Unknown' }}</td>
                             <td style="font-size: 0.8rem; color: #666; font-family: monospace; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ acc[2] }}">{{ acc[2] }}</td>
                             <td style="display: flex; gap: 8px;">
                                 <form action="/delete/{{ acc[0] }}" method="POST" style="margin: 0;" onsubmit="return confirm('Xóa cookie này?');">
@@ -350,7 +357,7 @@ ADMIN_TEMPLATE = r"""
                             </td>
                         </tr>
                         {% else %}
-                        <tr><td colspan="3" style="text-align: center; color: #666; padding: 20px;">Chưa có tài khoản nào trong kho. Hãy upload file!</td></tr>
+                        <tr><td colspan="4" style="text-align: center; color: #666; padding: 20px;">Chưa có tài khoản nào trong kho. Hãy upload file!</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -449,14 +456,18 @@ def admin():
         search_code=search_code
     )
 
-@app.route("/admin/generate_key", methods=["POST"])
+@app.route("/admin/generate_key/<plan_type>", methods=["POST"])
 @login_required
-def generate_key():
+def generate_key(plan_type):
     database.init_db()
-    code = secrets.token_hex(3).upper()
+    
+    # 10 chars for standard, 15 chars for premium
+    length = 10 if plan_type == 'standard' else 15
+    code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
+    
     success, msg = database.create_access_key(code)
     if success:
-        flash(f"Đã tạo mã thành công: {code}", "success")
+        flash(f"Đã tạo mã {plan_type.upper()} thành công: {code}", "success")
     else:
         flash(f"Lỗi tạo mã: {msg}", "error")
     return redirect(url_for("admin"))
@@ -507,7 +518,7 @@ def upload():
             database.init_db()
             count = 0
             for acc in accounts_list:
-                database.save_account(acc['email'], acc['expire'], acc['netflix_id'], acc['secure_netflix_id'])
+                database.save_account(acc['email'], acc['expire'], acc['netflix_id'], acc['secure_netflix_id'], acc.get('plan'))
                 count += 1
             flash(f"🎉 Đã trích xuất và lưu thành công {count} tài khoản vào Database!", "success")
         else:

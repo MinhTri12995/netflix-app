@@ -10,13 +10,15 @@ def init_db():
     # Bảng sẽ được tạo bằng tay trên giao diện Supabase
     print("Sử dụng Supabase REST API (Không cần init local)")
 
-def save_account(email, expire_date, netflix_id, secure_netflix_id=""):
+def save_account(email, expire_date, netflix_id, secure_netflix_id="", plan=None):
     data = {
         "email": email,
         "expire_date": expire_date,
         "netflix_id": netflix_id,
         "secure_netflix_id": secure_netflix_id
     }
+    if plan:
+        data["plan"] = plan
     supabase.table("netflix_accounts").upsert(data).execute()
     
 def delete_account(email):
@@ -27,17 +29,22 @@ def get_all_accounts():
     # Chuyển đổi list of dicts thành list of tuples cho code cũ tương thích
     rows = []
     for r in response.data:
-        rows.append((r["email"], r["expire_date"], r["netflix_id"], r["secure_netflix_id"], r.get("created_at")))
+        rows.append((r["email"], r["expire_date"], r["netflix_id"], r["secure_netflix_id"], r.get("created_at"), r.get("plan")))
     return rows
 
-def get_random_available_account():
+def get_random_available_account(plan_type=None):
     import random
     
     # Lấy toàn bộ account có trong kho
-    acc_response = supabase.table("netflix_accounts").select("email").execute()
+    acc_response = supabase.table("netflix_accounts").select("email, plan").execute()
     if not acc_response.data:
         return None
-    all_emails = [r["email"] for r in acc_response.data]
+        
+    # Lọc tài khoản theo gói cước nếu có yêu cầu
+    if plan_type:
+        all_emails = [r["email"] for r in acc_response.data if r.get("plan") and plan_type.lower() in r["plan"].lower()]
+    else:
+        all_emails = [r["email"] for r in acc_response.data]
     
     # Lấy toàn bộ email ĐÃ ĐƯỢC GÁN cho các mã truy cập (đang sử dụng)
     keys_response = supabase.table("access_keys").select("assigned_email").execute()
@@ -53,9 +60,12 @@ def get_random_available_account():
     return None
 
 def create_access_key(code):
-    email = get_random_available_account()
+    # Xác định gói cước dựa trên độ dài mã
+    plan_type = "Standard" if len(code) == 10 else "Premium"
+    
+    email = get_random_available_account(plan_type)
     if not email:
-        return False, "Không còn Cookie nào khả dụng trong kho."
+        return False, f"Không còn Cookie {plan_type} nào khả dụng trong kho."
     
     # Kiểm tra mã đã tồn tại chưa
     exist = supabase.table("access_keys").select("code").eq("code", code).execute()
@@ -84,7 +94,10 @@ def get_all_access_keys():
     return rows
 
 def rotate_access_key(code):
-    email = get_random_available_account()
+    # Xác định gói cước dựa trên độ dài mã
+    plan_type = "Standard" if len(code) == 10 else "Premium"
+    
+    email = get_random_available_account(plan_type)
     if not email:
         return False
     

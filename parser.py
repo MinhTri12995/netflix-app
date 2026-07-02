@@ -5,6 +5,7 @@ def parse_lines(lines):
     
     current_email = None
     current_expire = None
+    current_plan = None
     current_netflix_id = None
     current_secure_netflix_id = ""
 
@@ -20,11 +21,13 @@ def parse_lines(lines):
                 accounts.append({
                     'email': current_email,
                     'expire': current_expire,
+                    'plan': current_plan,
                     'netflix_id': current_netflix_id,
                     'secure_netflix_id': current_secure_netflix_id
                 })
             current_email = deadflix_email_match.group(1).strip()
             current_expire = None
+            current_plan = None
             current_netflix_id = None
             current_secure_netflix_id = ""
             continue
@@ -34,6 +37,12 @@ def parse_lines(lines):
         if deadflix_expire_match:
             current_expire = deadflix_expire_match.group(1).strip()
             continue
+
+        # Hỗ trợ định dạng DEADFLIX CHECKER: "– Plan: Premium"
+        deadflix_plan_match = re.search(r'^(?:–|-)\s*Plan:\s*(.+)', line, re.IGNORECASE)
+        if deadflix_plan_match:
+            current_plan = deadflix_plan_match.group(1).strip()
+            continue
             
         # Hỗ trợ cả định dạng cũ (#EMAIL) và mới (Email:)
         email_match = re.search(r'^(?:#EMAIL\s*:|Email:)\s*(.+)', line, re.IGNORECASE)
@@ -42,11 +51,13 @@ def parse_lines(lines):
                 accounts.append({
                     'email': current_email,
                     'expire': current_expire,
+                    'plan': current_plan,
                     'netflix_id': current_netflix_id,
                     'secure_netflix_id': current_secure_netflix_id
                 })
             current_email = email_match.group(1).strip()
             current_expire = None
+            current_plan = None
             current_netflix_id = None
             current_secure_netflix_id = ""
             continue
@@ -79,6 +90,7 @@ def parse_lines(lines):
         accounts.append({
             'email': current_email,
             'expire': current_expire,
+            'plan': current_plan,
             'netflix_id': current_netflix_id,
             'secure_netflix_id': current_secure_netflix_id
         })
