@@ -31,12 +31,25 @@ def get_all_accounts():
     return rows
 
 def get_random_available_account():
-    # Do Supabase không hỗ trợ ORDER BY RANDOM() trực tiếp qua REST API, 
-    # ta lấy danh sách và random bằng python
     import random
-    response = supabase.table("netflix_accounts").select("email").execute()
-    if response.data:
-        return random.choice(response.data)["email"]
+    
+    # Lấy toàn bộ account có trong kho
+    acc_response = supabase.table("netflix_accounts").select("email").execute()
+    if not acc_response.data:
+        return None
+    all_emails = [r["email"] for r in acc_response.data]
+    
+    # Lấy toàn bộ email ĐÃ ĐƯỢC GÁN cho các mã truy cập (đang sử dụng)
+    keys_response = supabase.table("access_keys").select("assigned_email").execute()
+    used_emails = [r["assigned_email"] for r in keys_response.data if r.get("assigned_email")]
+    
+    # Lọc ra những email CHƯA ĐƯỢC AI XÀI (Tạo mảng riêng biệt, không trùng nhau)
+    available_emails = list(set(all_emails) - set(used_emails))
+    
+    if available_emails:
+        return random.choice(available_emails)
+        
+    # Hết sạch Cookie trống trong kho
     return None
 
 def create_access_key(code):
