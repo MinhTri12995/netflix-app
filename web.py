@@ -542,6 +542,12 @@ def background_check_all():
         accounts = database.get_all_accounts()
         for acc in accounts:
             email = acc[0]
+            current_plan = acc[5]
+            
+            # Bỏ qua những tài khoản đã có gói cước
+            if current_plan:
+                continue
+                
             netflix_id = acc[2]
             secure_netflix_id = acc[3]
             status, plan = checker.check_account_live(netflix_id, secure_netflix_id)
@@ -555,8 +561,12 @@ def background_check_all():
 def check_all():
     database.init_db()
     accounts = database.get_all_accounts()
-    if not accounts:
-        flash("Không có tài khoản nào để kiểm tra.", "warning")
+    
+    # Lọc ra các tài khoản chưa có gói cước
+    accounts_to_check = [acc for acc in accounts if not acc[5]]
+    
+    if not accounts_to_check:
+        flash("Tất cả tài khoản trong kho đều đã có Gói Cước. Không cần chạy cập nhật thêm.", "warning")
         return redirect(url_for("admin"))
         
     import threading
@@ -564,8 +574,8 @@ def check_all():
     t.daemon = True
     t.start()
     
-    estimated_time = len(accounts) * 2
-    flash(f"🔄 Đang kiểm tra ngầm và cập nhật Gói Cước (khoảng {estimated_time}s). Các cookie DIE sẽ tự xóa.", "warning")
+    estimated_time = len(accounts_to_check) * 2
+    flash(f"🔄 Đang cập nhật ngầm cho {len(accounts_to_check)} tài khoản chưa có Gói Cước (khoảng {estimated_time}s). Các cookie DIE sẽ tự xóa.", "warning")
     return redirect(url_for("admin"))
 
 
