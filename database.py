@@ -35,11 +35,26 @@ def update_plan(email, plan):
     data = {"plan": plan}
     get_supabase().table("netflix_accounts").update(data).eq("email", email).execute()
 
+def fetch_all_rows(table_name, columns="*"):
+    all_data = []
+    limit = 1000
+    offset = 0
+    while True:
+        response = get_supabase().table(table_name).select(columns).range(offset, offset + limit - 1).execute()
+        data = response.data
+        if not data:
+            break
+        all_data.extend(data)
+        if len(data) < limit:
+            break
+        offset += limit
+    return all_data
+
 def get_all_accounts():
-    response = get_supabase().table("netflix_accounts").select("*").execute()
+    data = fetch_all_rows("netflix_accounts")
     # Chuyển đổi list of dicts thành list of tuples cho code cũ tương thích
     rows = []
-    for r in response.data:
+    for r in data:
         rows.append((r["email"], r["expire_date"], r["netflix_id"], r["secure_netflix_id"], r.get("created_at"), r.get("plan")))
     return rows
 
@@ -47,19 +62,19 @@ def get_random_available_account(plan_type=None):
     import random
     
     # Lấy toàn bộ account có trong kho
-    acc_response = get_supabase().table("netflix_accounts").select("*").execute()
-    if not acc_response.data:
+    acc_data = fetch_all_rows("netflix_accounts", "email, plan")
+    if not acc_data:
         return None
         
     # Lọc tài khoản theo gói cước nếu có yêu cầu
     if plan_type:
-        all_emails = [r["email"] for r in acc_response.data if r.get("plan") and plan_type.lower() in str(r["plan"]).lower()]
+        all_emails = [r["email"] for r in acc_data if r.get("plan") and plan_type.lower() in str(r["plan"]).lower()]
     else:
-        all_emails = [r["email"] for r in acc_response.data]
+        all_emails = [r["email"] for r in acc_data]
     
     # Lấy toàn bộ email ĐÃ ĐƯỢC GÁN cho các mã truy cập (đang sử dụng)
-    keys_response = get_supabase().table("access_keys").select("assigned_email").execute()
-    used_emails = [r["assigned_email"] for r in keys_response.data if r.get("assigned_email")]
+    keys_data = fetch_all_rows("access_keys", "assigned_email")
+    used_emails = [r["assigned_email"] for r in keys_data if r.get("assigned_email")]
     
     # Lọc ra những email CHƯA ĐƯỢC AI XÀI (Tạo mảng riêng biệt, không trùng nhau)
     available_emails = list(set(all_emails) - set(used_emails))
@@ -101,9 +116,12 @@ def get_access_key(code):
     return None
 
 def get_all_access_keys():
-    response = get_supabase().table("access_keys").select("*").order("created_at", desc=True).execute()
+    # Fetch all data manually to bypass 1000 limit, then sort
+    data = fetch_all_rows("access_keys")
+    data.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+    
     rows = []
-    for r in response.data:
+    for r in data:
         rows.append((r["code"], r["assigned_email"], r.get("created_at")))
     return rows
 
