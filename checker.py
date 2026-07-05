@@ -82,15 +82,29 @@ def check_account_live(netflix_id, secure_netflix_id=""):
         # Nếu trang Account load thành công và không có từ khóa lỗi -> LIVE
         if response.status_code == 200:
             import re
-            plan = "Unknown"
-            plan_match = re.search(r'"planname":"([^"]+)"', html_text)
-            if plan_match:
-                plan = plan_match.group(1).title()
-            else:
-                if 'premium' in html_text:
-                    plan = "Premium"
-                elif 'standard' in html_text:
-                    plan = "Standard"
+            plan = "Standard" # Mặc định để tránh phát nhầm Premium
+            
+            # Quét các biến kỹ thuật chứa tên gói cước (hỗ trợ cả dấu cách)
+            patterns = [
+                r'"planname"\s*:\s*"([^"]+)"',
+                r'"localizedplanname"\s*:\s*"([^"]+)"',
+                r'data-uia="plan-label"[^>]*>([^<]+)<',
+                r'"tier"\s*:\s*"([^"]+)"',
+                r'"plan_tier"\s*:\s*"([^"]+)"'
+            ]
+            
+            for pattern in patterns:
+                match = re.search(pattern, html_text)
+                if match:
+                    extracted = match.group(1).lower()
+                    if 'premium' in extracted or 'ultra' in extracted:
+                        plan = "Premium"
+                    elif 'standard' in extracted:
+                        plan = "Standard"
+                    elif 'basic' in extracted or 'cơ bản' in extracted:
+                        plan = "Basic"
+                    break
+            
             return "LIVE", plan
             
         return "ERROR", None
