@@ -36,26 +36,42 @@ def check_account_live(netflix_id, secure_netflix_id=""):
             timeout=15
         )
         
-        # Nếu bị ném ra trang login
-        if "netflix.com/login" in response.url:
+        # Nếu bị ném ra trang login hoặc các trang lỗi thanh toán
+        url_lower = response.url.lower()
+        if "netflix.com/login" in url_lower or "/payment" in url_lower or "/clearcookies" in url_lower or "/restart" in url_lower:
             return "DIE", None
             
         html_text = response.text.lower()
         
         # Nhận diện lỗi bằng các mã kỹ thuật (KHÔNG phụ thuộc vào ngôn ngữ)
-        # Các mã này (data-uia hoặc biến React) giống nhau trên toàn cầu dù là tiếng Anh, Tây Ban Nha hay Ả Rập
         bad_keywords = [
+            # Biến JSON hệ thống
+            '"membershipstatus":"past_due"',
+            '"membershipstatus":"former_member"',
+            '"membershipstatus":"never_member"',
+            '"status":"past_due"',
+            '"status":"former_member"',
+            '"status":"never_member"',
+            '"ispaymentonhold":true',
+            '"ispaymenthold":true',
+            '"haspaymenthold":true',
+            '"isactive":false',
+            
+            # Thuộc tính UI toàn cầu (không đổi theo ngôn ngữ)
+            'data-uia="banner-payment-failure"',
+            'data-uia="payment-update-button"',
+            'data-uia="action_update_payment"',
+            'data-uia="account-restart-membership"',
+            'data-uia="finish-sign-up-button"',
+            
+            # Chuỗi text phổ biến (Dự phòng cho tiếng Anh và Tiếng Việt)
             "update payment",
-            "restart membership",
             "cập nhật phương thức thanh toán",
+            "restart membership",
             "khôi phục tư cách thành viên",
-            "action_update_payment",         # Nút Update Payment (Global)
-            "account-restart-membership",    # Nút Restart Membership (Global)
-            '"membershipstatus":"past_due"', # Biến hệ thống báo trễ hạn (Global)
-            '"membershipstatus":"former_member"', # Biến hệ thống báo đã hủy (Global)
-            "payment-update",
             "finish sign-up",
-            "finish_sign_up"                 # Nút Finish Sign Up (Global)
+            "thanh toán của bạn",
+            "update your payment"
         ]
         
         for kw in bad_keywords:
