@@ -84,26 +84,28 @@ def check_account_live(netflix_id, secure_netflix_id=""):
             import re
             plan = "Standard" # Mặc định để tránh phát nhầm Premium
             
-            # Quét các biến kỹ thuật chứa tên gói cước (hỗ trợ cả dấu cách)
+            # Kỹ thuật Proximity Regex: Tìm từ khóa gói cước nằm trong bán kính 50 ký tự sau các neo kỹ thuật
+            # Cực kỳ mạnh mẽ: xuyên thủng cả thẻ HTML, khoảng trắng, và HTML Entity (&quot;)
             patterns = [
-                r'"planname"\s*:\s*"([^"]+)"',
-                r'"localizedplanname"\s*:\s*"([^"]+)"',
-                r'data-uia="plan-label"[^>]*>([^<]+)<',
-                r'"tier"\s*:\s*"([^"]+)"',
-                r'"plan_tier"\s*:\s*"([^"]+)"'
+                r'plan-label.{0,50}?(premium|ultra|standard|basic|cơ bản)',
+                r'planname.{0,50}?(premium|ultra|standard|basic|cơ bản)',
+                r'plan_tier.{0,50}?(premium|ultra|standard|basic|cơ bản)',
+                r'currentplan.{0,50}?(premium|ultra|standard|basic|cơ bản)'
             ]
             
             for pattern in patterns:
-                match = re.search(pattern, html_text)
+                match = re.search(pattern, html_text, flags=re.DOTALL)
                 if match:
                     extracted = match.group(1).lower()
                     if 'premium' in extracted or 'ultra' in extracted:
                         plan = "Premium"
+                        break
                     elif 'standard' in extracted:
                         plan = "Standard"
+                        break
                     elif 'basic' in extracted or 'cơ bản' in extracted:
                         plan = "Basic"
-                    break
+                        break
             
             return "LIVE", plan
             
