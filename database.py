@@ -58,6 +58,13 @@ def get_all_accounts():
         rows.append((r["email"], r["expire_date"], r["netflix_id"], r["secure_netflix_id"], r.get("created_at"), r.get("plan")))
     return rows
 
+def get_account_by_email(email):
+    response = get_supabase().table("netflix_accounts").select("*").eq("email", email).execute()
+    if response.data:
+        r = response.data[0]
+        return (r["email"], r["expire_date"], r["netflix_id"], r["secure_netflix_id"], r.get("created_at"), r.get("plan"))
+    return None
+
 def get_random_available_account(plan_type=None):
     import random
     

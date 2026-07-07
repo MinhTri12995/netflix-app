@@ -682,8 +682,7 @@ def api_generate_nftoken():
         # Auto-rotation loop
         max_attempts = 5
         for attempt in range(max_attempts):
-            accounts = database.get_all_accounts()
-            acc = next((a for a in accounts if a[0] == assigned_email), None)
+            acc = database.get_account_by_email(assigned_email)
             
             if not acc:
                 rotated = database.rotate_access_key(code)
