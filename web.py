@@ -735,18 +735,11 @@ def api_generate_nftoken():
                 secure_netflix_id = urllib.parse.unquote(acc[3]) if acc[3] else ""
                 
                 try:
-                    # --- [MỚI] KIỂM TRA REALTIME TRƯỚC KHI XUẤT LINK ---
-                    print(f"Bắt đầu Check Realtime cho tài khoản: {assigned_email}")
-                    live_status, live_plan = checker.check_account_live(netflix_id, secure_netflix_id)
+                    # --- [MỚI] BỎ QUA BƯỚC CHECK PAYMENT ---
+                    print(f"Bắt đầu xuất Link cho tài khoản: {assigned_email}")
+                    # Không gọi checker.check_account_live nữa để tránh bắt lỗi Payment
                     
-                    if live_status == "DIE":
-                        # Cookie dính Update Payment hoặc bị văng -> Ném lỗi ra để nó chạy vòng lặp đổi acc mới (Rotation)
-                        raise Exception("Cookie dính Update Payment hoặc đã chết (Real-time check failed)")
-                    elif live_status == "ERROR":
-                        # Lỗi mạng / Proxy trong lúc check live, văng ra để thử lại bằng Proxy khác
-                        raise ProxyError("Lỗi Proxy trong quá trình Check Real-time")
-                    
-                    # Vượt qua bài kiểm tra "Mắt thần" -> Tiếp tục lấy Link
+                    # Trực tiếp lấy Link
                     token = fetch_netflix_nftoken_api(netflix_id)
                     pc_link = f"https://www.netflix.com/login?nftoken={token}"
                     mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"
