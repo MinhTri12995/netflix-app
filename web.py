@@ -705,22 +705,21 @@ def api_generate_nftoken():
         cookie_value = data.get("cookie", "").strip()
         if not cookie_value:
             return jsonify({"success": False, "error": "Vui lòng nhập Mã Truy Cập"}), 400
-
+            
+        database.init_db()
         
-    database.init_db()
-    
-    # Import checker for realtime check
-    import checker
-    
-    # 1. Lookup as access key (6 characters)
-    acc_key_row = database.get_access_key(cookie_value)
-    
-    if acc_key_row:
-        code = acc_key_row[0]
-        assigned_email = acc_key_row[1]
+        # Import checker for realtime check
+        import checker
         
-        # Auto-rotation loop
-        max_attempts = 5
+        # 1. Lookup as access key (6 characters)
+        acc_key_row = database.get_access_key(cookie_value)
+    
+        if acc_key_row:
+            code = acc_key_row[0]
+            assigned_email = acc_key_row[1]
+            
+            # Auto-rotation loop
+            max_attempts = 5
         for attempt in range(max_attempts):
             acc = database.get_account_by_email(assigned_email)
             
@@ -772,47 +771,47 @@ def api_generate_nftoken():
                 
         return jsonify({"success": False, "error": "Quá tải máy chủ hoặc toàn bộ Proxy chết. Vui lòng thử lại sau."}), 500
 
-    # 2. Fallback: Parse raw tokens for admin testing
-    netflix_id = None
-    unquoted_cookie = urllib.parse.unquote(cookie_value)
-    is_already_token = unquoted_cookie.startswith("B")
-    
-    if is_already_token:
-        token = cookie_value 
-        pc_link = f"https://www.netflix.com/login?nftoken={token}"
-        mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"
-        tv_link = f"https://www.netflix.com/tv8?nftoken={token}"
-        return jsonify({"success": True, "pc_link": pc_link, "mobile_link": mobile_link, "tv_link": tv_link})
-    
-    if "NetflixId=" in cookie_value:
-        match = re.search(r'NetflixId\s*=\s*([^;]+)', cookie_value)
-        if match:
-            netflix_id = match.group(1).strip()
-    elif ".netflix.com" in cookie_value:
-        for line in cookie_value.splitlines():
-            parts = line.split("\t")
-            if len(parts) >= 7 and parts[5].strip() == "NetflixId":
-                netflix_id = parts[6].strip()
-                break
-    else:
-        netflix_id = cookie_value.replace('"', '').replace("'", "").strip()
+        # 2. Fallback: Parse raw tokens for admin testing
+        netflix_id = None
+        unquoted_cookie = urllib.parse.unquote(cookie_value)
+        is_already_token = unquoted_cookie.startswith("B")
         
-    if not netflix_id:
-        netflix_id = cookie_value
+        if is_already_token:
+            token = cookie_value 
+            pc_link = f"https://www.netflix.com/login?nftoken={token}"
+            mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"
+            tv_link = f"https://www.netflix.com/tv8?nftoken={token}"
+            return jsonify({"success": True, "pc_link": pc_link, "mobile_link": mobile_link, "tv_link": tv_link})
         
-    netflix_id = urllib.parse.unquote(netflix_id)
-    
-    try:
-        token = fetch_netflix_nftoken_api(netflix_id)
-        pc_link = f"https://www.netflix.com/login?nftoken={token}"
-        mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"
-        tv_link = f"https://www.netflix.com/tv8?nftoken={token}"
-        return jsonify({"success": True, "pc_link": pc_link, "mobile_link": mobile_link, "tv_link": tv_link})
-    except ProxyError as e:
-        return jsonify({"success": False, "error": f"Lỗi Proxy. Vui lòng bấm thử lại. Chi tiết: {str(e)}"}), 500
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        if "NetflixId=" in cookie_value:
+            match = re.search(r'NetflixId\s*=\s*([^;]+)', cookie_value)
+            if match:
+                netflix_id = match.group(1).strip()
+        elif ".netflix.com" in cookie_value:
+            for line in cookie_value.splitlines():
+                parts = line.split("\t")
+                if len(parts) >= 7 and parts[5].strip() == "NetflixId":
+                    netflix_id = parts[6].strip()
+                    break
+        else:
+            netflix_id = cookie_value.replace('"', '').replace("'", "").strip()
+            
+        if not netflix_id:
+            netflix_id = cookie_value
+            
+        netflix_id = urllib.parse.unquote(netflix_id)
         
+        try:
+            token = fetch_netflix_nftoken_api(netflix_id)
+            pc_link = f"https://www.netflix.com/login?nftoken={token}"
+            mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"
+            tv_link = f"https://www.netflix.com/tv8?nftoken={token}"
+            return jsonify({"success": True, "pc_link": pc_link, "mobile_link": mobile_link, "tv_link": tv_link})
+        except ProxyError as e:
+            return jsonify({"success": False, "error": f"Lỗi Proxy. Vui lòng bấm thử lại. Chi tiết: {str(e)}"}), 500
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e)}), 500
+            
     except Exception as api_e:
         import traceback
         traceback.print_exc()
