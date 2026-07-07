@@ -700,10 +700,12 @@ def fetch_netflix_nftoken_api(netflix_id):
 
 @app.route("/api/generate_nftoken", methods=["POST"])
 def api_generate_nftoken():
-    data = request.json or {}
-    cookie_value = data.get("cookie", "").strip()
-    if not cookie_value:
-        return jsonify({"success": False, "error": "Vui lòng nhập Mã Truy Cập"}), 400
+    try:
+        data = request.get_json(silent=True) or {}
+        cookie_value = data.get("cookie", "").strip()
+        if not cookie_value:
+            return jsonify({"success": False, "error": "Vui lòng nhập Mã Truy Cập"}), 400
+
         
     database.init_db()
     
@@ -810,6 +812,11 @@ def api_generate_nftoken():
         return jsonify({"success": False, "error": f"Lỗi Proxy. Vui lòng bấm thử lại. Chi tiết: {str(e)}"}), 500
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
+        
+    except Exception as api_e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "error": f"Lỗi hệ thống không xác định: {str(api_e)}"}), 500
 
 if __name__ == "__main__":
     print("🚀 Web interface is running!")
