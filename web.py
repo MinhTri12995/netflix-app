@@ -720,56 +720,56 @@ def api_generate_nftoken():
             
             # Auto-rotation loop
             max_attempts = 5
-        for attempt in range(max_attempts):
-            acc = database.get_account_by_email(assigned_email)
-            
-            if not acc:
-                rotated = database.rotate_access_key(code)
-                if not rotated:
-                    return jsonify({"success": False, "error": "Hệ thống đã hết Cookie dự phòng!"}), 500
-                assigned_email = database.get_access_key(code)[1]
-                continue
+            for attempt in range(max_attempts):
+                acc = database.get_account_by_email(assigned_email)
                 
-            netflix_id = urllib.parse.unquote(acc[2])
-            secure_netflix_id = urllib.parse.unquote(acc[3]) if acc[3] else ""
-            
-            try:
-                # --- [MỚI] KIỂM TRA REALTIME TRƯỚC KHI XUẤT LINK ---
-                print(f"Bắt đầu Check Realtime cho tài khoản: {assigned_email}")
-                live_status, live_plan = checker.check_account_live(netflix_id, secure_netflix_id)
+                if not acc:
+                    rotated = database.rotate_access_key(code)
+                    if not rotated:
+                        return jsonify({"success": False, "error": "Hệ thống đã hết Cookie dự phòng!"}), 500
+                    assigned_email = database.get_access_key(code)[1]
+                    continue
+                    
+                netflix_id = urllib.parse.unquote(acc[2])
+                secure_netflix_id = urllib.parse.unquote(acc[3]) if acc[3] else ""
                 
-                if live_status == "DIE":
-                    # Cookie dính Update Payment hoặc bị văng -> Ném lỗi ra để nó chạy vòng lặp đổi acc mới (Rotation)
-                    raise Exception("Cookie dính Update Payment hoặc đã chết (Real-time check failed)")
-                elif live_status == "ERROR":
-                    # Lỗi mạng / Proxy trong lúc check live, văng ra để thử lại bằng Proxy khác
-                    raise ProxyError("Lỗi Proxy trong quá trình Check Real-time")
-                
-                # Vượt qua bài kiểm tra "Mắt thần" -> Tiếp tục lấy Link
-                token = fetch_netflix_nftoken_api(netflix_id)
-                pc_link = f"https://www.netflix.com/login?nftoken={token}"
-                mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"
-                tv_link = f"https://www.netflix.com/tv8?nftoken={token}"
-                return jsonify({
-                    "success": True,
-                    "pc_link": pc_link,
-                    "mobile_link": mobile_link,
-                    "tv_link": tv_link
-                })
-            except ProxyError as e:
-                # Lỗi proxy, ta giữ nguyên Cookie và thử lại ngay lập tức (không rotate Cookie)
-                print(f"Lỗi Proxy ({e}), thử lại...")
-                continue
-            except Exception as e:
-                # Các lỗi khác (hoặc CookieError) -> Cookie is dead, delete it and rotate
-                print(f"Cookie {assigned_email} DIE, attempting rotation... (Lỗi: {e})")
-                database.delete_account(assigned_email)
-                rotated = database.rotate_access_key(code)
-                if not rotated:
-                    return jsonify({"success": False, "error": "Cookie hỏng và hệ thống đã hết Cookie dự phòng!"}), 500
-                assigned_email = database.get_access_key(code)[1]
-                
-        return jsonify({"success": False, "error": "Quá tải máy chủ hoặc toàn bộ Proxy chết. Vui lòng thử lại sau."}), 500
+                try:
+                    # --- [MỚI] KIỂM TRA REALTIME TRƯỚC KHI XUẤT LINK ---
+                    print(f"Bắt đầu Check Realtime cho tài khoản: {assigned_email}")
+                    live_status, live_plan = checker.check_account_live(netflix_id, secure_netflix_id)
+                    
+                    if live_status == "DIE":
+                        # Cookie dính Update Payment hoặc bị văng -> Ném lỗi ra để nó chạy vòng lặp đổi acc mới (Rotation)
+                        raise Exception("Cookie dính Update Payment hoặc đã chết (Real-time check failed)")
+                    elif live_status == "ERROR":
+                        # Lỗi mạng / Proxy trong lúc check live, văng ra để thử lại bằng Proxy khác
+                        raise ProxyError("Lỗi Proxy trong quá trình Check Real-time")
+                    
+                    # Vượt qua bài kiểm tra "Mắt thần" -> Tiếp tục lấy Link
+                    token = fetch_netflix_nftoken_api(netflix_id)
+                    pc_link = f"https://www.netflix.com/login?nftoken={token}"
+                    mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"
+                    tv_link = f"https://www.netflix.com/tv8?nftoken={token}"
+                    return jsonify({
+                        "success": True,
+                        "pc_link": pc_link,
+                        "mobile_link": mobile_link,
+                        "tv_link": tv_link
+                    })
+                except ProxyError as e:
+                    # Lỗi proxy, ta giữ nguyên Cookie và thử lại ngay lập tức (không rotate Cookie)
+                    print(f"Lỗi Proxy ({e}), thử lại...")
+                    continue
+                except Exception as e:
+                    # Các lỗi khác (hoặc CookieError) -> Cookie is dead, delete it and rotate
+                    print(f"Cookie {assigned_email} DIE, attempting rotation... (Lỗi: {e})")
+                    database.delete_account(assigned_email)
+                    rotated = database.rotate_access_key(code)
+                    if not rotated:
+                        return jsonify({"success": False, "error": "Cookie hỏng và hệ thống đã hết Cookie dự phòng!"}), 500
+                    assigned_email = database.get_access_key(code)[1]
+                    
+            return jsonify({"success": False, "error": "Quá tải máy chủ hoặc toàn bộ Proxy chết. Vui lòng thử lại sau."}), 500
 
         # 2. Fallback: Parse raw tokens for admin testing
         netflix_id = None
