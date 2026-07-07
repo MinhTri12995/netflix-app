@@ -4,7 +4,7 @@ from supabase import create_client, Client
 import threading
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://zzdlmwhmhjofqmhfknbv.supabase.co")
-SUPABASE_KEY = os.environ.get("SUPABASE_SECRET_KEY", "sb_secret_wbXnaO_AN5UCJmZoyZzMCw_VjBZDclc")
+SUPABASE_KEY = os.environ.get("SUPABASE_SECRET_KEY", "")
 
 _local = threading.local()
 
