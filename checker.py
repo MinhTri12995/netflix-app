@@ -43,39 +43,40 @@ def check_account_live(netflix_id, secure_netflix_id=""):
             
         html_text = response.text.lower()
         
-        # Nhận diện lỗi bằng các mã kỹ thuật (KHÔNG phụ thuộc vào ngôn ngữ)
-        bad_keywords = [
-            # Biến JSON hệ thống
-            '"membershipstatus":"past_due"',
-            '"membershipstatus":"former_member"',
-            '"membershipstatus":"never_member"',
-            '"status":"past_due"',
-            '"status":"former_member"',
-            '"status":"never_member"',
-            '"ispaymentonhold":true',
-            '"ispaymenthold":true',
-            '"haspaymenthold":true',
-            '"isactive":false',
+        # Làm sạch HTML: Xóa hết khoảng trắng, ngoặc kép, dấu hai chấm, gạch ngang để chống nhiễu JSON/HTML Format
+        import re
+        html_clean = re.sub(r'[\s"\'\-:]', '', html_text)
+        
+        # Nhận diện lỗi bằng các mã kỹ thuật cực mạnh (Đã loại bỏ khoảng trắng)
+        bad_keywords_clean = [
+            # Các trạng thái lỗi chắc chắn 100% (Enum nội bộ của Netflix)
+            "past_due",
+            "former_member",
+            "never_member",
             
-            # Thuộc tính UI toàn cầu (không đổi theo ngôn ngữ)
-            'data-uia="banner-payment-failure"',
-            'data-uia="payment-update-button"',
-            'data-uia="action_update_payment"',
-            'data-uia="account-restart-membership"',
-            'data-uia="finish-sign-up-button"',
+            # Các cờ báo lỗi thanh toán (Bắt bất chấp JSON có khoảng trắng hay không)
+            "ispaymentonholdtrue",
+            "haspaymentholdtrue",
+            "isactivefalse",
             
-            # Chuỗi text phổ biến (Dự phòng cho tiếng Anh và Tiếng Việt)
-            "update payment",
-            "cập nhật phương thức thanh toán",
-            "restart membership",
-            "khôi phục tư cách thành viên",
-            "finish sign-up",
-            "thanh toán của bạn",
-            "update your payment"
+            # Thuộc tính UI toàn cầu
+            "bannerpaymentfailure",
+            "paymentupdatebutton",
+            "actionupdatepayment",
+            "accountrestartmembership",
+            "finishsignupbutton",
+            
+            # Chuỗi text phổ biến
+            "updatepayment",
+            "paymentupdate",
+            "cậpnhậtphươngthứcthanhtoán",
+            "restartmembership",
+            "khôiphụctưcáchthànhviên",
+            "finishsignup"
         ]
         
-        for kw in bad_keywords:
-            if kw in html_text:
+        for kw in bad_keywords_clean:
+            if kw in html_clean:
                 print(f"Cookie dính lỗi thanh toán ({kw}) -> Xóa!")
                 return "DIE", None
                 
