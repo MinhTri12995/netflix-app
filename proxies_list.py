@@ -3,38 +3,16 @@ import random
 # Danh sách các tài khoản Webshare (Rotating Proxy)
 # Code sẽ bốc ngẫu nhiên 1 tài khoản để sử dụng cho mỗi lượt khách lấy Link
 ROTATING_PROXIES = [
-    # Tài khoản 1
-    "http://nodzxvcx-rotate:tton2hgnp5so@p.webshare.io:80",
-    
-    # Tài khoản 2
-    "http://nsbwpxnr-rotate:07dg8zrp2h74@p.webshare.io:80",
-    
-    # Tài khoản 3
-    "http://skzzzhhr-rotate:hu333jds9h3a@p.webshare.io:80",
-    
-    # Tài khoản 4
-    "http://qfcfflym-rotate:bnfu8ype49yu@p.webshare.io:80",
-    
-    # Tài khoản 5 (Mới thêm)
-    "http://xktamdun-rotate:985qtdjr7nnw@p.webshare.io:80",
-    
-    # Tài khoản 6 (Vừa thêm)
-    "http://qlmzdjzk:f7dovz8t49tz@p.webshare.io:80",
-    
-    # Tài khoản 7 (Bổ sung mới)
-    "http://bqpboosr:0qfqi02vzpuq@p.webshare.io:80",
-    
-    # Tài khoản 8 (Bổ sung mới)
-    "http://tryatpyy:cbeedsg7d0lb@p.webshare.io:80",
-    
-    # Tài khoản 9 (Từ mã Token Webshare)
-    "http://ojuhhlkl:ot76anl6o2ig@p.webshare.io:80",
-    
-    # 4 Tài khoản mới nhất
-    "http://geaaurlr:u0fm78uchfvh@p.webshare.io:80",
-    "http://pdlpkpdz:8kjalldybvdx@p.webshare.io:80",
-    "http://gojtsgxt:5lkzu0u1svio@p.webshare.io:80",
-    "http://lebiwakh:5y6m5inhj02l@p.webshare.io:80"
+    "http://nodzxvcx:tton2hgnp5so@31.59.20.176:6754/",
+    "http://nodzxvcx:tton2hgnp5so@31.56.127.193:7684/",
+    "http://nodzxvcx:tton2hgnp5so@45.38.107.97:6014/",
+    "http://nodzxvcx:tton2hgnp5so@198.105.121.200:6462/",
+    "http://nodzxvcx:tton2hgnp5so@64.137.96.74:6641/",
+    "http://nodzxvcx:tton2hgnp5so@198.23.243.226:6361/",
+    "http://nodzxvcx:tton2hgnp5so@2.57.21.2:7239/",
+    "http://nodzxvcx:tton2hgnp5so@38.154.185.97:6370/",
+    "http://nodzxvcx:tton2hgnp5so@142.111.67.146:5611/",
+    "http://nodzxvcx:tton2hgnp5so@191.96.254.138:6185/"
 ]
 
 def get_random_proxy():
