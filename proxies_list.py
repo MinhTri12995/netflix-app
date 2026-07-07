@@ -28,7 +28,13 @@ ROTATING_PROXIES = [
     "http://tryatpyy:cbeedsg7d0lb@p.webshare.io:80",
     
     # Tài khoản 9 (Từ mã Token Webshare)
-    "http://ojuhhlkl:ot76anl6o2ig@p.webshare.io:80"
+    "http://ojuhhlkl:ot76anl6o2ig@p.webshare.io:80",
+    
+    # 4 Tài khoản mới nhất
+    "http://geaaurlr:u0fm78uchfvh@p.webshare.io:80",
+    "http://pdlpkpdz:8kjalldybvdx@p.webshare.io:80",
+    "http://gojtsgxt:5lkzu0u1svio@p.webshare.io:80",
+    "http://lebiwakh:5y6m5inhj02l@p.webshare.io:80"
 ]
 
 def get_random_proxy():
