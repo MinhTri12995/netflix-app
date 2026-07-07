@@ -19,7 +19,16 @@ ROTATING_PROXIES = [
     "http://xktamdun-rotate:985qtdjr7nnw@p.webshare.io:80",
     
     # Tài khoản 6 (Vừa thêm)
-    "http://qlmzdjzk:f7dovz8t49tz@p.webshare.io:80"
+    "http://qlmzdjzk:f7dovz8t49tz@p.webshare.io:80",
+    
+    # Tài khoản 7 (Bổ sung mới)
+    "http://bqpboosr:0qfqi02vzpuq@p.webshare.io:80",
+    
+    # Tài khoản 8 (Bổ sung mới)
+    "http://tryatpyy:cbeedsg7d0lb@p.webshare.io:80",
+    
+    # Tài khoản 9 (Từ mã Token Webshare)
+    "http://ojuhhlkl:ot76anl6o2ig@p.webshare.io:80"
 ]
 
 def get_random_proxy():
