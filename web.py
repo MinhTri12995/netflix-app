@@ -323,11 +323,14 @@ ADMIN_TEMPLATE = r"""
         <div class="glass-panel">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <h3 style="margin: 0; font-weight: 400;">Kho Cookie Gốc <span style="font-size: 0.9rem; color: #888;">({{ total_accounts }} accounts)</span></h3>
-                {% if total_accounts > 0 %}
-                <form action="/check_all" method="POST" onsubmit="showLoading(this.querySelector('button'))" style="margin: 0;">
-                    <button type="submit" style="background: #10ac84; padding: 8px 15px; font-size: 0.9rem;">⚡ KIỂM TRA LIVE & CẬP NHẬT GÓI CƯỚC</button>
-                </form>
-                {% endif %}
+                <div style="display: flex; gap: 10px;">
+                    <form action="/force_check_all" method="POST" onsubmit="showLoading(this.querySelector('button'))" style="margin: 0;">
+                        <button type="submit" style="background: #e74c3c; padding: 8px 15px; font-size: 0.9rem;" title="Kiểm tra lại toàn bộ kho bất chấp gói cước (Tốn Proxy)">🔥 QUÉT SẠCH KHO (FORCE CHECK)</button>
+                    </form>
+                    <form action="/check_all" method="POST" onsubmit="showLoading(this.querySelector('button'))" style="margin: 0;">
+                        <button type="submit" style="background: #10ac84; padding: 8px 15px; font-size: 0.9rem;" title="Chỉ quét những Acc chưa có tên Gói Cước (Tiết kiệm Proxy)">⚡ CẬP NHẬT GÓI CƯỚC MỚI</button>
+                    </form>
+                </div>
             </div>
             
             <form action="/admin" method="GET" style="display: flex; gap: 10px; margin-bottom: 20px;">
@@ -577,6 +580,41 @@ def check_all():
     estimated_time = len(accounts_to_check) * 2
     flash(f"🔄 Đang cập nhật ngầm cho {len(accounts_to_check)} tài khoản chưa có Gói Cước (khoảng {estimated_time}s). Các cookie DIE sẽ tự xóa.", "warning")
     return redirect(url_for("admin"))
+
+
+def background_force_check_all():
+    with app.app_context():
+        database.init_db()
+        accounts = database.get_all_accounts()
+        for acc in accounts:
+            email = acc[0]
+            netflix_id = acc[2]
+            secure_netflix_id = acc[3]
+            status, plan = checker.check_account_live(netflix_id, secure_netflix_id)
+            if status == "LIVE" and plan:
+                database.update_plan(email, plan)
+            elif status == "DIE":
+                database.delete_account(email)
+
+@app.route("/force_check_all", methods=["POST"])
+@login_required
+def force_check_all():
+    database.init_db()
+    accounts = database.get_all_accounts()
+    
+    if not accounts:
+        flash("Kho không có tài khoản nào để quét.", "warning")
+        return redirect(url_for("admin"))
+        
+    import threading
+    t = threading.Thread(target=background_force_check_all)
+    t.daemon = True
+    t.start()
+    
+    estimated_time = len(accounts) * 2
+    flash(f"🔥 Đang ÉP quét ngầm TOÀN BỘ {len(accounts)} tài khoản trong kho (khoảng {estimated_time}s). Quá trình này sẽ ngốn khá nhiều Proxy.", "warning")
+    return redirect(url_for("admin"))
+
 
 
 # Constants for Netflix API
