@@ -662,25 +662,24 @@ def fetch_netflix_nftoken_api(netflix_id):
 
 @app.route("/api/generate_nftoken", methods=["POST"])
 def api_generate_nftoken():
-    try:
-        data = request.get_json(silent=True) or {}
-        cookie_value = data.get("cookie", "").strip()
-        if not cookie_value:
-            return jsonify({"success": False, "error": "Vui lòng nhập Mã Truy Cập"}), 400
-            
-        database.init_db()
+    data = request.json or {}
+    cookie_value = data.get("cookie", "").strip()
+    if not cookie_value:
+        return jsonify({"success": False, "error": "Vui lòng nhập Mã Truy Cập"}), 400
         
-        # Import checker for realtime check
-        import checker
+    database.init_db()
+    
+    # Import checker for realtime check
+    import checker
+    
+    # 1. Lookup as access key (6 characters)
+    acc_key_row = database.get_access_key(cookie_value)
+    
+    if acc_key_row:
+        code = acc_key_row[0]
+        assigned_email = acc_key_row[1]
         
-        # 1. Lookup as access key (6 characters)
-        acc_key_row = database.get_access_key(cookie_value)
-        
-        if acc_key_row:
-            code = acc_key_row[0]
-            assigned_email = acc_key_row[1]
-            
-            # Auto-rotation loop
+        # Auto-rotation loop
         max_attempts = 5
         for attempt in range(max_attempts):
             accounts = database.get_all_accounts()
@@ -774,11 +773,6 @@ def api_generate_nftoken():
         return jsonify({"success": False, "error": f"Lỗi Proxy. Vui lòng bấm thử lại. Chi tiết: {str(e)}"}), 500
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
-
-    except Exception as api_e:
-        import traceback
-        traceback.print_exc()
-        return jsonify({"success": False, "error": f"Lỗi kết nối cơ sở dữ liệu hoặc hệ thống: {str(api_e)}"}), 500
 
 if __name__ == "__main__":
     print("🚀 Web interface is running!")
