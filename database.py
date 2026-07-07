@@ -94,7 +94,12 @@ def get_random_available_account(plan_type=None):
 
 def create_access_key(code):
     # Xác định gói cước dựa trên độ dài mã
-    plan_type = "Standard" if len(code) == 10 else "Premium"
+    if len(code) == 15:
+        plan_type = "Premium"
+    elif len(code) == 10:
+        plan_type = "Standard"
+    else:
+        plan_type = "Basic"
     
     email = get_random_available_account(plan_type)
     if not email:
@@ -134,7 +139,12 @@ def get_all_access_keys():
 
 def rotate_access_key(code):
     # Xác định gói cước dựa trên độ dài mã
-    plan_type = "Standard" if len(code) == 10 else "Premium"
+    if len(code) == 15:
+        plan_type = "Premium"
+    elif len(code) == 10:
+        plan_type = "Standard"
+    else:
+        plan_type = "Basic"
     
     email = get_random_available_account(plan_type)
     if not email:

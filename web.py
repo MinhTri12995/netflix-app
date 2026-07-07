@@ -260,11 +260,14 @@ ADMIN_TEMPLATE = r"""
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <h3 style="margin: 0; font-weight: 400;">Quản lý Mã Truy Cập (License Keys)</h3>
                 <div style="display: flex; gap: 10px;">
+                    <form action="/admin/generate_key/basic" method="POST" style="margin: 0;" onsubmit="showLoading(this.querySelector('button'))">
+                        <button type="submit" style="background: #8e44ad; font-size: 0.9rem; padding: 10px 15px;">+ Sinh Mã Basic (5)</button>
+                    </form>
                     <form action="/admin/generate_key/standard" method="POST" style="margin: 0;" onsubmit="showLoading(this.querySelector('button'))">
                         <button type="submit" style="background: #2980b9; font-size: 0.9rem; padding: 10px 15px;">+ Sinh Mã Standard (10)</button>
                     </form>
                     <form action="/admin/generate_key/premium" method="POST" style="margin: 0;" onsubmit="showLoading(this.querySelector('button'))">
-                        <button type="submit" style="background: #27ae60; font-size: 0.9rem; padding: 10px 15px;">+ Sinh Mã Premium 4K (15)</button>
+                        <button type="submit" style="background: #27ae60; font-size: 0.9rem; padding: 10px 15px;">+ Sinh Mã Premium (15)</button>
                     </form>
                 </div>
             </div>
@@ -467,8 +470,14 @@ def admin():
 def generate_key(plan_type):
     database.init_db()
     
-    # 10 chars for standard, 15 chars for premium
-    length = 10 if plan_type == 'standard' else 15
+    if plan_type == 'premium':
+        length = 15
+    elif plan_type == 'standard':
+        length = 10
+    else:
+        length = 5
+        plan_type = 'basic'
+
     code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
     
     success, msg = database.create_access_key(code)
