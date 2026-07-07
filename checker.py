@@ -88,8 +88,8 @@ def check_account_live(netflix_id, secure_netflix_id=""):
             # Kỹ thuật Proximity Regex: Tìm từ khóa gói cước nằm trong bán kính 50 ký tự sau các neo kỹ thuật
             # Hỗ trợ nhận diện "Premium" từ tất cả các ngôn ngữ phổ biến trên thế giới
             premium_kws = ['premium', 'ultra', 'премиум', 'özel', 'ozel', 'cao cấp', 'พรีเมียม', 'مميز', '高級', '高级', 'プレミアム', '프리미엄']
-            standard_kws = ['standard', 'tiêu chuẩn', 'стандартный', 'standart', '標準', '标准']
-            basic_kws = ['basic', 'cơ bản', 'базовый', 'temel']
+            standard_kws = ['standard', 'tiêu chuẩn', 'стандартный', 'standart', '標準', '标准', 'estándar', 'padrão', 'มาตรฐาน', 'قياسي', 'スタンダード', '스탠다드']
+            basic_kws = ['basic', 'cơ bản', 'базовый', 'temel', 'básico', 'พื้นฐาน', 'أساسي', '基本', 'ベーシック', '베이직']
             
             all_kws = premium_kws + standard_kws + basic_kws
             kws_regex = '|'.join(all_kws)
