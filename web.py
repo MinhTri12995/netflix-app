@@ -3,6 +3,7 @@ import sys
 from flask import Flask, request, render_template_string, redirect, url_for, flash, jsonify, session
 import urllib.parse
 import requests
+from requests.exceptions import ProxyError
 import threading
 from urllib3.exceptions import InsecureRequestWarning
 import database
