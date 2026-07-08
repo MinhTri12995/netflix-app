@@ -75,7 +75,35 @@ def get_random_available_account(plan_type=None):
         
     # Lọc tài khoản theo gói cước nếu có yêu cầu
     if plan_type:
-        all_emails = [r["email"] for r in acc_data if r.get("plan") and plan_type.lower() in str(r["plan"]).lower()]
+        premium_kws = ['premium', 'ultra', 'премиум', 'özel', 'ozel', 'cao cấp', 'พรีเมียม', 'مميز', '高級', '高级', 'プレミアム', '프리미엄']
+        standard_kws = ['standard', 'tiêu chuẩn', 'стандартный', 'standart', '標準', '标准', 'estándar', 'padrão', 'มาตรฐาน', 'قياسي', 'スタンダード', '스탠다드']
+        basic_kws = ['basic', 'cơ bản', 'базовый', 'temel', 'básico', 'พื้นฐาน', 'أساسي', '基本', 'ベーシック', '베이직']
+        ads_kws = ['ads', 'adverts', 'anuncios', 'pub', 'werbung', 'pubblicità', 'quảng cáo', 'โฆษณา', '広告', '광고', '廣告', '广告', 'рекламо', 'reklam', 'reklamy']
+
+        all_emails = []
+        for r in acc_data:
+            if not r.get("plan"):
+                continue
+            plan_str = str(r["plan"]).lower()
+            
+            is_match = False
+            if plan_type == "Premium":
+                if any(kw in plan_str for kw in premium_kws):
+                    is_match = True
+            elif plan_type == "Standard_Ads":
+                if any(kw in plan_str for kw in standard_kws) and any(kw in plan_str for kw in ads_kws):
+                    is_match = True
+                elif "standard_ads" in plan_str:
+                    is_match = True
+            elif plan_type == "Standard":
+                if any(kw in plan_str for kw in standard_kws) and not any(kw in plan_str for kw in ads_kws):
+                    is_match = True
+            elif plan_type == "Basic":
+                if any(kw in plan_str for kw in basic_kws):
+                    is_match = True
+                    
+            if is_match or plan_type.lower() == plan_str:
+                all_emails.append(r["email"])
     else:
         all_emails = [r["email"] for r in acc_data]
     
