@@ -90,7 +90,7 @@ def check_account_live(netflix_id, secure_netflix_id=""):
             premium_kws = ['premium', 'ultra', 'премиум', 'özel', 'ozel', 'cao cấp', 'พรีเมียม', 'مميز', '高級', '高级', 'プレミアム', '프리미엄']
             standard_kws = ['standard', 'tiêu chuẩn', 'стандартный', 'standart', '標準', '标准', 'estándar', 'padrão', 'มาตรฐาน', 'قياسي', 'スタンダード', '스탠다드']
             basic_kws = ['basic', 'cơ bản', 'базовый', 'temel', 'básico', 'พื้นฐาน', 'أساسي', '基本', 'ベーシック', '베이직']
-            ads_kws = ['ads', 'adverts', 'anuncios', 'pub', 'werbung', 'pubblicità', 'quảng cáo', 'โฆษณา', '広告', '광고', '廣告', '广告', 'рекламо', 'reklam', 'reklamy']
+            ads_kws = [' ads', 'adverts', 'anuncios', ' pub', 'werbung', 'pubblicità', 'quảng cáo', 'โฆษณา', '広告', '광고', '廣告', '广告', 'рекламо', 'reklam', 'reklamy', 'with ads']
             
             patterns = [
                 r'plan-label(.{0,60})',
@@ -99,20 +99,26 @@ def check_account_live(netflix_id, secure_netflix_id=""):
                 r'currentplan(.{0,60})'
             ]
             
+            def has_any_kw(text, kws):
+                for kw in kws:
+                    if re.search(r'(?<![a-z])' + re.escape(kw) + r'(?![a-z])' if re.search(r'[a-z]', kw) else re.escape(kw), text):
+                        return True
+                return False
+
             for pattern in patterns:
                 match = re.search(pattern, html_text, flags=re.IGNORECASE | re.DOTALL)
                 if match:
                     extracted = match.group(1).lower()
-                    if any(kw in extracted for kw in premium_kws):
+                    if has_any_kw(extracted, premium_kws):
                         plan = "Premium"
                         break
-                    elif any(kw in extracted for kw in standard_kws):
-                        if any(kw in extracted for kw in ads_kws):
+                    elif has_any_kw(extracted, standard_kws):
+                        if has_any_kw(extracted, ads_kws):
                             plan = "Standard_Ads"
                         else:
                             plan = "Standard"
                         break
-                    elif any(kw in extracted for kw in basic_kws):
+                    elif has_any_kw(extracted, basic_kws):
                         plan = "Basic"
                         break
             
