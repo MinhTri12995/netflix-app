@@ -263,6 +263,9 @@ ADMIN_TEMPLATE = r"""
                     <form action="/admin/generate_key/basic" method="POST" style="margin: 0;" onsubmit="showLoading(this.querySelector('button'))">
                         <button type="submit" style="background: #8e44ad; font-size: 0.9rem; padding: 10px 15px;">+ Sinh Mã Basic (5)</button>
                     </form>
+                    <form action="/admin/generate_key/standard_ads" method="POST" style="margin: 0;" onsubmit="showLoading(this.querySelector('button'))">
+                        <button type="submit" style="background: #e67e22; font-size: 0.9rem; padding: 10px 15px;">+ Sinh Mã Standard with Ads (8)</button>
+                    </form>
                     <form action="/admin/generate_key/standard" method="POST" style="margin: 0;" onsubmit="showLoading(this.querySelector('button'))">
                         <button type="submit" style="background: #2980b9; font-size: 0.9rem; padding: 10px 15px;">+ Sinh Mã Standard (10)</button>
                     </form>
@@ -474,6 +477,8 @@ def generate_key(plan_type):
         length = 15
     elif plan_type == 'standard':
         length = 10
+    elif plan_type == 'standard_ads':
+        length = 8
     else:
         length = 5
         plan_type = 'basic'

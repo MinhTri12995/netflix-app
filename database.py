@@ -98,6 +98,8 @@ def create_access_key(code):
         plan_type = "Premium"
     elif len(code) == 10:
         plan_type = "Standard"
+    elif len(code) == 8:
+        plan_type = "Standard_Ads"
     else:
         plan_type = "Basic"
     
@@ -143,6 +145,8 @@ def rotate_access_key(code):
         plan_type = "Premium"
     elif len(code) == 10:
         plan_type = "Standard"
+    elif len(code) == 8:
+        plan_type = "Standard_Ads"
     else:
         plan_type = "Basic"
     

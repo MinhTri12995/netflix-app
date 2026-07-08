@@ -90,26 +90,27 @@ def check_account_live(netflix_id, secure_netflix_id=""):
             premium_kws = ['premium', 'ultra', 'премиум', 'özel', 'ozel', 'cao cấp', 'พรีเมียม', 'مميز', '高級', '高级', 'プレミアム', '프리미엄']
             standard_kws = ['standard', 'tiêu chuẩn', 'стандартный', 'standart', '標準', '标准', 'estándar', 'padrão', 'มาตรฐาน', 'قياسي', 'スタンダード', '스탠다드']
             basic_kws = ['basic', 'cơ bản', 'базовый', 'temel', 'básico', 'พื้นฐาน', 'أساسي', '基本', 'ベーシック', '베이직']
-            
-            all_kws = premium_kws + standard_kws + basic_kws
-            kws_regex = '|'.join(all_kws)
+            ads_kws = ['ads', 'adverts', 'anuncios', 'pub', 'werbung', 'pubblicità', 'quảng cáo', 'โฆษณา', '広告', '광고', '廣告', '广告', 'рекламо', 'reklam', 'reklamy']
             
             patterns = [
-                rf'plan-label.{{0,50}}?({kws_regex})',
-                rf'planname.{{0,50}}?({kws_regex})',
-                rf'plan_tier.{{0,50}}?({kws_regex})',
-                rf'currentplan.{{0,50}}?({kws_regex})'
+                r'plan-label(.{0,60})',
+                r'planname(.{0,60})',
+                r'plan_tier(.{0,60})',
+                r'currentplan(.{0,60})'
             ]
             
             for pattern in patterns:
-                match = re.search(pattern, html_text, flags=re.DOTALL)
+                match = re.search(pattern, html_text, flags=re.IGNORECASE | re.DOTALL)
                 if match:
                     extracted = match.group(1).lower()
                     if any(kw in extracted for kw in premium_kws):
                         plan = "Premium"
                         break
                     elif any(kw in extracted for kw in standard_kws):
-                        plan = "Standard"
+                        if any(kw in extracted for kw in ads_kws):
+                            plan = "Standard_Ads"
+                        else:
+                            plan = "Standard"
                         break
                     elif any(kw in extracted for kw in basic_kws):
                         plan = "Basic"
