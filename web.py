@@ -331,6 +331,9 @@ ADMIN_TEMPLATE = r"""
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <h3 style="margin: 0; font-weight: 400;">Kho Cookie Gốc <span style="font-size: 0.9rem; color: #888;">({{ total_accounts }} accounts)</span></h3>
                 <div style="display: flex; gap: 10px;">
+                    <form action="/filter_duplicates" method="POST" onsubmit="showLoading(this.querySelector('button'))" style="margin: 0;">
+                        <button type="submit" style="background: #f39c12; padding: 8px 15px; font-size: 0.9rem;" title="Lọc và xóa các Cookie trùng NetflixId">🧹 LỌC TRÙNG KHO</button>
+                    </form>
                     <form action="/force_check_all" method="POST" onsubmit="showLoading(this.querySelector('button'))" style="margin: 0;">
                         <button type="submit" style="background: #e74c3c; padding: 8px 15px; font-size: 0.9rem;" title="Kiểm tra lại toàn bộ kho bất chấp gói cước (Tốn Proxy)">🔥 QUÉT SẠCH KHO (FORCE CHECK)</button>
                     </form>
@@ -610,6 +613,46 @@ def background_force_check_all():
                 database.update_plan(email, plan)
             elif status == "DIE":
                 database.delete_account(email)
+
+@app.route("/filter_duplicates", methods=["POST"])
+@login_required
+def filter_duplicates():
+    database.init_db()
+    accounts = database.get_all_accounts()
+    
+    seen_netflix_ids = {} # map netflix_id -> {'email': email, 'plan': plan}
+    duplicates_to_delete = []
+    
+    for acc in accounts:
+        email = acc[0]
+        netflix_id = acc[2]
+        plan = acc[5]
+        
+        if not netflix_id:
+            continue
+            
+        if netflix_id in seen_netflix_ids:
+            # Nếu acc hiện tại CÓ plan mà acc trước đó KHÔNG có, ta xóa acc trước đó và giữ acc hiện tại
+            existing_email = seen_netflix_ids[netflix_id]['email']
+            existing_plan = seen_netflix_ids[netflix_id]['plan']
+            
+            if plan and not existing_plan:
+                duplicates_to_delete.append(existing_email)
+                seen_netflix_ids[netflix_id] = {'email': email, 'plan': plan}
+            else:
+                duplicates_to_delete.append(email)
+        else:
+            seen_netflix_ids[netflix_id] = {'email': email, 'plan': plan}
+            
+    for email in duplicates_to_delete:
+        database.delete_account(email)
+        
+    if duplicates_to_delete:
+        flash(f"🧹 Đã lọc và xóa {len(duplicates_to_delete)} tài khoản trùng lặp (cùng NetflixId).", "success")
+    else:
+        flash("Kho của bạn đã sạch, không có tài khoản nào bị trùng Cookie NetflixId!", "success")
+        
+    return redirect(url_for("admin"))
 
 @app.route("/force_check_all", methods=["POST"])
 @login_required
