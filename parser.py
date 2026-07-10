@@ -65,9 +65,16 @@ def parse_lines(lines):
             current_expire = expire_match.group(1).strip()
             continue
             
-        netflixid_match = re.search(r'^NetflixId:\s*(.+)', line, re.IGNORECASE)
+        netflixid_match = re.search(r'^NetflixId(?:=|\s*:\s*)(.+)', line, re.IGNORECASE)
         if netflixid_match:
+            if current_netflix_id:
+                push_account()
             current_netflix_id = netflixid_match.group(1).strip()
+            continue
+
+        secure_netflixid_match = re.search(r'^SecureNetflixId(?:=|\s*:\s*)(.+)', line, re.IGNORECASE)
+        if secure_netflixid_match:
+            current_secure_netflix_id = secure_netflixid_match.group(1).strip()
             continue
 
         if '.netflix.com' in line:
