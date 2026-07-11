@@ -45,7 +45,7 @@ def check_account_live(netflix_id, secure_netflix_id=""):
         
         # Làm sạch HTML: Xóa hết khoảng trắng, ngoặc kép, dấu hai chấm, gạch ngang để chống nhiễu JSON/HTML Format
         import re
-        html_clean = re.sub(r'[\s"\'\-:]', '', html_text)
+        html_clean = re.sub(r'[\s"\'\-]', '', html_text)
         
         # Nhận diện lỗi bằng các mã kỹ thuật cực mạnh (Đã loại bỏ khoảng trắng)
         bad_keywords_clean = [
