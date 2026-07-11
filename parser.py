@@ -34,6 +34,35 @@ def parse_lines(lines):
         if not line:
             continue
             
+        if '|' in line and 'cookies:' in line:
+            email_part = line.split(':')[0] if ':' in line else None
+            if email_part and '@' in email_part:
+                current_email = email_part.strip()
+            
+            expire_match_single = re.search(r'Nextbillingdate\s*=\s*([^|]+)', line, re.IGNORECASE)
+            if expire_match_single:
+                current_expire = expire_match_single.group(1).strip()
+                
+            plan_match_single = re.search(r'Membership:\s*([^|]+)', line, re.IGNORECASE)
+            if plan_match_single:
+                current_plan = plan_match_single.group(1).strip()
+                
+            cookies_match = re.search(r'cookies:\s*(.+?)(?: general login link|$)', line, re.IGNORECASE)
+            if cookies_match:
+                cookies_str = cookies_match.group(1).strip()
+                
+                n_id = re.search(r'NetflixId=([^;\s]+)', cookies_str, re.IGNORECASE)
+                s_n_id = re.search(r'SecureNetflixId=([^;\s]+)', cookies_str, re.IGNORECASE)
+                
+                if n_id:
+                    current_netflix_id = n_id.group(1).strip()
+                if s_n_id:
+                    current_secure_netflix_id = s_n_id.group(1).strip()
+                    
+                if current_netflix_id:
+                    push_account()
+            continue
+            
         if line.upper().startswith("NETFLIX ACCOUNT DETAILS"):
             push_account()
             continue
