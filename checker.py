@@ -90,7 +90,7 @@ def check_account_live(netflix_id, secure_netflix_id=""):
             premium_kws = ['premium', 'ultra', 'премиум', 'özel', 'ozel', 'cao cấp', 'พรีเมียม', 'مميز', '高級', '高级', 'プレミアム', '프리미엄']
             standard_kws = ['standard', 'tiêu chuẩn', 'стандартный', 'standart', '標準', '标准', 'estándar', 'padrão', 'มาตรฐาน', 'قياسي', 'スタンダード', '스탠다드']
             basic_kws = ['basic', 'cơ bản', 'базовый', 'temel', 'básico', 'พื้นฐาน', 'أساسي', '基本', 'ベーシック', '베이직']
-            ads_kws = [' ads', 'adverts', 'anuncios', ' pub', 'werbung', 'pubblicità', 'quảng cáo', 'โฆษณา', '広告', '광고', '廣告', '广告', 'рекламо', 'reklam', 'reklamy', 'with ads']
+            ads_kws = ['ads', 'adverts', 'anuncios', 'pub', 'werbung', 'pubblicità', 'quảng cáo', 'โฆษณา', '広告', '광고', '廣告', '广告', 'рекламо', 'reklam', 'reklamy']
             
             patterns = [
                 r'plan-label(.{0,60})',
@@ -101,8 +101,12 @@ def check_account_live(netflix_id, secure_netflix_id=""):
             
             def has_any_kw(text, kws):
                 for kw in kws:
-                    if re.search(r'(?<![a-z])' + re.escape(kw) + r'(?![a-z])' if re.search(r'[a-z]', kw) else re.escape(kw), text):
-                        return True
+                    if re.match(r'^[a-z]+$', kw):
+                        if re.search(r'\b' + kw + r'\b', text):
+                            return True
+                    else:
+                        if kw in text:
+                            return True
                 return False
 
             for pattern in patterns:
