@@ -107,10 +107,10 @@ def parse_lines(lines):
             continue
 
         if '.netflix.com' in line:
-            parts = line.split('\t')
-            if len(parts) >= 7:
-                cookie_name = parts[5].strip()
-                cookie_value = parts[6].strip()
+            parts = line.split()
+            if len(parts) >= 3:
+                cookie_name = parts[-2]
+                cookie_value = parts[-1]
                 
                 if cookie_name == 'NetflixId':
                     current_netflix_id = cookie_value
