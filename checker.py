@@ -49,30 +49,14 @@ def check_account_live(netflix_id, secure_netflix_id=""):
         
         # Nhận diện lỗi bằng các mã kỹ thuật cực mạnh (Đã loại bỏ khoảng trắng)
         bad_keywords_clean = [
-            # Các trạng thái lỗi chắc chắn 100% (Enum nội bộ của Netflix)
-            "past_due",
-            "former_member",
-            "never_member",
-            
-            # Các cờ báo lỗi thanh toán (Bắt bất chấp JSON có khoảng trắng hay không)
-            "ispaymentonholdtrue",
-            "haspaymentholdtrue",
-            "isactivefalse",
-            
-            # Thuộc tính UI toàn cầu
-            "bannerpaymentfailure",
-            "paymentupdatebutton",
-            "actionupdatepayment",
-            "accountrestartmembership",
-            "finishsignupbutton",
-            
-            # Chuỗi text phổ biến
-            "updatepayment",
-            "paymentupdate",
+            "membershipstatus:past_due",
+            "membershipstatus:former_member",
+            "membershipstatus:never_member",
+            "ispaymentonhold:true",
+            "haspaymenthold:true",
+            "isactive:false",
             "cậpnhậtphươngthứcthanhtoán",
-            "restartmembership",
-            "khôiphụctưcáchthànhviên",
-            "finishsignup"
+            "khôiphụctưcáchthànhviên"
         ]
         
         for kw in bad_keywords_clean:
