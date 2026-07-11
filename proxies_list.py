@@ -9,7 +9,7 @@ ROTATING_PROXIES = [
     "http://xktamdun:985qtdjr7nnw@198.105.121.200:6462/",
     "http://xktamdun:985qtdjr7nnw@64.137.96.74:6641/",
     "http://xktamdun:985qtdjr7nnw@198.23.243.226:6361/",
-    "http://xktamdun:985qtdjr7nnw@2.57.21.2:7239/",
+
     "http://xktamdun:985qtdjr7nnw@38.154.185.97:6370/",
     "http://xktamdun:985qtdjr7nnw@142.111.67.146:5611/",
     "http://xktamdun:985qtdjr7nnw@191.96.254.138:6185/",
@@ -21,7 +21,7 @@ ROTATING_PROXIES = [
     "http://zrxvjoin:5vtqaj0i1897@198.105.121.200:6462/",
     "http://zrxvjoin:5vtqaj0i1897@64.137.96.74:6641/",
     "http://zrxvjoin:5vtqaj0i1897@198.23.243.226:6361/",
-    "http://zrxvjoin:5vtqaj0i1897@2.57.21.2:7239/",
+
     "http://zrxvjoin:5vtqaj0i1897@38.154.185.97:6370/",
     "http://zrxvjoin:5vtqaj0i1897@142.111.67.146:5611/",
     "http://zrxvjoin:5vtqaj0i1897@191.96.254.138:6185/"
