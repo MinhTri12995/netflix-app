@@ -797,8 +797,12 @@ def api_generate_nftoken():
                     # Kiểm tra trạng thái LIVE/DIE thật kỹ trước khi xuất code
                     status, plan = checker.check_account_live(netflix_id, secure_netflix_id)
                     
-                    if status != "LIVE":
-                        print(f"Tài khoản {assigned_email} báo DIE (Lỗi thanh toán/Hết hạn). Tiến hành đổi mã...")
+                    if status == "ERROR":
+                        print(f"Lỗi mạng/proxy khi check tài khoản {assigned_email}. Bỏ qua check và thử lại...")
+                        raise ProxyError("Checker gặp lỗi kết nối")
+                        
+                    if status == "DIE":
+                        print(f"Tài khoản {assigned_email} báo DIE (Logout/Hết hạn). Tiến hành đổi mã...")
                         database.delete_account(assigned_email)
                         rotated = database.rotate_access_key(code)
                         if not rotated:
