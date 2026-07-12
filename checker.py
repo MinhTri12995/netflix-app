@@ -36,35 +36,17 @@ def check_account_live(netflix_id, secure_netflix_id=""):
             timeout=15
         )
         
-        # Nếu bị ném ra trang login hoặc các trang lỗi thanh toán
+        # Nếu bị ném ra trang login hoặc trang lỗi cookie (tức là cookie thực sự đã chết/bị logout)
         url_lower = response.url.lower()
-        if "netflix.com/login" in url_lower or "/payment" in url_lower or "/clearcookies" in url_lower or "/restart" in url_lower:
+        if "netflix.com/login" in url_lower or "/clearcookies" in url_lower:
             return "DIE", None
             
         html_text = response.text.lower()
         
-        # Làm sạch HTML: Xóa hết khoảng trắng, ngoặc kép, dấu hai chấm, gạch ngang để chống nhiễu JSON/HTML Format
-        import re
-        html_clean = re.sub(r'[\s"\'\-]', '', html_text)
+        # Bỏ qua hoàn toàn việc check lỗi thanh toán theo yêu cầu của User
+        # Khách muốn chỉ cần còn đăng nhập được (Cookie chưa bị văng) là tính là LIVE
         
-        # Nhận diện lỗi bằng các mã kỹ thuật cực mạnh (Đã loại bỏ khoảng trắng)
-        bad_keywords_clean = [
-            "membershipstatus:past_due",
-            "membershipstatus:former_member",
-            "membershipstatus:never_member",
-            "ispaymentonhold:true",
-            "haspaymenthold:true",
-            "isactive:false",
-            "cậpnhậtphươngthứcthanhtoán",
-            "khôiphụctưcáchthànhviên"
-        ]
-        
-        for kw in bad_keywords_clean:
-            if kw in html_clean:
-                print(f"Cookie dính lỗi thanh toán ({kw}) -> Xóa!")
-                return "DIE", None
-                
-        # Nếu trang Account load thành công và không có từ khóa lỗi -> LIVE
+        # Nếu trang Account load thành công -> LIVE
         if response.status_code == 200:
             import re
             plan = "Standard" # Mặc định để tránh phát nhầm Premium
