@@ -792,9 +792,21 @@ def api_generate_nftoken():
                 secure_netflix_id = urllib.parse.unquote(acc[3]) if acc[3] else ""
                 
                 try:
-                    # --- [MỚI] BỎ QUA BƯỚC CHECK PAYMENT ---
-                    print(f"Bắt đầu xuất Link cho tài khoản: {assigned_email}")
-                    # Không gọi checker.check_account_live nữa để tránh bắt lỗi Payment
+                    print(f"Bắt đầu kiểm tra tài khoản: {assigned_email}")
+                    
+                    # Kiểm tra trạng thái LIVE/DIE thật kỹ trước khi xuất code
+                    status, plan = checker.check_account_live(netflix_id, secure_netflix_id)
+                    
+                    if status != "LIVE":
+                        print(f"Tài khoản {assigned_email} báo DIE (Lỗi thanh toán/Hết hạn). Tiến hành đổi mã...")
+                        database.delete_account(assigned_email)
+                        rotated = database.rotate_access_key(code)
+                        if not rotated:
+                            return jsonify({"success": False, "error": "Hệ thống đã hết Cookie dự phòng!"}), 500
+                        assigned_email = database.get_access_key(code)[1]
+                        continue
+                        
+                    print(f"Tài khoản {assigned_email} LIVE! Bắt đầu xuất Link...")
                     
                     # Trực tiếp lấy Link
                     token = fetch_netflix_nftoken_api(netflix_id)
