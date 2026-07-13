@@ -83,6 +83,11 @@ def parse_lines(lines):
             current_plan = deadflix_plan_match.group(1).strip()
             continue
             
+        plan_match = re.search(r'^(?:#PLAN\s*:|Plan:)\s*(.+)', line, re.IGNORECASE)
+        if plan_match:
+            current_plan = plan_match.group(1).strip()
+            continue
+            
         email_match = re.search(r'^(?:#EMAIL\s*:|Email:)\s*(.+)', line, re.IGNORECASE)
         if email_match:
             push_account()
