@@ -791,11 +791,24 @@ def api_generate_nftoken():
                 netflix_id = urllib.parse.unquote(acc[2])
                 secure_netflix_id = urllib.parse.unquote(acc[3]) if acc[3] else ""
                 
+                import time
+                if 'ACCOUNT_CHECK_CACHE' not in globals():
+                    global ACCOUNT_CHECK_CACHE
+                    ACCOUNT_CHECK_CACHE = {}
+                
                 try:
-                    print(f"Bắt đầu kiểm tra tài khoản: {assigned_email}")
+                    current_time = time.time()
+                    last_checked = ACCOUNT_CHECK_CACHE.get(assigned_email, 0)
                     
-                    # Kiểm tra trạng thái LIVE/DIE thật kỹ trước khi xuất code
-                    status, plan = checker.check_account_live(netflix_id, secure_netflix_id)
+                    if current_time - last_checked < 3600: # Cache 1 tiếng
+                        print(f"Tài khoản {assigned_email} đã check gần đây (trong 1h). Bỏ qua check LIVE để tránh lỗi Proxy.")
+                        status = "LIVE"
+                    else:
+                        print(f"Bắt đầu kiểm tra tài khoản: {assigned_email}")
+                        # Kiểm tra trạng thái LIVE/DIE thật kỹ trước khi xuất code
+                        status, plan = checker.check_account_live(netflix_id, secure_netflix_id)
+                        if status == "LIVE":
+                            ACCOUNT_CHECK_CACHE[assigned_email] = current_time
                     
                     if status == "ERROR":
                         print(f"Lỗi mạng/proxy khi check tài khoản {assigned_email}. Bỏ qua check và thử lại...")
