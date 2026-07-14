@@ -120,7 +120,7 @@ def get_random_available_account(plan_type=None):
     # Hết sạch Cookie trống trong kho
     return None
 
-def create_access_key(code):
+def create_access_key(code, expire_at=None):
     # Xác định gói cước dựa trên độ dài mã
     if len(code) == 15:
         plan_type = "Premium"
@@ -144,17 +144,20 @@ def create_access_key(code):
         "code": code,
         "assigned_email": email
     }
+    if expire_at:
+        data["expire_at"] = expire_at
+        
     try:
         get_supabase().table("access_keys").insert(data).execute()
         return True, "Thành công"
     except Exception as e:
-        return False, f"Lỗi Database: {e}"
+        return False, f"Lỗi DB: {e}"
 
 def get_access_key(code):
     response = get_supabase().table("access_keys").select("*").eq("code", code).execute()
     if response.data:
         r = response.data[0]
-        return (r["code"], r["assigned_email"])
+        return (r["code"], r["assigned_email"], r.get("expire_at"))
     return None
 
 def get_all_access_keys():
@@ -164,7 +167,7 @@ def get_all_access_keys():
     
     rows = []
     for r in data:
-        rows.append((r["code"], r["assigned_email"], r.get("created_at")))
+        rows.append((r["code"], r["assigned_email"], r.get("created_at"), r.get("expire_at")))
     return rows
 
 def rotate_access_key(code):

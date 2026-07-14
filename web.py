@@ -260,17 +260,19 @@ ADMIN_TEMPLATE = r"""
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <h3 style="margin: 0; font-weight: 400;">Quản lý Mã Truy Cập (License Keys)</h3>
                 <div style="display: flex; gap: 10px;">
-                    <form action="/admin/generate_key/basic" method="POST" style="margin: 0;" onsubmit="showLoading(this.querySelector('button'))">
-                        <button type="submit" style="background: #8e44ad; font-size: 0.9rem; padding: 10px 15px;">+ Sinh Mã Basic (5)</button>
-                    </form>
-                    <form action="/admin/generate_key/standard_ads" method="POST" style="margin: 0;" onsubmit="showLoading(this.querySelector('button'))">
-                        <button type="submit" style="background: #e67e22; font-size: 0.9rem; padding: 10px 15px;">+ Sinh Mã Standard with Ads (8)</button>
-                    </form>
-                    <form action="/admin/generate_key/standard" method="POST" style="margin: 0;" onsubmit="showLoading(this.querySelector('button'))">
-                        <button type="submit" style="background: #2980b9; font-size: 0.9rem; padding: 10px 15px;">+ Sinh Mã Standard (10)</button>
-                    </form>
-                    <form action="/admin/generate_key/premium" method="POST" style="margin: 0;" onsubmit="showLoading(this.querySelector('button'))">
-                        <button type="submit" style="background: #27ae60; font-size: 0.9rem; padding: 10px 15px;">+ Sinh Mã Premium (15)</button>
+                    <form action="/admin/generate_key" method="POST" style="margin: 0; display: flex; gap: 10px; align-items: center;" onsubmit="showLoading(this.querySelector('button'))">
+                        <select name="plan_type" style="padding: 8px; border-radius: 4px; background: rgba(0,0,0,0.5); color: white; border: 1px solid #555;">
+                            <option value="premium">Premium (15 Ký tự)</option>
+                            <option value="standard">Standard (10 Ký tự)</option>
+                            <option value="standard_ads">Standard Ads (8 Ký tự)</option>
+                            <option value="basic">Basic (5 Ký tự)</option>
+                        </select>
+                        <select name="duration" style="padding: 8px; border-radius: 4px; background: rgba(0,0,0,0.5); color: white; border: 1px solid #555;">
+                            <option value="1">1 Tháng</option>
+                            <option value="2">2 Tháng</option>
+                            <option value="3">3 Tháng</option>
+                        </select>
+                        <button type="submit" style="background: #27ae60; font-size: 0.9rem; padding: 10px 15px; white-space: nowrap;">+ Sinh Mã</button>
                     </form>
                 </div>
             </div>
@@ -289,6 +291,7 @@ ADMIN_TEMPLATE = r"""
                             <th>Mã (Code)</th>
                             <th>Email Đang Gán</th>
                             <th>Ngày Tạo</th>
+                            <th>Ngày Hết Hạn</th>
                             <th>Hành động</th>
                         </tr>
                     </thead>
@@ -298,6 +301,7 @@ ADMIN_TEMPLATE = r"""
                             <td style="font-weight: bold; font-family: monospace; font-size: 1.3rem; color: #f1c40f; letter-spacing: 2px;">{{ key[0] }}</td>
                             <td>{{ key[1] }}</td>
                             <td style="font-size: 0.85rem; color: #888;">{{ key[2] }}</td>
+                            <td style="font-size: 0.85rem; color: #e74c3c; font-weight: bold;">{{ key[3] if key[3] else 'Vĩnh viễn' }}</td>
                             <td style="display: flex; gap: 10px; flex-wrap: wrap;">
                                 <button class="btn-copy" onclick="copyCookie('{{ key[0] }}', this)">Copy Mã</button>
                                 <form action="/admin/rotate_key/{{ key[0] }}" method="POST" style="margin: 0;" onsubmit="return confirm('Bạn muốn đổi tài khoản mới cho mã này?');">
@@ -471,10 +475,15 @@ def admin():
         search_code=search_code
     )
 
-@app.route("/admin/generate_key/<plan_type>", methods=["POST"])
+from datetime import datetime, timedelta
+
+@app.route("/admin/generate_key", methods=["POST"])
 @login_required
-def generate_key(plan_type):
+def generate_key():
     database.init_db()
+    
+    plan_type = request.form.get("plan_type", "basic")
+    duration = int(request.form.get("duration", "1"))
     
     if plan_type == 'premium':
         length = 15
@@ -488,9 +497,11 @@ def generate_key(plan_type):
 
     code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
     
-    success, msg = database.create_access_key(code)
+    expire_at = (datetime.now() + timedelta(days=30 * duration)).strftime("%Y-%m-%d")
+    
+    success, msg = database.create_access_key(code, expire_at)
     if success:
-        flash(f"Đã tạo mã {plan_type.upper()} thành công: {code}", "success")
+        flash(f"Đã tạo mã {plan_type.upper()} ({duration} tháng) thành công: {code}", "success")
     else:
         flash(f"Lỗi tạo mã: {msg}", "error")
     return redirect(url_for("admin"))
@@ -775,6 +786,18 @@ def api_generate_nftoken():
         if acc_key_row:
             code = acc_key_row[0]
             assigned_email = acc_key_row[1]
+            expire_at_str = acc_key_row[2] if len(acc_key_row) > 2 else None
+            
+            # Kiểm tra thời hạn nếu có
+            if expire_at_str:
+                from datetime import datetime
+                try:
+                    expire_date = datetime.strptime(expire_at_str, "%Y-%m-%d")
+                    if datetime.now() > expire_date:
+                        database.delete_access_key(code)
+                        return jsonify({"success": False, "error": "Mã truy cập đã hết hạn và bị vô hiệu hóa!"}), 400
+                except Exception as e:
+                    print(f"Lỗi parse ngày hết hạn: {e}")
             
             # Auto-rotation loop
             max_attempts = 5
