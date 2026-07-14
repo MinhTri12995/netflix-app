@@ -282,7 +282,6 @@ ADMIN_TEMPLATE = r"""
                 <button type="submit" style="background: #3498db; white-space: nowrap;">🔍 Tìm theo Mã</button>
             </form>
             
-            {% if search_code or access_keys|length < 20 %}
             <div style="overflow-x: auto;">
 
                 <table>
@@ -313,13 +312,22 @@ ADMIN_TEMPLATE = r"""
                             </td>
                         </tr>
                         {% else %}
-                        <tr><td colspan="4" style="text-align: center; color: #666; padding: 20px;">Chưa có mã nào được sinh ra.</td></tr>
+                        <tr><td colspan="5" style="text-align: center; color: #666; padding: 20px;">Chưa có mã nào được sinh ra.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
-            {% else %}
-            <p style="text-align: center; color: #888; margin-top: 10px;">Danh sách mã đang được ẩn. Vui lòng sử dụng ô tìm kiếm phía trên.</p>
+            
+            {% if key_total_pages > 1 %}
+            <div style="display: flex; justify-content: center; gap: 5px; margin-top: 15px;">
+                {% if key_page > 1 %}
+                <a href="?key_page={{ key_page - 1 }}&acc_page={{ acc_page }}&search_code={{ search_code }}&search_email={{ search_email }}" style="padding: 5px 10px; background: rgba(255,255,255,0.1); color: white; text-decoration: none; border-radius: 4px;">&laquo; Trước</a>
+                {% endif %}
+                <span style="padding: 5px 10px; color: #888;">Trang {{ key_page }} / {{ key_total_pages }}</span>
+                {% if key_page < key_total_pages %}
+                <a href="?key_page={{ key_page + 1 }}&acc_page={{ acc_page }}&search_code={{ search_code }}&search_email={{ search_email }}" style="padding: 5px 10px; background: rgba(255,255,255,0.1); color: white; text-decoration: none; border-radius: 4px;">Sau &raquo;</a>
+                {% endif %}
+            </div>
             {% endif %}
         </div>
 
@@ -352,8 +360,7 @@ ADMIN_TEMPLATE = r"""
                 <button type="submit" style="background: #3498db; white-space: nowrap;">🔍 Tìm theo Email</button>
             </form>
             
-            {% if search_email or accounts|length < 20 %}
-            <div style="overflow-x: auto; max-height: 400px; overflow-y: auto;">
+            <div style="overflow-x: auto; max-height: 500px; overflow-y: auto;">
                 <table>
                     <thead>
                         <tr>
@@ -381,8 +388,17 @@ ADMIN_TEMPLATE = r"""
                     </tbody>
                 </table>
             </div>
-            {% else %}
-            <p style="text-align: center; color: #888; margin-top: 10px;">Danh sách Cookie đang được ẩn để tránh quá tải. Vui lòng sử dụng ô tìm kiếm phía trên.</p>
+            
+            {% if acc_total_pages > 1 %}
+            <div style="display: flex; justify-content: center; gap: 5px; margin-top: 15px;">
+                {% if acc_page > 1 %}
+                <a href="?key_page={{ key_page }}&acc_page={{ acc_page - 1 }}&search_code={{ search_code }}&search_email={{ search_email }}" style="padding: 5px 10px; background: rgba(255,255,255,0.1); color: white; text-decoration: none; border-radius: 4px;">&laquo; Trước</a>
+                {% endif %}
+                <span style="padding: 5px 10px; color: #888;">Trang {{ acc_page }} / {{ acc_total_pages }}</span>
+                {% if acc_page < acc_total_pages %}
+                <a href="?key_page={{ key_page }}&acc_page={{ acc_page + 1 }}&search_code={{ search_code }}&search_email={{ search_email }}" style="padding: 5px 10px; background: rgba(255,255,255,0.1); color: white; text-decoration: none; border-radius: 4px;">Sau &raquo;</a>
+                {% endif %}
+            </div>
             {% endif %}
         </div>
     </div>
@@ -466,13 +482,42 @@ def admin():
     else:
         accounts = all_accounts
         
+    # Pagination
+    try:
+        key_page = int(request.args.get("key_page", 1))
+    except ValueError:
+        key_page = 1
+        
+    try:
+        acc_page = int(request.args.get("acc_page", 1))
+    except ValueError:
+        acc_page = 1
+        
+    PER_PAGE = 50
+    
+    total_keys_filtered = len(access_keys)
+    key_start = (key_page - 1) * PER_PAGE
+    key_end = key_start + PER_PAGE
+    access_keys = access_keys[key_start:key_end]
+    key_total_pages = max(1, (total_keys_filtered + PER_PAGE - 1) // PER_PAGE)
+    
+    total_acc_filtered = len(accounts)
+    acc_start = (acc_page - 1) * PER_PAGE
+    acc_end = acc_start + PER_PAGE
+    accounts = accounts[acc_start:acc_end]
+    acc_total_pages = max(1, (total_acc_filtered + PER_PAGE - 1) // PER_PAGE)
+        
     return render_template_string(
         ADMIN_TEMPLATE, 
         accounts=accounts, 
         access_keys=access_keys,
         total_accounts=len(all_accounts),
         search_email=search_email,
-        search_code=search_code
+        search_code=search_code,
+        key_page=key_page,
+        key_total_pages=key_total_pages,
+        acc_page=acc_page,
+        acc_total_pages=acc_total_pages
     )
 
 from datetime import datetime, timedelta
@@ -568,25 +613,33 @@ def delete_acc(email):
     flash(f"Đã xoá cookie: {email}", "success")
     return redirect(url_for("admin"))
 
+from concurrent.futures import ThreadPoolExecutor
+
+def check_single_account(acc, force=False):
+    email = acc[0]
+    current_plan = acc[5]
+    
+    # Bỏ qua những tài khoản đã có gói cước nếu không force
+    if not force and current_plan:
+        return
+        
+    netflix_id = acc[2]
+    secure_netflix_id = acc[3]
+    status, plan = checker.check_account_live(netflix_id, secure_netflix_id)
+    
+    if status == "LIVE" and plan:
+        database.update_plan(email, plan)
+    elif status == "DIE":
+        database.delete_account(email)
+
 def background_check_all():
     with app.app_context():
         database.init_db()
         accounts = database.get_all_accounts()
-        for acc in accounts:
-            email = acc[0]
-            current_plan = acc[5]
-            
-            # Bỏ qua những tài khoản đã có gói cước
-            if current_plan:
-                continue
-                
-            netflix_id = acc[2]
-            secure_netflix_id = acc[3]
-            status, plan = checker.check_account_live(netflix_id, secure_netflix_id)
-            if status == "LIVE" and plan:
-                database.update_plan(email, plan)
-            elif status == "DIE":
-                database.delete_account(email)
+        
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            for acc in accounts:
+                executor.submit(check_single_account, acc, False)
 
 @app.route("/check_all", methods=["POST"])
 @login_required
@@ -606,24 +659,18 @@ def check_all():
     t.daemon = True
     t.start()
     
-    estimated_time = len(accounts_to_check) * 2
-    flash(f"🔄 Đang cập nhật ngầm cho {len(accounts_to_check)} tài khoản chưa có Gói Cước (khoảng {estimated_time}s). Các cookie DIE sẽ tự xóa.", "warning")
+    estimated_time = (len(accounts_to_check) // 10) + 2
+    flash(f"🔄 Đang cập nhật ngầm cho {len(accounts_to_check)} tài khoản với tốc độ X10 (khoảng {estimated_time}s). Các cookie DIE sẽ tự xóa.", "warning")
     return redirect(url_for("admin"))
-
 
 def background_force_check_all():
     with app.app_context():
         database.init_db()
         accounts = database.get_all_accounts()
-        for acc in accounts:
-            email = acc[0]
-            netflix_id = acc[2]
-            secure_netflix_id = acc[3]
-            status, plan = checker.check_account_live(netflix_id, secure_netflix_id)
-            if status == "LIVE" and plan:
-                database.update_plan(email, plan)
-            elif status == "DIE":
-                database.delete_account(email)
+        
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            for acc in accounts:
+                executor.submit(check_single_account, acc, True)
 
 @app.route("/filter_duplicates", methods=["POST"])
 @login_required
@@ -767,13 +814,36 @@ def fetch_netflix_nftoken_api(netflix_id):
         raise CookieError("Netflix API không trả về token. Cookie có thể đã DIE.")
     return token
 
+RATE_LIMITS = {}
+import time
+
 @app.route("/api/generate_nftoken", methods=["POST"])
 def api_generate_nftoken():
+    ip = request.remote_addr
+    current_time = time.time()
+    
+    if ip in RATE_LIMITS:
+        if RATE_LIMITS[ip]['locked_until'] > current_time:
+            return jsonify({"success": False, "error": "Bạn thao tác sai quá nhiều. Tạm khóa IP 15 phút để chống Spam!"}), 429
+        if RATE_LIMITS[ip]['locked_until'] != 0 and current_time > RATE_LIMITS[ip]['locked_until']:
+            RATE_LIMITS[ip] = {'fails': 0, 'first_fail': current_time, 'locked_until': 0}
+        elif current_time - RATE_LIMITS[ip]['first_fail'] > 300:
+            RATE_LIMITS[ip] = {'fails': 0, 'first_fail': current_time, 'locked_until': 0}
+    else:
+        RATE_LIMITS[ip] = {'fails': 0, 'first_fail': current_time, 'locked_until': 0}
+
+    def register_fail(err_msg, status_code=400):
+        RATE_LIMITS[ip]['fails'] += 1
+        if RATE_LIMITS[ip]['fails'] >= 10:
+            RATE_LIMITS[ip]['locked_until'] = current_time + 900
+            return jsonify({"success": False, "error": "Bạn thao tác sai quá 10 lần. Tạm khóa IP 15 phút để chống Spam!"}), 429
+        return jsonify({"success": False, "error": err_msg}), status_code
+
     try:
         data = request.get_json(silent=True) or {}
         cookie_value = data.get("cookie", "").strip()
         if not cookie_value:
-            return jsonify({"success": False, "error": "Vui lòng nhập Mã Truy Cập"}), 400
+            return register_fail("Vui lòng nhập Mã Truy Cập")
             
         database.init_db()
         
@@ -795,7 +865,7 @@ def api_generate_nftoken():
                     expire_date = datetime.strptime(expire_at_str, "%Y-%m-%d")
                     if datetime.now() > expire_date:
                         database.delete_access_key(code)
-                        return jsonify({"success": False, "error": "Mã truy cập đã hết hạn và bị vô hiệu hóa!"}), 400
+                        return register_fail("Mã truy cập đã hết hạn và bị vô hiệu hóa!")
                 except Exception as e:
                     print(f"Lỗi parse ngày hết hạn: {e}")
             
@@ -853,6 +923,7 @@ def api_generate_nftoken():
                     pc_link = f"https://www.netflix.com/login?nftoken={token}"
                     mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"
                     tv_link = f"https://www.netflix.com/tv8?nftoken={token}"
+                    RATE_LIMITS[ip] = {'fails': 0, 'first_fail': current_time, 'locked_until': 0}
                     return jsonify({
                         "success": True,
                         "pc_link": pc_link,
@@ -874,6 +945,10 @@ def api_generate_nftoken():
                     
             return jsonify({"success": False, "error": "Quá tải máy chủ hoặc toàn bộ Proxy chết. Vui lòng thử lại sau."}), 500
 
+        # Nếu không phải acc key và có độ dài <= 20 ký tự (không phải token Netflix)
+        if len(cookie_value) <= 20 and not cookie_value.startswith("B"):
+            return register_fail("Mã truy cập không hợp lệ hoặc không tồn tại.")
+
         # 2. Fallback: Parse raw tokens for admin testing
         netflix_id = None
         unquoted_cookie = urllib.parse.unquote(cookie_value)
@@ -884,6 +959,7 @@ def api_generate_nftoken():
             pc_link = f"https://www.netflix.com/login?nftoken={token}"
             mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"
             tv_link = f"https://www.netflix.com/tv8?nftoken={token}"
+            RATE_LIMITS[ip] = {'fails': 0, 'first_fail': current_time, 'locked_until': 0}
             return jsonify({"success": True, "pc_link": pc_link, "mobile_link": mobile_link, "tv_link": tv_link})
         
         if "NetflixId=" in cookie_value:
@@ -909,11 +985,12 @@ def api_generate_nftoken():
             pc_link = f"https://www.netflix.com/login?nftoken={token}"
             mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"
             tv_link = f"https://www.netflix.com/tv8?nftoken={token}"
+            RATE_LIMITS[ip] = {'fails': 0, 'first_fail': current_time, 'locked_until': 0}
             return jsonify({"success": True, "pc_link": pc_link, "mobile_link": mobile_link, "tv_link": tv_link})
         except ProxyError as e:
             return jsonify({"success": False, "error": f"Lỗi Proxy. Vui lòng bấm thử lại. Chi tiết: {str(e)}"}), 500
         except Exception as e:
-            return jsonify({"success": False, "error": str(e)}), 500
+            return register_fail(f"Token lỗi: {str(e)}", 500)
             
     except Exception as api_e:
         import traceback
