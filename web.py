@@ -814,29 +814,9 @@ def fetch_netflix_nftoken_api(netflix_id):
         raise CookieError("Netflix API không trả về token. Cookie có thể đã DIE.")
     return token
 
-RATE_LIMITS = {}
-import time
-
 @app.route("/api/generate_nftoken", methods=["POST"])
 def api_generate_nftoken():
-    ip = request.remote_addr
-    current_time = time.time()
-    
-    if ip in RATE_LIMITS:
-        if RATE_LIMITS[ip]['locked_until'] > current_time:
-            return jsonify({"success": False, "error": "Bạn thao tác sai quá nhiều. Tạm khóa IP 15 phút để chống Spam!"}), 429
-        if RATE_LIMITS[ip]['locked_until'] != 0 and current_time > RATE_LIMITS[ip]['locked_until']:
-            RATE_LIMITS[ip] = {'fails': 0, 'first_fail': current_time, 'locked_until': 0}
-        elif current_time - RATE_LIMITS[ip]['first_fail'] > 300:
-            RATE_LIMITS[ip] = {'fails': 0, 'first_fail': current_time, 'locked_until': 0}
-    else:
-        RATE_LIMITS[ip] = {'fails': 0, 'first_fail': current_time, 'locked_until': 0}
-
     def register_fail(err_msg, status_code=400):
-        RATE_LIMITS[ip]['fails'] += 1
-        if RATE_LIMITS[ip]['fails'] >= 10:
-            RATE_LIMITS[ip]['locked_until'] = current_time + 900
-            return jsonify({"success": False, "error": "Bạn thao tác sai quá 10 lần. Tạm khóa IP 15 phút để chống Spam!"}), 429
         return jsonify({"success": False, "error": err_msg}), status_code
 
     try:
@@ -923,7 +903,7 @@ def api_generate_nftoken():
                     pc_link = f"https://www.netflix.com/login?nftoken={token}"
                     mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"
                     tv_link = f"https://www.netflix.com/tv8?nftoken={token}"
-                    RATE_LIMITS[ip] = {'fails': 0, 'first_fail': current_time, 'locked_until': 0}
+
                     return jsonify({
                         "success": True,
                         "pc_link": pc_link,
@@ -959,7 +939,7 @@ def api_generate_nftoken():
             pc_link = f"https://www.netflix.com/login?nftoken={token}"
             mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"
             tv_link = f"https://www.netflix.com/tv8?nftoken={token}"
-            RATE_LIMITS[ip] = {'fails': 0, 'first_fail': current_time, 'locked_until': 0}
+            tv_link = f"https://www.netflix.com/tv8?nftoken={token}"
             return jsonify({"success": True, "pc_link": pc_link, "mobile_link": mobile_link, "tv_link": tv_link})
         
         if "NetflixId=" in cookie_value:
@@ -985,7 +965,7 @@ def api_generate_nftoken():
             pc_link = f"https://www.netflix.com/login?nftoken={token}"
             mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"
             tv_link = f"https://www.netflix.com/tv8?nftoken={token}"
-            RATE_LIMITS[ip] = {'fails': 0, 'first_fail': current_time, 'locked_until': 0}
+            tv_link = f"https://www.netflix.com/tv8?nftoken={token}"
             return jsonify({"success": True, "pc_link": pc_link, "mobile_link": mobile_link, "tv_link": tv_link})
         except ProxyError as e:
             return jsonify({"success": False, "error": f"Lỗi Proxy. Vui lòng bấm thử lại. Chi tiết: {str(e)}"}), 500
