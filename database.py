@@ -80,6 +80,17 @@ def get_random_available_account(plan_type=None):
         basic_kws = ['basic', 'cơ bản', 'базовый', 'temel', 'básico', 'พื้นฐาน', 'أساسي', '基本', 'ベーシック', '베이직']
         ads_kws = ['ads', 'adverts', 'anuncios', 'pub', 'werbung', 'pubblicità', 'quảng cáo', 'โฆษณา', '広告', '광고', '廣告', '广告', 'рекламо', 'reklam', 'reklamy']
 
+        import re
+        def has_any_kw(text, kws):
+            for kw in kws:
+                if re.match(r'^[a-z_]+$', kw):
+                    if re.search(r'\b' + kw + r'\b', text):
+                        return True
+                else:
+                    if kw in text:
+                        return True
+            return False
+
         all_emails = []
         for r in acc_data:
             if not r.get("plan"):
@@ -88,18 +99,18 @@ def get_random_available_account(plan_type=None):
             
             is_match = False
             if plan_type == "Premium":
-                if any(kw in plan_str for kw in premium_kws):
+                if has_any_kw(plan_str, premium_kws):
                     is_match = True
             elif plan_type == "Standard_Ads":
-                if any(kw in plan_str for kw in standard_kws) and any(kw in plan_str for kw in ads_kws):
+                if has_any_kw(plan_str, standard_kws) and has_any_kw(plan_str, ads_kws):
                     is_match = True
                 elif "standard_ads" in plan_str:
                     is_match = True
             elif plan_type == "Standard":
-                if any(kw in plan_str for kw in standard_kws) and not any(kw in plan_str for kw in ads_kws):
+                if has_any_kw(plan_str, standard_kws) and not has_any_kw(plan_str, ads_kws):
                     is_match = True
             elif plan_type == "Basic":
-                if any(kw in plan_str for kw in basic_kws):
+                if has_any_kw(plan_str, basic_kws):
                     is_match = True
                     
             if is_match or plan_type.lower() == plan_str:
