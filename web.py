@@ -346,8 +346,11 @@ ADMIN_TEMPLATE = r"""
                     <form action="/filter_duplicates" method="POST" onsubmit="showLoading(this.querySelector('button'))" style="margin: 0;">
                         <button type="submit" style="background: #f39c12; padding: 8px 15px; font-size: 0.9rem;" title="Lọc và xóa các Cookie trùng NetflixId">🧹 LỌC TRÙNG KHO</button>
                     </form>
+                    <form action="/check_payment" method="POST" onsubmit="showLoading(this.querySelector('button'))" style="margin: 0;">
+                        <button type="submit" style="background: #c0392b; padding: 8px 15px; font-size: 0.9rem;" title="Quét toàn bộ kho để xóa tài khoản bị Update Payment">🚫 QUÉT LỖI THANH TOÁN</button>
+                    </form>
                     <form action="/force_check_all" method="POST" onsubmit="showLoading(this.querySelector('button'))" style="margin: 0;">
-                        <button type="submit" style="background: #e74c3c; padding: 8px 15px; font-size: 0.9rem;" title="Kiểm tra lại toàn bộ kho bất chấp gói cước (Tốn Proxy)">🔥 QUÉT SẠCH KHO (FORCE CHECK)</button>
+                        <button type="submit" style="background: #e74c3c; padding: 8px 15px; font-size: 0.9rem;" title="Kiểm tra lại toàn bộ kho bất chấp gói cước (Tốn Proxy)">🔥 QUÉT SẠCH KHO</button>
                     </form>
                     <form action="/check_all" method="POST" onsubmit="showLoading(this.querySelector('button'))" style="margin: 0;">
                         <button type="submit" style="background: #10ac84; padding: 8px 15px; font-size: 0.9rem;" title="Chỉ quét những Acc chưa có tên Gói Cước (Tiết kiệm Proxy)">⚡ CẬP NHẬT GÓI CƯỚC MỚI</button>
@@ -615,7 +618,7 @@ def delete_acc(email):
 
 from concurrent.futures import ThreadPoolExecutor
 
-def check_single_account(acc, force=False):
+def check_single_account(acc, force=False, check_payment=False):
     email = acc[0]
     current_plan = acc[5]
     
@@ -625,10 +628,11 @@ def check_single_account(acc, force=False):
         
     netflix_id = acc[2]
     secure_netflix_id = acc[3]
-    status, plan = checker.check_account_live(netflix_id, secure_netflix_id)
+    status, plan = checker.check_account_live(netflix_id, secure_netflix_id, check_payment)
     
     if status == "LIVE" and plan:
-        database.update_plan(email, plan)
+        if not check_payment:
+            database.update_plan(email, plan)
     elif status == "DIE":
         database.delete_account(email)
 
@@ -670,7 +674,35 @@ def background_force_check_all():
         
         with ThreadPoolExecutor(max_workers=10) as executor:
             for acc in accounts:
-                executor.submit(check_single_account, acc, True)
+                executor.submit(check_single_account, acc, True, False)
+
+def background_check_payment_all():
+    with app.app_context():
+        database.init_db()
+        accounts = database.get_all_accounts()
+        
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            for acc in accounts:
+                executor.submit(check_single_account, acc, True, True)
+
+@app.route("/check_payment", methods=["POST"])
+@login_required
+def check_payment_route():
+    database.init_db()
+    accounts = database.get_all_accounts()
+    
+    if not accounts:
+        flash("Kho không có tài khoản nào để quét.", "warning")
+        return redirect(url_for("admin"))
+        
+    import threading
+    t = threading.Thread(target=background_check_payment_all)
+    t.daemon = True
+    t.start()
+    
+    estimated_time = (len(accounts) // 10) + 2
+    flash(f"🚫 Đang quét LỖI THANH TOÁN ngầm cho {len(accounts)} tài khoản (khoảng {estimated_time}s). Account lỗi sẽ tự động bị xóa.", "warning")
+    return redirect(url_for("admin"))
 
 @app.route("/filter_duplicates", methods=["POST"])
 @login_required

@@ -2,10 +2,11 @@ import requests
 import time
 import proxies_list
 
-def check_account_live(netflix_id, secure_netflix_id=""):
+def check_account_live(netflix_id, secure_netflix_id="", check_payment=False):
     """
     Kiểm tra cookie Netflix có còn sống không.
-    Trả về True/LIVE nếu LIVE, DIE nếu chết hoặc bắt Update Payment.
+    Trả về LIVE nếu sống, DIE nếu chết. 
+    Nếu check_payment=True, sẽ báo DIE nếu dính lỗi Update Payment.
     """
     url = "https://www.netflix.com/YourAccount"
     
@@ -43,8 +44,35 @@ def check_account_live(netflix_id, secure_netflix_id=""):
             
         html_text = response.text.lower()
         
-        # Bỏ qua hoàn toàn việc check lỗi thanh toán theo yêu cầu của User
-        # Khách muốn chỉ cần còn đăng nhập được (Cookie chưa bị văng) là tính là LIVE
+        # Nếu yêu cầu check Update Payment (Lỗi thanh toán đa ngôn ngữ)
+        if check_payment:
+            if "paymentupdate" in url_lower or "payment-update" in url_lower or "billing-update" in url_lower:
+                return "DIE", None
+                
+            on_hold_kws = [
+                'on hold', 'payment issue', 'update your payment', 'please update your',
+                'tạm ngưng', 'lỗi thanh toán', 'cập nhật thanh toán',
+                'en pausa', 'actualice su pago', 'actualizar el pago',
+                'suspensa', 'atualize seu pagamento',
+                'en attente', 'mettre à jour le paiement',
+                'приостановлена', 'проблема с оплатой',
+                'askıya', 'ödeme sorunu', 'ödeme yönteminizi',
+                'ditangguhkan', 'perbarui pembayaran',
+                'معلق', 'تحديث الدفع',
+                'ausgesetzt', 'zahlungsinformationen',
+                '保留中', 'お支払い方法',
+                '보류', '결제 수단',
+                '已暂停', '更新付款方式'
+            ]
+            
+            error_classes = ['payment-warning', 'account-restricted', 'update-payment-container']
+            
+            for kw in on_hold_kws:
+                if kw in html_text:
+                    return "DIE", None
+            for cls in error_classes:
+                if cls in html_text:
+                    return "DIE", None
         
         # Nếu trang Account load thành công -> LIVE
         if response.status_code == 200:
