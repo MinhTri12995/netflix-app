@@ -148,16 +148,23 @@ PUBLIC_TEMPLATE = r"""
             let tvLink = document.getElementById("quickTvLink");
             let statusText = document.getElementById("statusText");
             let btn = document.getElementById("submitBtn");
+            let checkBtn = document.getElementById("checkBtn");
 
             if (rawInput) {
                 btn.disabled = true;
+                checkBtn.disabled = true;
                 btn.innerHTML = "⏳ Đang kết nối...";
                 pcLink.innerText = "⏳ Đang tạo link...";
                 mobileLink.innerText = "⏳ Đang tạo link...";
                 tvLink.innerText = "⏳ Đang tạo link...";
-                statusText.innerText = "Đang kiểm tra kho dữ liệu và kết nối tới Netflix...";
+                statusText.innerText = "Đang xuất link siêu tốc...";
                 statusText.style.color = "#f39c12";
                 resultDiv.style.display = "flex";
+                
+                // Show links
+                document.getElementById("quickPcLink").parentElement.style.display = "flex";
+                document.getElementById("quickMobileLink").parentElement.style.display = "flex";
+                document.getElementById("quickTvLink").parentElement.style.display = "flex";
 
                 fetch("/api/generate_nftoken", {
                     method: "POST",
@@ -167,7 +174,9 @@ PUBLIC_TEMPLATE = r"""
                 .then(res => res.json())
                 .then(data => {
                     btn.disabled = false;
-                    btn.innerHTML = "Tiến Hành Đăng Nhập";
+                    btn.disabled = false;
+                    checkBtn.disabled = false;
+                    btn.innerHTML = "🚀 TIẾN HÀNH ĐĂNG NHẬP (Lấy Link Siêu Tốc)";
                     if (data.success) {
                         pcLink.href = data.pc_link;
                         pcLink.innerText = "💻 PC Link (Xem ngay)";
@@ -180,17 +189,72 @@ PUBLIC_TEMPLATE = r"""
                     } else {
                         statusText.innerText = "Lỗi: " + data.error;
                         statusText.style.color = "#e74c3c";
+                        document.getElementById("quickPcLink").parentElement.style.display = "none";
+                        document.getElementById("quickMobileLink").parentElement.style.display = "none";
+                        document.getElementById("quickTvLink").parentElement.style.display = "none";
                     }
                 })
                 .catch(err => {
                     btn.disabled = false;
-                    btn.innerHTML = "Tiến Hành Đăng Nhập";
+                    checkBtn.disabled = false;
+                    btn.innerHTML = "🚀 TIẾN HÀNH ĐĂNG NHẬP (Lấy Link Siêu Tốc)";
                     statusText.innerText = "Lỗi kết nối tới Server!";
                     statusText.style.color = "#e74c3c";
                 });
             } else {
                 resultDiv.style.display = "none";
             }
+        }
+        
+        function checkLiveStatus() {
+            let rawInput = document.getElementById("rawTokenInput").value.trim();
+            let statusText = document.getElementById("statusText");
+            let resultDiv = document.getElementById("quickLinksResult");
+            let btn = document.getElementById("checkBtn");
+            let loginBtn = document.getElementById("submitBtn");
+            
+            if (!rawInput) {
+                alert("Vui lòng nhập mã truy cập trước khi kiểm tra!");
+                return;
+            }
+            
+            btn.disabled = true;
+            loginBtn.disabled = true;
+            btn.innerHTML = "⏳ Đang kiểm tra bằng Proxy...";
+            statusText.innerText = "Đang kết nối vào Netflix để kiểm tra trạng thái...";
+            statusText.style.color = "#f39c12";
+            resultDiv.style.display = "flex";
+            
+            // Ẩn các nút lấy link khi đang check
+            document.getElementById("quickPcLink").parentElement.style.display = "none";
+            document.getElementById("quickMobileLink").parentElement.style.display = "none";
+            document.getElementById("quickTvLink").parentElement.style.display = "none";
+
+            fetch("/api/check_live_code", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ cookie: rawInput })
+            })
+            .then(res => res.json())
+            .then(data => {
+                btn.disabled = false;
+                loginBtn.disabled = false;
+                btn.innerHTML = "🔄 KIỂM TRA & ĐỔI ACC NẾU LỖI";
+                if (data.success) {
+                    statusText.innerText = data.message;
+                    statusText.style.color = "#2ecc71";
+                } else {
+                    statusText.innerText = "Lỗi: " + data.error;
+                    statusText.style.color = "#e74c3c";
+                }
+            })
+            .catch(err => {
+                btn.disabled = false;
+                loginBtn.disabled = false;
+                btn.innerHTML = "🔄 KIỂM TRA & ĐỔI ACC NẾU LỖI";
+                statusText.innerText = "Lỗi kết nối tới Server!";
+                statusText.style.color = "#e74c3c";
+            });
         }
     </script>
 </head>
@@ -203,7 +267,8 @@ PUBLIC_TEMPLATE = r"""
         <div class="glass-panel">
             <h3 style="margin-top: 0; text-align: center; font-weight: 400;">Nhập Mã Truy Cập</h3>
             <input type="text" id="rawTokenInput" class="search-box" style="text-align: center; font-size: 1.2rem; letter-spacing: 2px;" placeholder="Ví dụ: X9K2M1">
-            <button id="submitBtn" onclick="generateQuickLinks()" style="width: 100%; margin-top: 10px; padding: 15px; font-size: 1.1rem;">Tiến Hành Đăng Nhập</button>
+            <button id="submitBtn" onclick="generateQuickLinks()" style="width: 100%; margin-top: 10px; padding: 15px; font-size: 1.1rem; background: #27ae60; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">🚀 TIẾN HÀNH ĐĂNG NHẬP (Lấy Link Siêu Tốc)</button>
+            <button id="checkBtn" onclick="checkLiveStatus()" style="width: 100%; margin-top: 10px; padding: 12px; font-size: 0.9rem; background: #f39c12; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">🔄 KIỂM TRA & ĐỔI ACC NẾU LỖI</button>
             
             <div id="quickLinksResult" style="display: flex; flex-direction: column; gap: 15px; margin-top: 25px; display: none; background: rgba(0,0,0,0.2); padding: 20px; border-radius: 8px;">
                 <p id="statusText" style="text-align: center; margin: 0; font-weight: bold;"></p>
@@ -846,6 +911,49 @@ def fetch_netflix_nftoken_api(netflix_id):
         raise CookieError("Netflix API không trả về token. Cookie có thể đã DIE.")
     return token
 
+@app.route("/api/check_live_code", methods=["POST"])
+def api_check_live_code():
+    data = request.get_json(silent=True) or {}
+    cookie_value = data.get("cookie", "").strip()
+    if not cookie_value:
+        return jsonify({"success": False, "error": "Vui lòng nhập Mã Truy Cập"}), 400
+        
+    database.init_db()
+    acc_key_row = database.get_access_key(cookie_value)
+    
+    if not acc_key_row:
+        return jsonify({"success": False, "error": "Mã truy cập không hợp lệ hoặc không tồn tại."}), 400
+        
+    code = acc_key_row[0]
+    assigned_email = acc_key_row[1]
+    
+    acc = database.get_account_by_email(assigned_email)
+    if not acc:
+        rotated = database.rotate_access_key(code)
+        if not rotated:
+            return jsonify({"success": False, "error": "Hệ thống đã hết Cookie dự phòng!"}), 500
+        return jsonify({"success": True, "message": "Tài khoản cũ đã chết. Hệ thống đã TỰ ĐỘNG ĐỔI sang tài khoản mới cho bạn. Bạn hãy bấm Lấy Link nhé!"})
+        
+    netflix_id = urllib.parse.unquote(acc[2])
+    secure_netflix_id = urllib.parse.unquote(acc[3]) if acc[3] else ""
+    
+    import checker
+    try:
+        # Check payment=True để giúp dọn acc dính lỗi Update Payment nếu có
+        status, plan = checker.check_account_live(netflix_id, secure_netflix_id, check_payment=True)
+        if status == "LIVE":
+            if plan:
+                database.update_plan(assigned_email, plan)
+            return jsonify({"success": True, "message": f"Tài khoản vẫn đang LIVE bình thường! Gói cước: {plan or 'Không xác định'}."})
+        else:
+            database.delete_account(assigned_email)
+            rotated = database.rotate_access_key(code)
+            if not rotated:
+                return jsonify({"success": False, "error": "Tài khoản cũ đã chết nhưng Hệ thống đã hết Cookie dự phòng!"}), 500
+            return jsonify({"success": True, "message": "Tài khoản bị lỗi và đã được TỰ ĐỘNG ĐỔI sang tài khoản mới. Bạn có thể bấm Lấy Link ngay!"})
+    except Exception as e:
+        return jsonify({"success": False, "error": f"Lỗi kiểm tra proxy. Vui lòng thử lại. Chi tiết: {e}"}), 500
+
 @app.route("/api/generate_nftoken", methods=["POST"])
 def api_generate_nftoken():
     def register_fail(err_msg, status_code=400):
@@ -896,41 +1004,8 @@ def api_generate_nftoken():
                 netflix_id = urllib.parse.unquote(acc[2])
                 secure_netflix_id = urllib.parse.unquote(acc[3]) if acc[3] else ""
                 
-                import time
-                if 'ACCOUNT_CHECK_CACHE' not in globals():
-                    global ACCOUNT_CHECK_CACHE
-                    ACCOUNT_CHECK_CACHE = {}
-                
                 try:
-                    current_time = time.time()
-                    last_checked = ACCOUNT_CHECK_CACHE.get(assigned_email, 0)
-                    
-                    if current_time - last_checked < 3600: # Cache 1 tiếng
-                        print(f"Tài khoản {assigned_email} đã check gần đây (trong 1h). Bỏ qua check LIVE để tránh lỗi Proxy.")
-                        status = "LIVE"
-                    else:
-                        print(f"Bắt đầu kiểm tra tài khoản: {assigned_email}")
-                        # Kiểm tra trạng thái LIVE/DIE thật kỹ trước khi xuất code
-                        status, plan = checker.check_account_live(netflix_id, secure_netflix_id)
-                        if status == "LIVE":
-                            ACCOUNT_CHECK_CACHE[assigned_email] = current_time
-                    
-                    if status == "ERROR":
-                        print(f"Lỗi mạng/proxy khi check tài khoản {assigned_email}. Bỏ qua check và thử lại...")
-                        raise ProxyError("Checker gặp lỗi kết nối")
-                        
-                    if status == "DIE":
-                        print(f"Tài khoản {assigned_email} báo DIE (Logout/Hết hạn). Tiến hành đổi mã...")
-                        database.delete_account(assigned_email)
-                        rotated = database.rotate_access_key(code)
-                        if not rotated:
-                            return jsonify({"success": False, "error": "Hệ thống đã hết Cookie dự phòng!"}), 500
-                        assigned_email = database.get_access_key(code)[1]
-                        continue
-                        
-                    print(f"Tài khoản {assigned_email} LIVE! Bắt đầu xuất Link...")
-                    
-                    # Trực tiếp lấy Link
+                    # BỎ QUA CHECK LIVE NGẦM - XUẤT LINK TRỰC TIẾP
                     token = fetch_netflix_nftoken_api(netflix_id)
                     pc_link = f"https://www.netflix.com/login?nftoken={token}"
                     mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"
@@ -943,11 +1018,9 @@ def api_generate_nftoken():
                         "tv_link": tv_link
                     })
                 except ProxyError as e:
-                    # Lỗi proxy, ta giữ nguyên Cookie và thử lại ngay lập tức (không rotate Cookie)
                     print(f"Lỗi Proxy ({e}), thử lại...")
                     continue
                 except Exception as e:
-                    # Các lỗi khác (hoặc CookieError) -> Cookie is dead, delete it and rotate
                     print(f"Cookie {assigned_email} DIE, attempting rotation... (Lỗi: {e})")
                     database.delete_account(assigned_email)
                     rotated = database.rotate_access_key(code)
