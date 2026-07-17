@@ -100,7 +100,7 @@ COMMON_STYLE = r"""
 <script>
     function copyCookie(text, btn) {
         let originalText = btn.innerHTML;
-        btn.innerHTML = '✔ Đã Copy';
+        btn.innerHTML = '✔ Copied';
         btn.style.background = '#20bf6b';
         setTimeout(() => { btn.innerHTML = originalText; btn.style.background = '#2d98da'; }, 2000);
         if (navigator.clipboard && window.isSecureContext) {
@@ -123,7 +123,7 @@ COMMON_STYLE = r"""
         textArea.remove();
     }
     function showLoading(btn) {
-        btn.innerHTML = '⏳ Đang xử lý...';
+        btn.innerHTML = '⏳ Processing...';
         btn.style.pointerEvents = 'none';
         btn.style.opacity = '0.7';
     }
@@ -153,11 +153,11 @@ PUBLIC_TEMPLATE = r"""
             if (rawInput) {
                 btn.disabled = true;
                 checkBtn.disabled = true;
-                btn.innerHTML = "⏳ Đang kết nối...";
-                pcLink.innerText = "⏳ Đang tạo link...";
-                mobileLink.innerText = "⏳ Đang tạo link...";
-                tvLink.innerText = "⏳ Đang tạo link...";
-                statusText.innerText = "Đang xuất link siêu tốc...";
+                btn.innerHTML = "⏳ Connecting...";
+                pcLink.innerText = "⏳ Generating link...";
+                mobileLink.innerText = "⏳ Generating link...";
+                tvLink.innerText = "⏳ Generating link...";
+                statusText.innerText = "Generating high-speed link...";
                 statusText.style.color = "#f39c12";
                 resultDiv.style.display = "flex";
                 
@@ -174,20 +174,19 @@ PUBLIC_TEMPLATE = r"""
                 .then(res => res.json())
                 .then(data => {
                     btn.disabled = false;
-                    btn.disabled = false;
                     checkBtn.disabled = false;
-                    btn.innerHTML = "🚀 TIẾN HÀNH ĐĂNG NHẬP (Lấy Link Siêu Tốc)";
+                    btn.innerHTML = "🚀 LOGIN NOW (Fast Link)";
                     if (data.success) {
                         pcLink.href = data.pc_link;
-                        pcLink.innerText = "💻 PC Link (Xem ngay)";
+                        pcLink.innerText = "💻 PC Link (Watch now)";
                         mobileLink.href = data.mobile_link;
-                        mobileLink.innerText = "📱 Mobile Link (Xem ngay)";
+                        mobileLink.innerText = "📱 Mobile Link (Watch now)";
                         tvLink.href = data.tv_link;
-                        tvLink.innerText = "📺 TV Link (Xem ngay)";
-                        statusText.innerText = "Thành công! Hãy click vào link bên dưới để xem phim.";
+                        tvLink.innerText = "📺 TV Link (Watch now)";
+                        statusText.innerText = "Success! Click a link below to watch.";
                         statusText.style.color = "#2ecc71";
                     } else {
-                        statusText.innerText = "Lỗi: " + data.error;
+                        statusText.innerText = "Error: " + data.error;
                         statusText.style.color = "#e74c3c";
                         document.getElementById("quickPcLink").parentElement.style.display = "none";
                         document.getElementById("quickMobileLink").parentElement.style.display = "none";
@@ -197,8 +196,8 @@ PUBLIC_TEMPLATE = r"""
                 .catch(err => {
                     btn.disabled = false;
                     checkBtn.disabled = false;
-                    btn.innerHTML = "🚀 TIẾN HÀNH ĐĂNG NHẬP (Lấy Link Siêu Tốc)";
-                    statusText.innerText = "Lỗi kết nối tới Server!";
+                    btn.innerHTML = "🚀 LOGIN NOW (Fast Link)";
+                    statusText.innerText = "Connection to server failed!";
                     statusText.style.color = "#e74c3c";
                 });
             } else {
@@ -214,14 +213,14 @@ PUBLIC_TEMPLATE = r"""
             let loginBtn = document.getElementById("submitBtn");
             
             if (!rawInput) {
-                alert("Vui lòng nhập mã truy cập trước khi kiểm tra!");
+                alert("Please enter your access code first!");
                 return;
             }
             
             btn.disabled = true;
             loginBtn.disabled = true;
-            btn.innerHTML = "⏳ Đang kiểm tra bằng Proxy...";
-            statusText.innerText = "Đang kết nối vào Netflix để kiểm tra trạng thái...";
+            btn.innerHTML = "⏳ Checking via Proxy...";
+            statusText.innerText = "Connecting to Netflix to check account status...";
             statusText.style.color = "#f39c12";
             resultDiv.style.display = "flex";
             
@@ -239,20 +238,20 @@ PUBLIC_TEMPLATE = r"""
             .then(data => {
                 btn.disabled = false;
                 loginBtn.disabled = false;
-                btn.innerHTML = "🔄 KIỂM TRA & ĐỔI ACC NẾU LỖI";
+                btn.innerHTML = "🔄 CHECK & FIX ACCOUNT IF DEAD";
                 if (data.success) {
                     statusText.innerText = data.message;
                     statusText.style.color = "#2ecc71";
                 } else {
-                    statusText.innerText = "Lỗi: " + data.error;
+                    statusText.innerText = "Error: " + data.error;
                     statusText.style.color = "#e74c3c";
                 }
             })
             .catch(err => {
                 btn.disabled = false;
                 loginBtn.disabled = false;
-                btn.innerHTML = "🔄 KIỂM TRA & ĐỔI ACC NẾU LỖI";
-                statusText.innerText = "Lỗi kết nối tới Server!";
+                btn.innerHTML = "🔄 CHECK & FIX ACCOUNT IF DEAD";
+                statusText.innerText = "Connection to server failed!";
                 statusText.style.color = "#e74c3c";
             });
         }
@@ -262,13 +261,13 @@ PUBLIC_TEMPLATE = r"""
     <div class="container" style="max-width: 600px; margin-top: 10vh;">
         <div class="header">
             <h1>Netflix Access</h1>
-            <p>Hệ thống Đăng nhập Nhanh Tự Động</p>
+            <p>Automated Fast Login System</p>
         </div>
         <div class="glass-panel">
-            <h3 style="margin-top: 0; text-align: center; font-weight: 400;">Nhập Mã Truy Cập</h3>
-            <input type="text" id="rawTokenInput" class="search-box" style="text-align: center; font-size: 1.2rem; letter-spacing: 2px;" placeholder="Ví dụ: X9K2M1">
-            <button id="submitBtn" onclick="generateQuickLinks()" style="width: 100%; margin-top: 10px; padding: 15px; font-size: 1.1rem; background: #27ae60; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">🚀 TIẾN HÀNH ĐĂNG NHẬP (Lấy Link Siêu Tốc)</button>
-            <button id="checkBtn" onclick="checkLiveStatus()" style="width: 100%; margin-top: 10px; padding: 12px; font-size: 0.9rem; background: #f39c12; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">🔄 KIỂM TRA & ĐỔI ACC NẾU LỖI</button>
+            <h3 style="margin-top: 0; text-align: center; font-weight: 400;">Enter Access Code</h3>
+            <input type="text" id="rawTokenInput" class="search-box" style="text-align: center; font-size: 1.2rem; letter-spacing: 2px;" placeholder="Example: X9K2M1">
+            <button id="submitBtn" onclick="generateQuickLinks()" style="width: 100%; margin-top: 10px; padding: 15px; font-size: 1.1rem; background: #27ae60; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">🚀 LOGIN NOW (Fast Link)</button>
+            <button id="checkBtn" onclick="checkLiveStatus()" style="width: 100%; margin-top: 10px; padding: 12px; font-size: 0.9rem; background: #f39c12; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">🔄 CHECK & FIX ACCOUNT IF DEAD</button>
             
             <div id="quickLinksResult" style="display: flex; flex-direction: column; gap: 15px; margin-top: 25px; display: none; background: rgba(0,0,0,0.2); padding: 20px; border-radius: 8px;">
                 <p id="statusText" style="text-align: center; margin: 0; font-weight: bold;"></p>
@@ -308,9 +307,9 @@ ADMIN_TEMPLATE = r"""
     <div class="container">
         <div class="header">
             <h1>Admin Dashboard</h1>
-            <p>Hệ thống Quản lý Tài khoản & Mã Truy Cập</p>
-            <a href="/" style="color: #3498db; text-decoration: none; margin-right: 15px;">[Về Trang Chủ]</a>
-            <a href="/logout" style="color: #e74c3c; text-decoration: none;">[Đăng xuất]</a>
+            <p>Account & Access Key Management System</p>
+            <a href="/" style="color: #3498db; text-decoration: none; margin-right: 15px;">[Back to Home]</a>
+            <a href="/logout" style="color: #e74c3c; text-decoration: none;">[Logout]</a>
         </div>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -323,28 +322,28 @@ ADMIN_TEMPLATE = r"""
 
         <div class="glass-panel">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h3 style="margin: 0; font-weight: 400;">Quản lý Mã Truy Cập (License Keys)</h3>
+                <h3 style="margin: 0; font-weight: 400;">Access Code Management (License Keys)</h3>
                 <div style="display: flex; gap: 10px;">
                     <form action="/admin/generate_key" method="POST" style="margin: 0; display: flex; gap: 10px; align-items: center;" onsubmit="showLoading(this.querySelector('button'))">
                         <select name="plan_type" style="padding: 8px; border-radius: 4px; background: rgba(0,0,0,0.5); color: white; border: 1px solid #555;">
-                            <option value="premium">Premium (15 Ký tự)</option>
-                            <option value="standard">Standard (10 Ký tự)</option>
-                            <option value="standard_ads">Standard Ads (8 Ký tự)</option>
-                            <option value="basic">Basic (5 Ký tự)</option>
+                            <option value="premium">Premium (15 Chars)</option>
+                            <option value="standard">Standard (10 Chars)</option>
+                            <option value="standard_ads">Standard Ads (8 Chars)</option>
+                            <option value="basic">Basic (5 Chars)</option>
                         </select>
                         <select name="duration" style="padding: 8px; border-radius: 4px; background: rgba(0,0,0,0.5); color: white; border: 1px solid #555;">
-                            <option value="1">1 Tháng</option>
-                            <option value="2">2 Tháng</option>
-                            <option value="3">3 Tháng</option>
+                            <option value="1">1 Month</option>
+                            <option value="2">2 Months</option>
+                            <option value="3">3 Months</option>
                         </select>
-                        <button type="submit" style="background: #27ae60; font-size: 0.9rem; padding: 10px 15px; white-space: nowrap;">+ Sinh Mã</button>
+                        <button type="submit" style="background: #27ae60; font-size: 0.9rem; padding: 10px 15px; white-space: nowrap;">+ Generate</button>
                     </form>
                 </div>
             </div>
             
             <form action="/admin" method="GET" style="display: flex; gap: 10px; margin-bottom: 20px;">
-                <input type="text" name="search_code" class="search-box" placeholder="Nhập Mã 6 số để tìm..." value="{{ request.args.get('search_code', '') }}">
-                <button type="submit" style="background: #3498db; white-space: nowrap;">🔍 Tìm theo Mã</button>
+                <input type="text" name="search_code" class="search-box" placeholder="Search by 6-char code..." value="{{ request.args.get('search_code', '') }}">
+                <button type="submit" style="background: #3498db; white-space: nowrap;">🔍 Search Code</button>
             </form>
             
             <div style="overflow-x: auto;">
@@ -352,11 +351,11 @@ ADMIN_TEMPLATE = r"""
                 <table>
                     <thead>
                         <tr>
-                            <th>Mã (Code)</th>
-                            <th>Email Đang Gán</th>
-                            <th>Ngày Tạo</th>
-                            <th>Ngày Hết Hạn</th>
-                            <th>Hành động</th>
+                            <th>Code</th>
+                            <th>Assigned Email</th>
+                            <th>Created At</th>
+                            <th>Expire At</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -365,19 +364,19 @@ ADMIN_TEMPLATE = r"""
                             <td style="font-weight: bold; font-family: monospace; font-size: 1.3rem; color: #f1c40f; letter-spacing: 2px;">{{ key[0] }}</td>
                             <td>{{ key[1] }}</td>
                             <td style="font-size: 0.85rem; color: #888;">{{ key[2] }}</td>
-                            <td style="font-size: 0.85rem; color: #e74c3c; font-weight: bold;">{{ key[3] if key[3] else 'Vĩnh viễn' }}</td>
+                            <td style="font-size: 0.85rem; color: #e74c3c; font-weight: bold;">{{ key[3] if key[3] else 'Lifetime' }}</td>
                             <td style="display: flex; gap: 10px; flex-wrap: wrap;">
-                                <button class="btn-copy" onclick="copyCookie('{{ key[0] }}', this)">Copy Mã</button>
-                                <form action="/admin/rotate_key/{{ key[0] }}" method="POST" style="margin: 0;" onsubmit="return confirm('Bạn muốn đổi tài khoản mới cho mã này?');">
-                                    <button type="submit" style="background: #f39c12; padding: 6px 12px; font-size: 0.8rem;">Đổi Acc</button>
+                                <button class="btn-copy" onclick="copyCookie('{{ key[0] }}', this)">Copy Code</button>
+                                <form action="/admin/rotate_key/{{ key[0] }}" method="POST" style="margin: 0;" onsubmit="return confirm('Do you want to rotate a new account for this code?');">
+                                    <button type="submit" style="background: #f39c12; padding: 6px 12px; font-size: 0.8rem;">Change Acc</button>
                                 </form>
-                                <form action="/admin/delete_key/{{ key[0] }}" method="POST" style="margin: 0;" onsubmit="return confirm('Xóa mã này? Khách hàng sẽ không dùng được nữa.');">
-                                    <button type="submit" style="background: #e74c3c; padding: 6px 12px; font-size: 0.8rem;">Xóa</button>
+                                <form action="/admin/delete_key/{{ key[0] }}" method="POST" style="margin: 0;" onsubmit="return confirm('Delete this code? Customers will no longer be able to use it.');">
+                                    <button type="submit" style="background: #e74c3c; padding: 6px 12px; font-size: 0.8rem;">Delete</button>
                                 </form>
                             </td>
                         </tr>
                         {% else %}
-                        <tr><td colspan="5" style="text-align: center; color: #666; padding: 20px;">Chưa có mã nào được sinh ra.</td></tr>
+                        <tr><td colspan="5" style="text-align: center; color: #666; padding: 20px;">No access codes generated yet.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -386,18 +385,18 @@ ADMIN_TEMPLATE = r"""
             {% if key_total_pages > 1 %}
             <div style="display: flex; justify-content: center; gap: 5px; margin-top: 15px;">
                 {% if key_page > 1 %}
-                <a href="?key_page={{ key_page - 1 }}&acc_page={{ acc_page }}&search_code={{ search_code }}&search_email={{ search_email }}" style="padding: 5px 10px; background: rgba(255,255,255,0.1); color: white; text-decoration: none; border-radius: 4px;">&laquo; Trước</a>
+                <a href="?key_page={{ key_page - 1 }}&acc_page={{ acc_page }}&search_code={{ search_code }}&search_email={{ search_email }}" style="padding: 5px 10px; background: rgba(255,255,255,0.1); color: white; text-decoration: none; border-radius: 4px;">&laquo; Prev</a>
                 {% endif %}
-                <span style="padding: 5px 10px; color: #888;">Trang {{ key_page }} / {{ key_total_pages }}</span>
+                <span style="padding: 5px 10px; color: #888;">Page {{ key_page }} / {{ key_total_pages }}</span>
                 {% if key_page < key_total_pages %}
-                <a href="?key_page={{ key_page + 1 }}&acc_page={{ acc_page }}&search_code={{ search_code }}&search_email={{ search_email }}" style="padding: 5px 10px; background: rgba(255,255,255,0.1); color: white; text-decoration: none; border-radius: 4px;">Sau &raquo;</a>
+                <a href="?key_page={{ key_page + 1 }}&acc_page={{ acc_page }}&search_code={{ search_code }}&search_email={{ search_email }}" style="padding: 5px 10px; background: rgba(255,255,255,0.1); color: white; text-decoration: none; border-radius: 4px;">Next &raquo;</a>
                 {% endif %}
             </div>
             {% endif %}
         </div>
 
         <div class="glass-panel">
-            <h3 style="margin-top: 0; margin-bottom: 20px; font-weight: 400;">Nhập Kho Dữ Liệu (Cookies)</h3>
+            <h3 style="margin-top: 0; margin-bottom: 20px; font-weight: 400;">Import Cookies Database</h3>
             <form style="display: flex; gap: 15px; align-items: center;" action="/upload" method="POST" enctype="multipart/form-data" onsubmit="showLoading(this.querySelector('button'))">
                 <input type="file" name="account_file" accept=".txt" required style="padding: 10px; background: rgba(0,0,0,0.2); border: 1px dashed var(--border-color); color: #ccc;">
                 <button type="submit">Upload Database</button>
@@ -406,26 +405,26 @@ ADMIN_TEMPLATE = r"""
 
         <div class="glass-panel">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h3 style="margin: 0; font-weight: 400;">Kho Cookie Gốc <span style="font-size: 0.9rem; color: #888;">({{ total_accounts }} accounts)</span></h3>
+                <h3 style="margin: 0; font-weight: 400;">Original Cookie Vault <span style="font-size: 0.9rem; color: #888;">({{ total_accounts }} accounts)</span></h3>
                 <div style="display: flex; gap: 10px;">
                     <form action="/filter_duplicates" method="POST" onsubmit="showLoading(this.querySelector('button'))" style="margin: 0;">
-                        <button type="submit" style="background: #f39c12; padding: 8px 15px; font-size: 0.9rem;" title="Lọc và xóa các Cookie trùng NetflixId">🧹 LỌC TRÙNG KHO</button>
+                        <button type="submit" style="background: #f39c12; padding: 8px 15px; font-size: 0.9rem;" title="Filter and delete duplicates with same NetflixId">🧹 FILTER DUPLICATES</button>
                     </form>
                     <form action="/check_payment" method="POST" onsubmit="showLoading(this.querySelector('button'))" style="margin: 0;">
-                        <button type="submit" style="background: #c0392b; padding: 8px 15px; font-size: 0.9rem;" title="Quét toàn bộ kho để xóa tài khoản bị Update Payment">🚫 QUÉT LỖI THANH TOÁN</button>
+                        <button type="submit" style="background: #c0392b; padding: 8px 15px; font-size: 0.9rem;" title="Scan full DB to delete accounts with Update Payment errors">🚫 SCAN PAYMENT ERRORS</button>
                     </form>
                     <form action="/force_check_all" method="POST" onsubmit="showLoading(this.querySelector('button'))" style="margin: 0;">
-                        <button type="submit" style="background: #e74c3c; padding: 8px 15px; font-size: 0.9rem;" title="Kiểm tra lại toàn bộ kho bất chấp gói cước (Tốn Proxy)">🔥 QUÉT SẠCH KHO</button>
+                        <button type="submit" style="background: #e74c3c; padding: 8px 15px; font-size: 0.9rem;" title="Force check all accounts regardless of plan (Costs Proxy)">🔥 FORCE FULL SCAN</button>
                     </form>
                     <form action="/check_all" method="POST" onsubmit="showLoading(this.querySelector('button'))" style="margin: 0;">
-                        <button type="submit" style="background: #10ac84; padding: 8px 15px; font-size: 0.9rem;" title="Chỉ quét những Acc chưa có tên Gói Cước (Tiết kiệm Proxy)">⚡ CẬP NHẬT GÓI CƯỚC MỚI</button>
+                        <button type="submit" style="background: #10ac84; padding: 8px 15px; font-size: 0.9rem;" title="Only scan accounts without a known Plan (Saves Proxy)">⚡ UPDATE MISSING PLANS</button>
                     </form>
                 </div>
             </div>
             
             <form action="/admin" method="GET" style="display: flex; gap: 10px; margin-bottom: 20px;">
-                <input type="text" name="search_email" class="search-box" placeholder="Nhập Email để tìm Cookie..." value="{{ request.args.get('search_email', '') }}">
-                <button type="submit" style="background: #3498db; white-space: nowrap;">🔍 Tìm theo Email</button>
+                <input type="text" name="search_email" class="search-box" placeholder="Search by Email..." value="{{ request.args.get('search_email', '') }}">
+                <button type="submit" style="background: #3498db; white-space: nowrap;">🔍 Search Email</button>
             </form>
             
             <div style="overflow-x: auto; max-height: 500px; overflow-y: auto;">
@@ -433,9 +432,9 @@ ADMIN_TEMPLATE = r"""
                     <thead>
                         <tr>
                             <th>Email</th>
-                            <th>Gói Cước</th>
+                            <th>Plan</th>
                             <th>Cookie</th>
-                            <th>Hành động</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -445,13 +444,13 @@ ADMIN_TEMPLATE = r"""
                             <td style="font-weight: bold; color: {% if 'Premium' in (acc[5] or '') %}#f1c40f{% else %}#bdc3c7{% endif %};">{{ acc[5] if acc[5] else 'Unknown' }}</td>
                             <td style="font-size: 0.8rem; color: #666; font-family: monospace; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ acc[2] }}">{{ acc[2] }}</td>
                             <td style="display: flex; gap: 8px;">
-                                <form action="/delete/{{ acc[0] }}" method="POST" style="margin: 0;" onsubmit="return confirm('Xóa cookie này?');">
-                                    <button type="submit" style="background: #e74c3c; padding: 6px 12px; font-size: 0.8rem;">Xóa</button>
+                                <form action="/delete/{{ acc[0] }}" method="POST" style="margin: 0;" onsubmit="return confirm('Delete this cookie?');">
+                                    <button type="submit" style="background: #e74c3c; padding: 6px 12px; font-size: 0.8rem;">Delete</button>
                                 </form>
                             </td>
                         </tr>
                         {% else %}
-                        <tr><td colspan="4" style="text-align: center; color: #666; padding: 20px;">Chưa có tài khoản nào trong kho. Hãy upload file!</td></tr>
+                        <tr><td colspan="4" style="text-align: center; color: #666; padding: 20px;">No accounts in database. Please upload a file!</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -460,11 +459,11 @@ ADMIN_TEMPLATE = r"""
             {% if acc_total_pages > 1 %}
             <div style="display: flex; justify-content: center; gap: 5px; margin-top: 15px;">
                 {% if acc_page > 1 %}
-                <a href="?key_page={{ key_page }}&acc_page={{ acc_page - 1 }}&search_code={{ search_code }}&search_email={{ search_email }}" style="padding: 5px 10px; background: rgba(255,255,255,0.1); color: white; text-decoration: none; border-radius: 4px;">&laquo; Trước</a>
+                <a href="?key_page={{ key_page }}&acc_page={{ acc_page - 1 }}&search_code={{ search_code }}&search_email={{ search_email }}" style="padding: 5px 10px; background: rgba(255,255,255,0.1); color: white; text-decoration: none; border-radius: 4px;">&laquo; Prev</a>
                 {% endif %}
-                <span style="padding: 5px 10px; color: #888;">Trang {{ acc_page }} / {{ acc_total_pages }}</span>
+                <span style="padding: 5px 10px; color: #888;">Page {{ acc_page }} / {{ acc_total_pages }}</span>
                 {% if acc_page < acc_total_pages %}
-                <a href="?key_page={{ key_page }}&acc_page={{ acc_page + 1 }}&search_code={{ search_code }}&search_email={{ search_email }}" style="padding: 5px 10px; background: rgba(255,255,255,0.1); color: white; text-decoration: none; border-radius: 4px;">Sau &raquo;</a>
+                <a href="?key_page={{ key_page }}&acc_page={{ acc_page + 1 }}&search_code={{ search_code }}&search_email={{ search_email }}" style="padding: 5px 10px; background: rgba(255,255,255,0.1); color: white; text-decoration: none; border-radius: 4px;">Next &raquo;</a>
                 {% endif %}
             </div>
             {% endif %}
@@ -497,8 +496,8 @@ LOGIN_TEMPLATE = r"""
             {% endwith %}
             <form action="/login" method="POST" style="display: flex; flex-direction: column; gap: 15px;">
                 <input type="email" name="email" class="search-box" placeholder="Email" required style="margin-bottom: 0;">
-                <input type="password" name="password" class="search-box" placeholder="Mật khẩu" required style="margin-bottom: 0;">
-                <button type="submit" style="width: 100%;">Đăng nhập</button>
+                <input type="password" name="password" class="search-box" placeholder="Password" required style="margin-bottom: 0;">
+                <button type="submit" style="width: 100%;">Login</button>
             </form>
         </div>
     </div>
@@ -520,7 +519,7 @@ def login():
             session['logged_in'] = True
             return redirect(url_for("admin"))
         else:
-            flash("Sai email hoặc mật khẩu!", "error")
+            flash("Incorrect email or password!", "error")
     return render_template_string(LOGIN_TEMPLATE)
 
 @app.route("/logout")
@@ -614,9 +613,9 @@ def generate_key():
     
     success, msg = database.create_access_key(code, expire_at)
     if success:
-        flash(f"Đã tạo mã {plan_type.upper()} ({duration} tháng) thành công: {code}", "success")
+        flash(f"Successfully generated {plan_type.upper()} code ({duration} months): {code}", "success")
     else:
-        flash(f"Lỗi tạo mã: {msg}", "error")
+        flash(f"Error generating code: {msg}", "error")
     return redirect(url_for("admin"))
 
 @app.route("/admin/rotate_key/<code>", methods=["POST"])
@@ -624,28 +623,28 @@ def generate_key():
 def rotate_key(code):
     success = database.rotate_access_key(code)
     if success:
-        flash(f"Đã đổi sang Account mới cho mã: {code}", "success")
+        flash(f"Changed to a new account for code: {code}", "success")
     else:
-        flash(f"Lỗi: Không còn Account nào khả dụng trong kho để đổi.", "error")
+        flash(f"Error: No available accounts left in the vault to replace.", "error")
     return redirect(url_for("admin"))
 
 @app.route("/admin/delete_key/<code>", methods=["POST"])
 @login_required
 def delete_key(code):
     database.delete_access_key(code)
-    flash(f"Đã xóa mã truy cập: {code}", "success")
+    flash(f"Deleted access code: {code}", "success")
     return redirect(url_for("admin"))
 
 @app.route("/upload", methods=["POST"])
 @login_required
 def upload():
     if "account_file" not in request.files:
-        flash("Lỗi: Không tìm thấy file upload.", "error")
+        flash("Error: No upload file found.", "error")
         return redirect(url_for("admin"))
         
     file = request.files["account_file"]
     if file.filename == "":
-        flash("Lỗi: Chưa chọn file.", "error")
+        flash("Error: No file selected.", "error")
         return redirect(url_for("admin"))
         
     if file:
@@ -667,10 +666,10 @@ def upload():
             for acc in accounts_list:
                 database.save_account(acc['email'], acc['expire'], acc['netflix_id'], acc['secure_netflix_id'], acc.get('plan'))
                 count += 1
-            flash(f"🎉 Đã trích xuất và lưu thành công {count} tài khoản vào Database!", "success")
+            flash(f"🎉 Successfully extracted and saved {count} accounts into the Database!", "success")
         else:
             debug_info = content[:200] if content else "EMPTY_FILE"
-            flash(f"❌ Thất bại: Không tìm thấy tài khoản hợp lệ nào trong file. Debug info: {debug_info}", "error")
+            flash(f"❌ Failed: No valid accounts found in the file. Debug info: {debug_info}", "error")
             
     return redirect(url_for("admin"))
 
@@ -678,7 +677,7 @@ def upload():
 @login_required
 def delete_acc(email):
     database.delete_account(email)
-    flash(f"Đã xoá cookie: {email}", "success")
+    flash(f"Deleted cookie: {email}", "success")
     return redirect(url_for("admin"))
 
 from concurrent.futures import ThreadPoolExecutor
@@ -720,7 +719,7 @@ def check_all():
     accounts_to_check = [acc for acc in accounts if not acc[5]]
     
     if not accounts_to_check:
-        flash("Tất cả tài khoản trong kho đều đã có Gói Cước. Không cần chạy cập nhật thêm.", "warning")
+        flash("All accounts in the vault already have a Plan. No update needed.", "warning")
         return redirect(url_for("admin"))
         
     import threading
@@ -729,7 +728,7 @@ def check_all():
     t.start()
     
     estimated_time = (len(accounts_to_check) // 10) + 2
-    flash(f"🔄 Đang cập nhật ngầm cho {len(accounts_to_check)} tài khoản với tốc độ X10 (khoảng {estimated_time}s). Các cookie DIE sẽ tự xóa.", "warning")
+    flash(f"🔄 Background updating {len(accounts_to_check)} accounts with X10 speed (approx {estimated_time}s). Dead cookies will be auto-deleted.", "warning")
     return redirect(url_for("admin"))
 
 def background_force_check_all():
@@ -757,7 +756,7 @@ def check_payment_route():
     accounts = database.get_all_accounts()
     
     if not accounts:
-        flash("Kho không có tài khoản nào để quét.", "warning")
+        flash("No accounts in vault to scan.", "warning")
         return redirect(url_for("admin"))
         
     import threading
@@ -766,7 +765,7 @@ def check_payment_route():
     t.start()
     
     estimated_time = (len(accounts) // 10) + 2
-    flash(f"🚫 Đang quét LỖI THANH TOÁN ngầm cho {len(accounts)} tài khoản (khoảng {estimated_time}s). Account lỗi sẽ tự động bị xóa.", "warning")
+    flash(f"🚫 Background scanning PAYMENT ERRORS for {len(accounts)} accounts (approx {estimated_time}s). Faulty accounts will be auto-deleted.", "warning")
     return redirect(url_for("admin"))
 
 @app.route("/filter_duplicates", methods=["POST"])
@@ -803,9 +802,9 @@ def filter_duplicates():
         database.delete_account(email)
         
     if duplicates_to_delete:
-        flash(f"🧹 Đã lọc và xóa {len(duplicates_to_delete)} tài khoản trùng lặp (cùng NetflixId).", "success")
+        flash(f"🧹 Filtered and deleted {len(duplicates_to_delete)} duplicate accounts (same NetflixId).", "success")
     else:
-        flash("Kho của bạn đã sạch, không có tài khoản nào bị trùng Cookie NetflixId!", "success")
+        flash("Your vault is clean, no duplicated NetflixId cookies found!", "success")
         
     return redirect(url_for("admin"))
 
@@ -816,7 +815,7 @@ def force_check_all():
     accounts = database.get_all_accounts()
     
     if not accounts:
-        flash("Kho không có tài khoản nào để quét.", "warning")
+        flash("No accounts in vault to scan.", "warning")
         return redirect(url_for("admin"))
         
     import threading
@@ -825,7 +824,7 @@ def force_check_all():
     t.start()
     
     estimated_time = len(accounts) * 2
-    flash(f"🔥 Đang ÉP quét ngầm TOÀN BỘ {len(accounts)} tài khoản trong kho (khoảng {estimated_time}s). Quá trình này sẽ ngốn khá nhiều Proxy.", "warning")
+    flash(f"🔥 FORCING full background scan for ALL {len(accounts)} accounts in vault (approx {estimated_time}s). This will consume significant Proxy bandwidth.", "warning")
     return redirect(url_for("admin"))
 
 
@@ -916,13 +915,13 @@ def api_check_live_code():
     data = request.get_json(silent=True) or {}
     cookie_value = data.get("cookie", "").strip()
     if not cookie_value:
-        return jsonify({"success": False, "error": "Vui lòng nhập Mã Truy Cập"}), 400
+        return jsonify({"success": False, "error": "Please enter Access Code"}), 400
         
     database.init_db()
     acc_key_row = database.get_access_key(cookie_value)
     
     if not acc_key_row:
-        return jsonify({"success": False, "error": "Mã truy cập không hợp lệ hoặc không tồn tại."}), 400
+        return jsonify({"success": False, "error": "Invalid or non-existent access code."}), 400
         
     code = acc_key_row[0]
     assigned_email = acc_key_row[1]
@@ -931,28 +930,27 @@ def api_check_live_code():
     if not acc:
         rotated = database.rotate_access_key(code)
         if not rotated:
-            return jsonify({"success": False, "error": "Hệ thống đã hết Cookie dự phòng!"}), 500
-        return jsonify({"success": True, "message": "Tài khoản cũ đã chết. Hệ thống đã TỰ ĐỘNG ĐỔI sang tài khoản mới cho bạn. Bạn hãy bấm Lấy Link nhé!"})
+            return jsonify({"success": False, "error": "System ran out of backup Cookies!"}), 500
+        return jsonify({"success": True, "message": "Old account died. The system has AUTOMATICALLY CHANGED to a new account for you. Please click Login Now!"})
         
     netflix_id = urllib.parse.unquote(acc[2])
     secure_netflix_id = urllib.parse.unquote(acc[3]) if acc[3] else ""
     
     import checker
     try:
-        # Check payment=True để giúp dọn acc dính lỗi Update Payment nếu có
         status, plan = checker.check_account_live(netflix_id, secure_netflix_id, check_payment=True)
         if status == "LIVE":
             if plan:
                 database.update_plan(assigned_email, plan)
-            return jsonify({"success": True, "message": f"Tài khoản vẫn đang LIVE bình thường! Gói cước: {plan or 'Không xác định'}."})
+            return jsonify({"success": True, "message": f"Account is LIVE normally! Plan: {plan or 'Unknown'}."})
         else:
             database.delete_account(assigned_email)
             rotated = database.rotate_access_key(code)
             if not rotated:
-                return jsonify({"success": False, "error": "Tài khoản cũ đã chết nhưng Hệ thống đã hết Cookie dự phòng!"}), 500
-            return jsonify({"success": True, "message": "Tài khoản bị lỗi và đã được TỰ ĐỘNG ĐỔI sang tài khoản mới. Bạn có thể bấm Lấy Link ngay!"})
+                return jsonify({"success": False, "error": "Old account died but System ran out of backup Cookies!"}), 500
+            return jsonify({"success": True, "message": "Account was faulty and has been AUTOMATICALLY CHANGED to a new account. You can click Login Now!"})
     except Exception as e:
-        return jsonify({"success": False, "error": f"Lỗi kiểm tra proxy. Vui lòng thử lại. Chi tiết: {e}"}), 500
+        return jsonify({"success": False, "error": f"Proxy check error. Please try again later. Details: {e}"}), 500
 
 @app.route("/api/generate_nftoken", methods=["POST"])
 def api_generate_nftoken():
@@ -963,7 +961,7 @@ def api_generate_nftoken():
         data = request.get_json(silent=True) or {}
         cookie_value = data.get("cookie", "").strip()
         if not cookie_value:
-            return register_fail("Vui lòng nhập Mã Truy Cập")
+            return register_fail("Please enter Access Code")
             
         database.init_db()
         
@@ -978,16 +976,16 @@ def api_generate_nftoken():
             assigned_email = acc_key_row[1]
             expire_at_str = acc_key_row[2] if len(acc_key_row) > 2 else None
             
-            # Kiểm tra thời hạn nếu có
+            # Check expiration
             if expire_at_str:
                 from datetime import datetime
                 try:
                     expire_date = datetime.strptime(expire_at_str, "%Y-%m-%d")
                     if datetime.now() > expire_date:
                         database.delete_access_key(code)
-                        return register_fail("Mã truy cập đã hết hạn và bị vô hiệu hóa!")
+                        return register_fail("Access code has expired and been disabled!")
                 except Exception as e:
-                    print(f"Lỗi parse ngày hết hạn: {e}")
+                    print(f"Expiration parse error: {e}")
             
             # Auto-rotation loop
             max_attempts = 5
@@ -997,7 +995,7 @@ def api_generate_nftoken():
                 if not acc:
                     rotated = database.rotate_access_key(code)
                     if not rotated:
-                        return jsonify({"success": False, "error": "Hệ thống đã hết Cookie dự phòng!"}), 500
+                        return jsonify({"success": False, "error": "System ran out of backup Cookies!"}), 500
                     assigned_email = database.get_access_key(code)[1]
                     continue
                     
@@ -1005,7 +1003,7 @@ def api_generate_nftoken():
                 secure_netflix_id = urllib.parse.unquote(acc[3]) if acc[3] else ""
                 
                 try:
-                    # BỎ QUA CHECK LIVE NGẦM - XUẤT LINK TRỰC TIẾP
+                    # BYPASS BACKGROUND LIVE CHECK - EXPORT LINK DIRECTLY
                     token = fetch_netflix_nftoken_api(netflix_id)
                     pc_link = f"https://www.netflix.com/login?nftoken={token}"
                     mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"
@@ -1018,19 +1016,19 @@ def api_generate_nftoken():
                         "tv_link": tv_link
                     })
                 except ProxyError as e:
-                    print(f"Lỗi Proxy ({e}), thử lại...")
+                    print(f"Proxy error ({e}), retrying...")
                     continue
                 except Exception as e:
-                    print(f"Cookie {assigned_email} DIE, attempting rotation... (Lỗi: {e})")
+                    print(f"Cookie {assigned_email} DIE, attempting rotation... (Error: {e})")
                     database.delete_account(assigned_email)
                     rotated = database.rotate_access_key(code)
                     if not rotated:
-                        return jsonify({"success": False, "error": "Cookie hỏng và hệ thống đã hết Cookie dự phòng!"}), 500
+                        return jsonify({"success": False, "error": "Cookie is broken and system ran out of backup Cookies!"}), 500
                     assigned_email = database.get_access_key(code)[1]
                     
-            return jsonify({"success": False, "error": "Quá tải máy chủ hoặc toàn bộ Proxy chết. Vui lòng thử lại sau."}), 500
+            return jsonify({"success": False, "error": "Server overloaded or all proxies died. Please try again later."}), 500
 
-        # Nếu không phải acc key và có độ dài <= 20 ký tự (không phải token Netflix)
+        # If not an access key and length <= 20
         if len(cookie_value) <= 20 and not cookie_value.startswith("B"):
             return register_fail("Mã truy cập không hợp lệ hoặc không tồn tại.")
 
