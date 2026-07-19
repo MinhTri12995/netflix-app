@@ -925,6 +925,18 @@ def api_check_live_code():
         
     code = acc_key_row[0]
     assigned_email = acc_key_row[1]
+    expire_at_str = acc_key_row[2] if len(acc_key_row) > 2 else None
+    
+    # Check expiration
+    if expire_at_str:
+        from datetime import datetime
+        try:
+            expire_date = datetime.strptime(expire_at_str, "%Y-%m-%d")
+            if datetime.now() > expire_date:
+                database.delete_access_key(code)
+                return jsonify({"success": False, "error": "Access code has expired and been disabled!"}), 400
+        except Exception as e:
+            print(f"Expiration parse error: {e}")
     
     acc = database.get_account_by_email(assigned_email)
     if not acc:
