@@ -953,9 +953,16 @@ def api_check_live_code():
     try:
         status, plan = checker.check_account_live(netflix_id, secure_netflix_id, check_payment=True)
         if status == "LIVE":
-            if plan:
+            if plan and plan != "VALID":
                 database.update_plan(assigned_email, plan)
-            return jsonify({"success": True, "message": f"Account is LIVE normally! Plan: {plan or 'Unknown'}."})
+                return jsonify({"success": True, "message": f"Account is LIVE normally! Plan: {plan}."})
+            else:
+                # Plan Unknown = acc bị lỗi payment ẩn -> tự động đổi acc mới
+                database.delete_account(assigned_email)
+                rotated = database.rotate_access_key(code)
+                if not rotated:
+                    return jsonify({"success": False, "error": "Account has issues (Unknown Plan) but System ran out of backup Cookies!"}), 500
+                return jsonify({"success": True, "message": "Account was faulty (Unknown Plan/Payment Issue) and has been AUTOMATICALLY CHANGED to a new account. You can click Login Now!"})
         else:
             # DIE hoặc ERROR -> xóa acc cũ và đổi acc mới
             database.delete_account(assigned_email)
