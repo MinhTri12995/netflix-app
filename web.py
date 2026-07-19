@@ -153,7 +153,6 @@ PUBLIC_TEMPLATE = r"""
             if (rawInput) {
                 btn.disabled = true;
                 checkBtn.disabled = true;
-                document.getElementById("forceRotateBtn").style.display = "none";
                 btn.innerHTML = "⏳ Connecting...";
                 pcLink.innerText = "⏳ Generating link...";
                 mobileLink.innerText = "⏳ Generating link...";
@@ -220,7 +219,6 @@ PUBLIC_TEMPLATE = r"""
             
             btn.disabled = true;
             loginBtn.disabled = true;
-            document.getElementById("forceRotateBtn").style.display = "none";
             btn.innerHTML = "⏳ Checking via Proxy...";
             statusText.innerText = "Connecting to Netflix to check account status...";
             statusText.style.color = "#f39c12";
@@ -254,6 +252,8 @@ PUBLIC_TEMPLATE = r"""
                 loginBtn.disabled = false;
                 btn.innerHTML = "🔄 CHECK & FIX ACCOUNT IF DEAD";
                 statusText.innerText = "Connection to server failed!";
+                statusText.style.color = "#e74c3c";
+            });
         }
     </script>
 </head>
