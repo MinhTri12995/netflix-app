@@ -932,6 +932,7 @@ def api_check_live_code():
         from datetime import datetime
         try:
             expire_date = datetime.strptime(expire_at_str, "%Y-%m-%d")
+            expire_date = expire_date.replace(hour=23, minute=59, second=59)
             if datetime.now() > expire_date:
                 database.delete_access_key(code)
                 return jsonify({"success": False, "error": "Access code has expired and been disabled!"}), 400
@@ -993,6 +994,7 @@ def api_generate_nftoken():
                 from datetime import datetime
                 try:
                     expire_date = datetime.strptime(expire_at_str, "%Y-%m-%d")
+                    expire_date = expire_date.replace(hour=23, minute=59, second=59)
                     if datetime.now() > expire_date:
                         database.delete_access_key(code)
                         return register_fail("Access code has expired and been disabled!")
