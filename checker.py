@@ -67,6 +67,25 @@ def check_account_live(netflix_id, secure_netflix_id="", check_payment=False):
             
             error_classes = ['payment-warning', 'account-restricted', 'update-payment-container']
             
+            internal_flags = [
+                '"membershipstatus":"on_hold"', 
+                '"membershipstatus":"canceled"', 
+                '"membershipstatus":"former_member"',
+                '"membershipstatus":"never_member"',
+                '"isonhold":true',
+                '"isnonmember":true',
+                'account-status-on-hold',
+                'member_home_restart',
+                'restart_membership',
+                'update_payment_method',
+                '"status":"canceled"',
+                '"status":"on_hold"'
+            ]
+            
+            for flag in internal_flags:
+                if flag in html_text:
+                    return "DIE", None
+                    
             for kw in on_hold_kws:
                 if kw in html_text:
                     return "DIE", None
