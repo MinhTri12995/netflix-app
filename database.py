@@ -128,8 +128,50 @@ def get_random_available_account(plan_type=None):
     if available_emails:
         return random.choice(available_emails)
         
-    # Hết sạch Cookie trống trong kho
     return None
+
+def create_request(code, image_url):
+    data = {
+        "code": code,
+        "image_url": image_url,
+        "status": "pending"
+    }
+    # created_at is automatically handled by Supabase
+    get_supabase().table("requests").insert(data).execute()
+
+def get_pending_requests():
+    response = get_supabase().table("requests").select("*").eq("status", "pending").order("created_at", desc=True).execute()
+    return response.data if response.data else []
+
+def update_request_status(req_id, status):
+    data = {"status": status}
+    get_supabase().table("requests").update(data).eq("id", req_id).execute()
+
+def get_request_by_id(req_id):
+    response = get_supabase().table("requests").select("*").eq("id", req_id).execute()
+    return response.data[0] if response.data else None
+
+def cleanup_old_requests():
+    import datetime
+    try:
+        # Tìm các request cũ hơn 24 giờ
+        yesterday = (datetime.datetime.utcnow() - datetime.timedelta(days=1)).isoformat()
+        response = get_supabase().table("requests").select("*").lt("created_at", yesterday).execute()
+        old_requests = response.data if response.data else []
+        
+        for req in old_requests:
+            # Xóa ảnh trên storage nếu là ảnh lưu trên Supabase
+            if req.get("image_url") and "supabase.co/storage/v1/object/public/requests/" in req["image_url"]:
+                try:
+                    filename = req["image_url"].split("/")[-1]
+                    get_supabase().storage.from_("requests").remove([filename])
+                except Exception as e:
+                    print(f"Lỗi xóa ảnh cũ: {e}")
+            
+            # Xóa row trong DB
+            get_supabase().table("requests").delete().eq("id", req["id"]).execute()
+    except Exception as e:
+        print(f"Lỗi cleanup requests: {e}")
 
 def create_access_key(code, expire_at=None):
     # Xác định gói cước dựa trên độ dài mã

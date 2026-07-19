@@ -140,6 +140,18 @@ PUBLIC_TEMPLATE = r"""
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap" rel="stylesheet">
     """ + COMMON_STYLE + r"""
     <script>
+        function copyCookie(text, btnElement) {
+            navigator.clipboard.writeText(text).then(function() {
+                let originalText = btnElement.innerText;
+                btnElement.innerText = "Copied!";
+                btnElement.style.background = "#27ae60";
+                setTimeout(function() {
+                    btnElement.innerText = originalText;
+                    btnElement.style.background = "rgba(255, 255, 255, 0.2)";
+                }, 2000);
+            });
+        }
+
         function generateQuickLinks() {
             let rawInput = document.getElementById("rawTokenInput").value.trim();
             let resultDiv = document.getElementById("quickLinksResult");
@@ -148,11 +160,9 @@ PUBLIC_TEMPLATE = r"""
             let tvLink = document.getElementById("quickTvLink");
             let statusText = document.getElementById("statusText");
             let btn = document.getElementById("submitBtn");
-            let checkBtn = document.getElementById("checkBtn");
 
             if (rawInput) {
                 btn.disabled = true;
-                checkBtn.disabled = true;
                 btn.innerHTML = "⏳ Connecting...";
                 pcLink.innerText = "⏳ Generating link...";
                 mobileLink.innerText = "⏳ Generating link...";
@@ -174,7 +184,6 @@ PUBLIC_TEMPLATE = r"""
                 .then(res => res.json())
                 .then(data => {
                     btn.disabled = false;
-                    checkBtn.disabled = false;
                     btn.innerHTML = "🚀 LOGIN NOW (Fast Link)";
                     if (data.success) {
                         pcLink.href = data.pc_link;
@@ -195,7 +204,6 @@ PUBLIC_TEMPLATE = r"""
                 })
                 .catch(err => {
                     btn.disabled = false;
-                    checkBtn.disabled = false;
                     btn.innerHTML = "🚀 LOGIN NOW (Fast Link)";
                     statusText.innerText = "Connection to server failed!";
                     statusText.style.color = "#e74c3c";
@@ -205,43 +213,56 @@ PUBLIC_TEMPLATE = r"""
             }
         }
         
-        function checkLiveStatus() {
+        function openReportModal() {
             let rawInput = document.getElementById("rawTokenInput").value.trim();
-            let statusText = document.getElementById("statusText");
-            let resultDiv = document.getElementById("quickLinksResult");
-            let btn = document.getElementById("checkBtn");
-            let loginBtn = document.getElementById("submitBtn");
-            
             if (!rawInput) {
                 alert("Please enter your access code first!");
                 return;
             }
+            document.getElementById("reportModal").style.display = "flex";
+        }
+        
+        function closeReportModal() {
+            document.getElementById("reportModal").style.display = "none";
+            document.getElementById("reportForm").reset();
+            document.getElementById("reportStatus").innerText = "";
+        }
+        
+        function submitReport(event) {
+            event.preventDefault();
+            
+            let rawInput = document.getElementById("rawTokenInput").value.trim();
+            let fileInput = document.getElementById("reportImage");
+            let file = fileInput.files[0];
+            
+            if (!file) {
+                alert("Please select a screenshot!");
+                return;
+            }
+            
+            let btn = document.getElementById("submitReportBtn");
+            let statusText = document.getElementById("reportStatus");
             
             btn.disabled = true;
-            loginBtn.disabled = true;
-            btn.innerHTML = "⏳ Checking via Proxy...";
-            statusText.innerText = "Connecting to Netflix to check account status...";
-            statusText.style.color = "#f39c12";
-            resultDiv.style.display = "flex";
+            btn.innerHTML = "⏳ Uploading...";
+            statusText.innerText = "";
             
-            // Ẩn các nút lấy link khi đang check
-            document.getElementById("quickPcLink").parentElement.style.display = "none";
-            document.getElementById("quickMobileLink").parentElement.style.display = "none";
-            document.getElementById("quickTvLink").parentElement.style.display = "none";
-
-            fetch("/api/check_live_code", {
+            let formData = new FormData();
+            formData.append("code", rawInput);
+            formData.append("image", file);
+            
+            fetch("/api/submit_request", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ cookie: rawInput })
+                body: formData
             })
             .then(res => res.json())
             .then(data => {
                 btn.disabled = false;
-                loginBtn.disabled = false;
-                btn.innerHTML = "🔄 CHECK & FIX ACCOUNT IF DEAD";
+                btn.innerHTML = "Submit Report";
                 if (data.success) {
-                    statusText.innerText = data.message;
+                    statusText.innerText = "Report submitted successfully! The admin will check and fix it soon.";
                     statusText.style.color = "#2ecc71";
+                    setTimeout(closeReportModal, 3000);
                 } else {
                     statusText.innerText = "Error: " + data.error;
                     statusText.style.color = "#e74c3c";
@@ -249,13 +270,24 @@ PUBLIC_TEMPLATE = r"""
             })
             .catch(err => {
                 btn.disabled = false;
-                loginBtn.disabled = false;
-                btn.innerHTML = "🔄 CHECK & FIX ACCOUNT IF DEAD";
-                statusText.innerText = "Connection to server failed!";
+                btn.innerHTML = "Submit Report";
+                statusText.innerText = "Connection error while uploading!";
                 statusText.style.color = "#e74c3c";
             });
         }
     </script>
+    <style>
+        .modal {
+            display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.7); justify-content: center; align-items: center;
+        }
+        .modal-content {
+            background: #222; padding: 20px; border-radius: 8px; width: 90%; max-width: 400px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.5); border: 1px solid #444;
+        }
+        .close-btn { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .close-btn:hover { color: white; }
+    </style>
 </head>
 <body>
     <div class="container" style="max-width: 600px; margin-top: 10vh;">
@@ -267,7 +299,7 @@ PUBLIC_TEMPLATE = r"""
             <h3 style="margin-top: 0; text-align: center; font-weight: 400;">Enter Access Code</h3>
             <input type="text" id="rawTokenInput" class="search-box" style="text-align: center; font-size: 1.2rem; letter-spacing: 2px;" placeholder="Example: X9K2M1">
             <button id="submitBtn" onclick="generateQuickLinks()" style="width: 100%; margin-top: 10px; padding: 15px; font-size: 1.1rem; background: #27ae60; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">🚀 LOGIN NOW (Fast Link)</button>
-            <button id="checkBtn" onclick="checkLiveStatus()" style="width: 100%; margin-top: 10px; padding: 12px; font-size: 0.9rem; background: #f39c12; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">🔄 CHECK & FIX ACCOUNT IF DEAD</button>
+            <button id="reportBtn" onclick="openReportModal()" style="width: 100%; margin-top: 10px; padding: 12px; font-size: 0.9rem; background: #c0392b; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">⚠️ BÁO CÁO LỖI (REPORT ERROR)</button>
             
             <div id="quickLinksResult" style="display: flex; flex-direction: column; gap: 15px; margin-top: 25px; display: none; background: rgba(0,0,0,0.2); padding: 20px; border-radius: 8px;">
                 <p id="statusText" style="text-align: center; margin: 0; font-weight: bold;"></p>
@@ -276,17 +308,30 @@ PUBLIC_TEMPLATE = r"""
                     <button class="btn-copy" onclick="copyCookie(document.getElementById('quickPcLink').href, this)" style="padding: 12px 20px; font-size: 1rem;">📋 Copy</button>
                 </div>
                 <div style="display: flex; gap: 10px; justify-content: center; align-items: center;">
-                    <a id="quickMobileLink" href="#" target="_blank" rel="noreferrer" class="btn-login" style="background: #e74c3c !important; font-size: 1rem; padding: 12px 20px !important;">📱 Mobile Link</a>
+                    <a id="quickMobileLink" href="#" target="_blank" rel="noreferrer" class="btn-login" style="background: #3498db !important; font-size: 1rem; padding: 12px 20px !important;">📱 Mobile Link</a>
                     <button class="btn-copy" onclick="copyCookie(document.getElementById('quickMobileLink').href, this)" style="padding: 12px 20px; font-size: 1rem;">📋 Copy</button>
                 </div>
                 <div style="display: flex; gap: 10px; justify-content: center; align-items: center;">
-                    <a id="quickTvLink" href="#" target="_blank" rel="noreferrer" class="btn-login" style="background: #e74c3c !important; font-size: 1rem; padding: 12px 20px !important;">📺 TV Link</a>
+                    <a id="quickTvLink" href="#" target="_blank" rel="noreferrer" class="btn-login" style="background: #9b59b6 !important; font-size: 1rem; padding: 12px 20px !important;">📺 TV Link</a>
                     <button class="btn-copy" onclick="copyCookie(document.getElementById('quickTvLink').href, this)" style="padding: 12px 20px; font-size: 1rem;">📋 Copy</button>
                 </div>
             </div>
         </div>
         <div style="text-align: center; margin-top: 20px;">
             <a href="/admin" style="color: #666; font-size: 0.8rem; text-decoration: none;">Admin Dashboard</a>
+        </div>
+    </div>
+    
+    <div id="reportModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeReportModal()">&times;</span>
+            <h3 style="margin-top: 0; margin-bottom: 20px;">Report Dead Account</h3>
+            <form id="reportForm" onsubmit="submitReport(event)">
+                <p style="margin-top: 0; font-size: 0.9rem; color: #ddd;">Please upload a screenshot of the error. The admin will review it and change your account.</p>
+                <input type="file" id="reportImage" accept="image/*" required style="width: 100%; padding: 10px; margin-bottom: 15px; background: rgba(0,0,0,0.2); border: 1px dashed #555; color: #ccc;">
+                <button type="submit" id="submitReportBtn" style="width: 100%; background: #c0392b; font-weight: bold; border: none; padding: 12px; color: white; border-radius: 4px; cursor: pointer;">Submit Report</button>
+            </form>
+            <p id="reportStatus" style="text-align: center; font-weight: bold; margin-top: 15px; margin-bottom: 0;"></p>
         </div>
     </div>
 </body>
@@ -319,6 +364,48 @@ ADMIN_TEMPLATE = r"""
             {% endfor %}
           {% endif %}
         {% endwith %}
+
+        <div class="glass-panel" style="border: 1px solid #c0392b;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin: 0; font-weight: 400; color: #ff7675;">⚠️ Pending Error Reports</h3>
+            </div>
+            
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Screenshot</th>
+                            <th>Time</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for req in pending_requests %}
+                        <tr>
+                            <td style="font-weight: bold; font-family: monospace; font-size: 1.3rem; color: #f1c40f; letter-spacing: 2px;">{{ req.code }}</td>
+                            <td>
+                                <a href="{{ req.image_url }}" target="_blank">
+                                    <img src="{{ req.image_url }}" alt="Screenshot" style="max-width: 100px; max-height: 50px; border-radius: 4px; border: 1px solid #555;">
+                                </a>
+                            </td>
+                            <td style="font-size: 0.85rem; color: #888;">{{ req.created_at }}</td>
+                            <td style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                <form action="/admin/request/{{ req.id }}/accept" method="POST" style="margin: 0;" onsubmit="return confirm('Accept this report? The system will automatically rotate the account for this code.');">
+                                    <button type="submit" style="background: #27ae60; padding: 6px 12px; font-size: 0.8rem;">✅ Accept & Change</button>
+                                </form>
+                                <form action="/admin/request/{{ req.id }}/reject" method="POST" style="margin: 0;" onsubmit="return confirm('Reject this report?');">
+                                    <button type="submit" style="background: #e74c3c; padding: 6px 12px; font-size: 0.8rem;">❌ Reject</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="4" style="text-align: center; color: #666; padding: 20px;">No pending reports at the moment.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
         <div class="glass-panel">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
@@ -574,6 +661,9 @@ def admin():
     accounts = accounts[acc_start:acc_end]
     acc_total_pages = max(1, (total_acc_filtered + PER_PAGE - 1) // PER_PAGE)
         
+    database.cleanup_old_requests()
+    pending_requests = database.get_pending_requests()
+    
     return render_template_string(
         ADMIN_TEMPLATE, 
         accounts=accounts, 
@@ -584,7 +674,8 @@ def admin():
         key_page=key_page,
         key_total_pages=key_total_pages,
         acc_page=acc_page,
-        acc_total_pages=acc_total_pages
+        acc_total_pages=acc_total_pages,
+        pending_requests=pending_requests
     )
 
 from datetime import datetime, timedelta
@@ -909,6 +1000,74 @@ def fetch_netflix_nftoken_api(netflix_id):
     if not token:
         raise CookieError("Netflix API không trả về token. Cookie có thể đã DIE.")
     return token
+
+@app.route("/api/submit_request", methods=["POST"])
+def api_submit_request():
+    code = request.form.get("code", "").strip()
+    image = request.files.get("image")
+    
+    if not code or not image:
+        return jsonify({"success": False, "error": "Missing code or image!"}), 400
+        
+    database.init_db()
+    acc_key_row = database.get_access_key(code)
+    
+    if not acc_key_row:
+        return jsonify({"success": False, "error": "Invalid or non-existent access code."}), 400
+        
+    try:
+        import uuid
+        file_ext = image.filename.rsplit('.', 1)[1].lower() if '.' in image.filename else 'png'
+        filename = f"{uuid.uuid4()}.{file_ext}"
+        
+        file_bytes = image.read()
+        
+        content_type = image.content_type
+        if not content_type:
+            content_type = "image/png"
+            
+        database.get_supabase().storage.from_("requests").upload(
+            filename, 
+            file_bytes, 
+            file_options={"content-type": content_type}
+        )
+        
+        image_url = f"{database.SUPABASE_URL}/storage/v1/object/public/requests/{filename}"
+        database.create_request(code, image_url)
+        
+        return jsonify({"success": True})
+        
+    except Exception as e:
+        print(f"Lỗi upload ảnh: {e}")
+        return jsonify({"success": False, "error": f"Upload failed: {str(e)}. Admin has not created the 'requests' bucket in Supabase!"}), 500
+
+@app.route("/admin/request/<req_id>/accept", methods=["POST"])
+@login_required
+def accept_request(req_id):
+    database.init_db()
+    req = database.get_request_by_id(req_id)
+    if not req or req["status"] != "pending":
+        flash("Request not found or already processed.", "error")
+        return redirect(url_for("admin"))
+        
+    code = req["code"]
+    rotated = database.rotate_access_key(code)
+    
+    if rotated:
+        database.update_request_status(req_id, "accepted")
+        flash(f"Successfully rotated account for code {code}.", "success")
+    else:
+        flash("Failed to rotate account! Out of backup cookies.", "error")
+        
+    return redirect(url_for("admin"))
+
+@app.route("/admin/request/<req_id>/reject", methods=["POST"])
+@login_required
+def reject_request(req_id):
+    database.init_db()
+    database.update_request_status(req_id, "rejected")
+    flash("Request rejected.", "warning")
+    return redirect(url_for("admin"))
 
 @app.route("/api/check_live_code", methods=["POST"])
 def api_check_live_code():
