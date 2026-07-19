@@ -8,7 +8,13 @@ def check_account_live(netflix_id, secure_netflix_id="", check_payment=False):
     Trả về LIVE nếu sống, DIE nếu chết. 
     Nếu check_payment=True, sẽ báo DIE nếu dính lỗi Update Payment.
     """
-    url = "https://www.netflix.com/YourAccount"
+    if check_payment:
+        # Nếu muốn check lỗi thanh toán cực kỳ chính xác: Request vào trang xem phim /browse
+        # Nếu acc bị lỗi payment, Netflix sẽ tự động cấm xem và REDIRECT ép về trang /YourAccount
+        url = "https://www.netflix.com/browse"
+    else:
+        # Nếu chỉ lấy thông tin Gói cước, vào thẳng /YourAccount
+        url = "https://www.netflix.com/YourAccount"
     
     cookies = {
         "NetflixId": netflix_id
@@ -20,10 +26,9 @@ def check_account_live(netflix_id, secure_netflix_id="", check_payment=False):
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.9",
-        "Accept-Encoding": "gzip, deflate"  # Ép nén gzip để tiết kiệm cực độ dung lượng
+        "Accept-Encoding": "gzip, deflate"
     }
 
-    # Dùng Proxy để không bị lộ IP thật và bị Block
     proxy_dict = proxies_list.get_random_proxy()
 
     try:
@@ -33,73 +38,32 @@ def check_account_live(netflix_id, secure_netflix_id="", check_payment=False):
             cookies=cookies, 
             headers=headers, 
             proxies=proxy_dict,
-            allow_redirects=True, # Cho phép chuyển hướng để xem có bị đá ra trang đăng nhập không
+            allow_redirects=True, # QUAN TRỌNG: Bật theo dõi redirect
             timeout=15
         )
         
-        # Nếu bị ném ra trang login hoặc trang lỗi cookie (tức là cookie thực sự đã chết/bị logout)
         url_lower = response.url.lower()
+        
+        # Nếu cookie chết hẳn, Netflix sẽ đá văng ra trang login hoặc clear cookies
         if "netflix.com/login" in url_lower or "/clearcookies" in url_lower:
             return "DIE", None
             
-        html_text = response.text.lower()
-        
-        # Nếu yêu cầu check Update Payment (Lỗi thanh toán đa ngôn ngữ)
         if check_payment:
-            if "paymentupdate" in url_lower or "payment-update" in url_lower or "billing-update" in url_lower:
+            # Giải pháp TỐI THƯỢNG: Nếu request vào /browse mà lại bị Netflix bếch cổ ném về /YourAccount
+            # hoặc trang cập nhật thanh toán -> Chắc chắn 100% account đang bị Hold/Khóa mỏ cày!
+            if "youraccount" in url_lower or "paymentupdate" in url_lower or "payment-update" in url_lower or "billing-update" in url_lower:
                 return "DIE", None
-                
-            on_hold_kws = [
-                'on hold', 'payment issue', 'update your payment', 'please update your',
-                'tạm ngưng', 'lỗi thanh toán', 'cập nhật thanh toán',
-                'en pausa', 'actualice su pago', 'actualizar el pago',
-                'suspensa', 'atualize seu pagamento',
-                'en attente', 'mettre à jour le paiement',
-                'приостановлена', 'проблема с оплатой',
-                'askıya', 'ödeme sorunu', 'ödeme yönteminizi',
-                'ditangguhkan', 'perbarui pembayaran',
-                'معلق', 'تحديث الدفع',
-                'ausgesetzt', 'zahlungsinformationen',
-                '保留中', 'お支払い方法',
-                '보류', '결제 수단',
-                '已暂停', '更新付款方式'
-            ]
             
-            error_classes = ['payment-warning', 'account-restricted', 'update-payment-container']
-            
-            internal_flags = [
-                '"membershipstatus":"on_hold"', 
-                '"membershipstatus":"canceled"', 
-                '"membershipstatus":"former_member"',
-                '"membershipstatus":"never_member"',
-                '"isonhold":true',
-                '"isnonmember":true',
-                'account-status-on-hold',
-                'member_home_restart',
-                'restart_membership',
-                'update_payment_method',
-                '"status":"canceled"',
-                '"status":"on_hold"'
-            ]
-            
-            for flag in internal_flags:
-                if flag in html_text:
-                    return "DIE", None
-                    
-            for kw in on_hold_kws:
-                if kw in html_text:
-                    return "DIE", None
-            for cls in error_classes:
-                if cls in html_text:
-                    return "DIE", None
+            # Nếu vẫn trụ lại được ở trang /browse hoặc /ManageProfiles -> Account đang LIVE và SẠCH
+            # Vì không vào trang YourAccount nên không bóc được tên gói cước, ta trả về None cho plan
+            return "LIVE", None
         
-        # Nếu trang Account load thành công -> LIVE
+        # Nếu KHÔNG check_payment (chỉ lấy gói cước), ta đang ở trang /YourAccount
         if response.status_code == 200:
+            html_text = response.text.lower()
             import re
-            plan = "Standard" # Mặc định để tránh phát nhầm Premium
+            plan = "Standard" 
             
-            # Kỹ thuật Proximity Regex: Tìm từ khóa gói cước nằm trong bán kính 50 ký tự sau các neo kỹ thuật
-            # Hỗ trợ nhận diện "Premium" từ tất cả các ngôn ngữ phổ biến trên thế giới
             premium_kws = ['premium', 'ultra', 'премиум', 'özel', 'ozel', 'cao cấp', 'พรีเมียม', 'مميز', '高級', '高级', 'プレミアム', '프리미엄']
             standard_kws = ['standard', 'tiêu chuẩn', 'стандартный', 'standart', '標準', '标准', 'estándar', 'padrão', 'มาตรฐาน', 'قياسي', 'スタンダード', '스탠다드']
             basic_kws = ['basic', 'cơ bản', 'базовый', 'temel', 'básico', 'พื้นฐาน', 'أساسي', '基本', 'ベーシック', '베이직']
