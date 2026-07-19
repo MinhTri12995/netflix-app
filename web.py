@@ -955,20 +955,9 @@ def api_check_live_code():
         if status == "LIVE":
             if plan:
                 database.update_plan(assigned_email, plan)
-            else:
-                plan = acc[5]
-            
-            is_unknown = not plan or str(plan).lower() == "unknown" or str(plan).strip() == ""
-            
-            if is_unknown:
-                database.delete_account(assigned_email)
-                rotated = database.rotate_access_key(code)
-                if not rotated:
-                    return jsonify({"success": False, "error": "System ran out of backup Cookies!"}), 500
-                return jsonify({"success": True, "message": "Account was faulty (Unknown Plan) and has been AUTOMATICALLY CHANGED to a new account. Please click Login Now!"})
-
-            return jsonify({"success": True, "message": f"Account is LIVE normally! Plan: {plan}."})
+            return jsonify({"success": True, "message": f"Account is LIVE normally! Plan: {plan or 'Unknown'}."})
         else:
+            # DIE hoặc ERROR -> xóa acc cũ và đổi acc mới
             database.delete_account(assigned_email)
             rotated = database.rotate_access_key(code)
             if not rotated:
