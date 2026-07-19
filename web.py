@@ -244,9 +244,6 @@ PUBLIC_TEMPLATE = r"""
                 if (data.success) {
                     statusText.innerText = data.message;
                     statusText.style.color = "#2ecc71";
-                    if (data.is_unknown) {
-                        document.getElementById("forceRotateBtn").style.display = "block";
-                    }
                 } else {
                     statusText.innerText = "Error: " + data.error;
                     statusText.style.color = "#e74c3c";
@@ -257,45 +254,6 @@ PUBLIC_TEMPLATE = r"""
                 loginBtn.disabled = false;
                 btn.innerHTML = "🔄 CHECK & FIX ACCOUNT IF DEAD";
                 statusText.innerText = "Connection to server failed!";
-                statusText.style.color = "#e74c3c";
-            });
-        }
-
-        function forceRotate() {
-            let rawInput = document.getElementById("rawTokenInput").value.trim();
-            if (!rawInput) return;
-            
-            let btn = document.getElementById("forceRotateBtn");
-            let statusText = document.getElementById("statusText");
-            
-            btn.disabled = true;
-            btn.innerHTML = "⏳ Changing...";
-            
-            fetch("/api/force_rotate_code", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ cookie: rawInput })
-            })
-            .then(res => res.json())
-            .then(data => {
-                btn.style.display = "none";
-                btn.disabled = false;
-                btn.innerHTML = "🔄 Change Account (Unknown)";
-                
-                if (data.success) {
-                    statusText.innerText = data.message;
-                    statusText.style.color = "#2ecc71";
-                } else {
-                    statusText.innerText = "Error: " + data.error;
-                    statusText.style.color = "#e74c3c";
-                }
-            })
-            .catch(err => {
-                btn.disabled = false;
-                btn.innerHTML = "🔄 Change Account (Unknown)";
-                statusText.innerText = "Connection error!";
-                statusText.style.color = "#e74c3c";
-            });
         }
     </script>
 </head>
@@ -313,7 +271,6 @@ PUBLIC_TEMPLATE = r"""
             
             <div id="quickLinksResult" style="display: flex; flex-direction: column; gap: 15px; margin-top: 25px; display: none; background: rgba(0,0,0,0.2); padding: 20px; border-radius: 8px;">
                 <p id="statusText" style="text-align: center; margin: 0; font-weight: bold;"></p>
-                <button id="forceRotateBtn" onclick="forceRotate()" style="display: none; margin: 0 auto; padding: 8px 15px; font-size: 0.9rem; background: #c0392b; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; width: fit-content;">🔄 Change Account (Unknown)</button>
                 <div style="display: flex; gap: 10px; justify-content: center; align-items: center;">
                     <a id="quickPcLink" href="#" target="_blank" rel="noreferrer" class="btn-login" style="background: #e74c3c !important; font-size: 1rem; padding: 12px 20px !important;">💻 PC Link</a>
                     <button class="btn-copy" onclick="copyCookie(document.getElementById('quickPcLink').href, this)" style="padding: 12px 20px; font-size: 1rem;">📋 Copy</button>
@@ -1001,12 +958,16 @@ def api_check_live_code():
             else:
                 plan = acc[5]
             
-            is_unknown = not plan
-            return jsonify({
-                "success": True, 
-                "message": f"Account is LIVE normally! Plan: {plan or 'Unknown'}.",
-                "is_unknown": is_unknown
-            })
+            is_unknown = not plan or str(plan).lower() == "unknown" or str(plan).strip() == ""
+            
+            if is_unknown:
+                database.delete_account(assigned_email)
+                rotated = database.rotate_access_key(code)
+                if not rotated:
+                    return jsonify({"success": False, "error": "System ran out of backup Cookies!"}), 500
+                return jsonify({"success": True, "message": "Account was faulty (Unknown Plan) and has been AUTOMATICALLY CHANGED to a new account. Please click Login Now!"})
+
+            return jsonify({"success": True, "message": f"Account is LIVE normally! Plan: {plan}."})
         else:
             database.delete_account(assigned_email)
             rotated = database.rotate_access_key(code)
