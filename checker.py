@@ -1,119 +1,248 @@
 import requests
 import time
 import re
+import json
 import proxies_list
+
+# Netflix iOS API - dùng chung config với web.py
+NETFLIX_API_URL = "https://ios.prod.ftl.netflix.com/iosui/user/15.48"
 
 def check_account_live(netflix_id, secure_netflix_id="", check_payment=False):
     """
-    Kiểm tra cookie Netflix có còn sống không.
-    Luôn vào /YourAccount để vừa check payment vừa lấy gói cước trong 1 request duy nhất.
+    Kiểm tra cookie Netflix bằng chính Netflix iOS API (không parse HTML).
     
-    Logic:
-    - Redirect đến login/clearcookies -> DIE (cookie chết)
-    - Redirect đến paymentupdate/billing -> DIE (lỗi thanh toán)
-    - Trang load OK nhưng KHÔNG tìm được gói cước -> DIE (acc bị lỗi payment ẩn)
-    - Trang load OK VÀ tìm được gói cước -> LIVE
+    Cách hoạt động:
+    - Request API với path ["account","membershipStatus"] để lấy trạng thái membership
+    - Request API với path ["account","token","default"] để lấy token + kiểm tra acc sống
+    - Nếu membershipStatus chứa dấu hiệu lỗi payment -> DIE
+    - Nếu token không có -> DIE
+    - Nếu tất cả OK -> LIVE
     """
-    url = "https://www.netflix.com/YourAccount"
     
     cookies = {
         "NetflixId": netflix_id
     }
     if secure_netflix_id:
         cookies["SecureNetflixId"] = secure_netflix_id
-        
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Accept-Encoding": "gzip, deflate"
-    }
-
+    
     proxy_dict = proxies_list.get_random_proxy()
-
+    
+    # ===== BƯỚC 1: Check trạng thái membership qua API =====
+    if check_payment:
+        try:
+            status_result = _check_membership_status(netflix_id, proxy_dict)
+            if status_result == "DIE":
+                return "DIE", None
+        except Exception as e:
+            print(f"Membership status check error: {e}")
+            # Nếu API lỗi, fallback sang bước 2
+    
+    # ===== BƯỚC 2: Check acc sống bằng cách lấy token =====
     try:
-        time.sleep(1)
+        time.sleep(0.5)
+        plan = _check_token_and_plan(netflix_id, proxy_dict)
+        if plan is None and check_payment:
+            # Không lấy được token -> acc chết hoặc bị lỗi
+            return "DIE", None
+        elif plan is None:
+            return "DIE", None
+        elif plan == "ERROR":
+            return "ERROR", None
+        else:
+            return "LIVE", plan if plan != "VALID" else None
+    except Exception as e:
+        print(f"Token check error: {e}")
+        return "ERROR", None
+
+
+def _check_membership_status(netflix_id, proxy_dict):
+    """
+    Gọi Netflix iOS API để kiểm tra trạng thái membership.
+    Trả về "DIE" nếu acc bị lỗi, "LIVE" nếu OK, "UNKNOWN" nếu không xác định.
+    """
+    params = {
+        "appVersion": "15.48.1",
+        "config": '{"gamesInTrailersEnabled":"false"}',
+        "device_type": "NFAPPL-02-",
+        "esn": "NFAPPL-02-IPHONE8%3D1-PXA-02026U9VV5O8AUKEAEO8PUJETCGDD4PQRI9DEB3MDLEMD0EACM4CS78LMD334MN3MQ3NMJ8SU9O9MVGS6BJCURM1PH1MUTGDPF4S4200",
+        "idiom": "phone",
+        "iosVersion": "15.8.5",
+        "isTablet": "false",
+        "languages": "en-US",
+        "locale": "en-US",
+        "maxDeviceWidth": "375",
+        "model": "saget",
+        "modelType": "IPHONE8-1",
+        "odpAware": "true",
+        "path": '["account","membershipStatus"]',
+        "pathFormat": "graph",
+        "pixelDensity": "2.0",
+        "progressive": "false",
+        "responseFormat": "json",
+    }
+    
+    headers = {
+        "User-Agent": "Argo/15.48.1 (iPhone; iOS 15.8.5; Scale/2.00)",
+        "Cookie": f"NetflixId={netflix_id}",
+        "x-netflix.request.attempt": "1",
+        "x-netflix.context.app-version": "15.48.1",
+        "x-netflix.context.locales": "en-US",
+        "accept-language": "en-US;q=1",
+    }
+    
+    try:
         response = requests.get(
-            url, 
-            cookies=cookies, 
-            headers=headers, 
-            proxies=proxy_dict,
-            allow_redirects=True,
-            timeout=15
+            NETFLIX_API_URL, 
+            params=params, 
+            headers=headers,
+            proxies=proxy_dict, 
+            timeout=15, 
+            verify=False
         )
         
-        url_lower = response.url.lower()
+        if response.status_code in [403, 429]:
+            return "UNKNOWN"
         
-        # 1. Cookie chết hẳn -> bị đá ra trang login
-        if "netflix.com/login" in url_lower or "/clearcookies" in url_lower:
-            return "DIE", None
+        if not response.ok:
+            return "UNKNOWN"
         
-        # 2. Bị redirect đến trang cập nhật thanh toán -> chắc chắn lỗi payment
-        if "paymentupdate" in url_lower or "payment-update" in url_lower or "billing-update" in url_lower:
-            return "DIE", None
-            
-        # 3. Trang load thành công -> phân tích HTML
-        if response.status_code == 200:
-            html_text = response.text.lower()
-            
-            # Bóc tách gói cước bằng Proximity Regex đa ngôn ngữ
-            plan = detect_plan(html_text)
-            
-            if check_payment:
-                # Nếu KHÔNG tìm được gói cước nào trên trang Account
-                # -> Trang đang hiển thị lỗi payment thay vì thông tin tài khoản bình thường
-                if not plan:
-                    return "DIE", None
-            
-            return "LIVE", plan
-            
-        return "ERROR", None
-            
+        data = response.json()
+        data_str = json.dumps(data).lower()
+        
+        # Tìm dấu hiệu lỗi payment/hold trong response
+        die_indicators = [
+            '"on_hold"', '"canceled"', '"former_member"', '"never_member"',
+            '"cancelled"', '"delinquent"', '"pending_cancellation"',
+            'payment', 'billing', 'restart', 'suspended',
+            '"status":"hold"', '"status":"inactive"'
+        ]
+        
+        for indicator in die_indicators:
+            if indicator in data_str:
+                print(f"Payment issue detected: found '{indicator}' in API response")
+                return "DIE"
+        
+        return "LIVE"
+        
     except Exception as e:
-        print(f"Lỗi khi kiểm tra cookie: {e}")
-        return "ERROR", None
+        print(f"Membership API error: {e}")
+        return "UNKNOWN"
 
 
-def detect_plan(html_text):
+def _check_token_and_plan(netflix_id, proxy_dict):
     """
-    Phát hiện gói cước Netflix từ HTML của trang /YourAccount.
-    Trả về tên gói cước nếu tìm thấy, None nếu không.
+    Gọi Netflix iOS API để lấy token.
+    Trả về tên gói cước nếu thành công, None nếu acc chết, "ERROR" nếu lỗi mạng.
     """
-    premium_kws = ['premium', 'ultra', 'премиум', 'özel', 'ozel', 'cao cấp', 'พรีเมียม', 'مميز', '高級', '高级', 'プレミアム', '프리미엄']
-    standard_kws = ['standard', 'tiêu chuẩn', 'стандартный', 'standart', '標準', '标准', 'estándar', 'padrão', 'มาตรฐาน', 'قياسي', 'スタンダード', '스탠다드']
-    basic_kws = ['basic', 'cơ bản', 'базовый', 'temel', 'básico', 'พื้นฐาน', 'أساسي', '基本', 'ベーシック', '베이직']
-    ads_kws = ['ads', 'adverts', 'anuncios', 'pub', 'werbung', 'pubblicità', 'quảng cáo', 'โฆษณา', '広告', '광고', '廣告', '广告', 'рекламо', 'reklam', 'reklamy']
+    params = {
+        "appVersion": "15.48.1",
+        "config": '{"gamesInTrailersEnabled":"false","isTrailersEvidenceEnabled":"false","cdsMyListSortEnabled":"true","kidsBillboardEnabled":"true","addHorizontalBoxArtToVideoSummariesEnabled":"false","skOverlayTestEnabled":"false","homeFeedTestTVMovieListsEnabled":"false","baselineOnIpadEnabled":"true","trailersVideoIdLoggingFixEnabled":"true","postPlayPreviewsEnabled":"false","bypassContextualAssetsEnabled":"false","roarEnabled":"false","useSeason1AltLabelEnabled":"false","disableCDSSearchPaginationSectionKinds":["searchVideoCarousel"],"cdsSearchHorizontalPaginationEnabled":"true","searchPreQueryGamesEnabled":"true","kidsMyListEnabled":"true","billboardEnabled":"true","useCDSGalleryEnabled":"true","contentWarningEnabled":"true","videosInPopularGamesEnabled":"true","avifFormatEnabled":"false","sharksEnabled":"true"}',
+        "device_type": "NFAPPL-02-",
+        "esn": "NFAPPL-02-IPHONE8%3D1-PXA-02026U9VV5O8AUKEAEO8PUJETCGDD4PQRI9DEB3MDLEMD0EACM4CS78LMD334MN3MQ3NMJ8SU9O9MVGS6BJCURM1PH1MUTGDPF4S4200",
+        "idiom": "phone",
+        "iosVersion": "15.8.5",
+        "isTablet": "false",
+        "languages": "en-US",
+        "locale": "en-US",
+        "maxDeviceWidth": "375",
+        "model": "saget",
+        "modelType": "IPHONE8-1",
+        "odpAware": "true",
+        "path": '["account","token","default"]',
+        "pathFormat": "graph",
+        "pixelDensity": "2.0",
+        "progressive": "false",
+        "responseFormat": "json",
+    }
     
-    # Patterns tìm vùng chứa thông tin gói cước trên trang Account
-    patterns = [
-        r'plan-label(.{0,60})',
-        r'planname(.{0,60})',
-        r'plan_tier(.{0,60})',
-        r'currentplan(.{0,60})'
-    ]
+    headers = {
+        "User-Agent": "Argo/15.48.1 (iPhone; iOS 15.8.5; Scale/2.00)",
+        "Cookie": f"NetflixId={netflix_id}",
+        "x-netflix.request.attempt": "1",
+        "x-netflix.request.client.user.guid": "A4CS633D7VCBPE2GPK2HL4EKOE",
+        "x-netflix.context.profile-guid": "A4CS633D7VCBPE2GPK2HL4EKOE",
+        "x-netflix.request.routing": '{"path":"/nq/mobile/nqios/~15.48.0/user","control_tag":"iosui_argo"}',
+        "x-netflix.context.app-version": "15.48.1",
+        "x-netflix.argo.translated": "true",
+        "x-netflix.context.form-factor": "phone",
+        "x-netflix.context.sdk-version": "2012.4",
+        "x-netflix.client.appversion": "15.48.1",
+        "x-netflix.context.max-device-width": "375",
+        "x-netflix.tracing.cl.useractionid": "4DC655F2-9C3C-4343-8229-CA1B003C3053",
+        "x-netflix.client.type": "argo",
+        "x-netflix.client.ftl.esn": "NFAPPL-02-IPHONE8=1-PXA-02026U9VV5O8AUKEAEO8PUJETCGDD4PQRI9DEB3MDLEMD0EACM4CS78LMD334MN3MQ3NMJ8SU9O9MVGS6BJCURM1PH1MUTGDPF4S4200",
+        "x-netflix.context.locales": "en-US",
+        "x-netflix.context.top-level-uuid": "90AFE39F-ADF1-4D8A-B33E-528730990FE3",
+        "x-netflix.client.iosversion": "15.8.5",
+        "accept-language": "en-US;q=1",
+        "x-netflix.context.os-version": "15.8.5",
+        "x-netflix.request.client.context": '{"appState":"foreground"}',
+        "x-netflix.context.ui-flavor": "argo",
+        "x-netflix.argo.nfnsm": "9",
+        "x-netflix.context.pixel-density": "2.0",
+        "x-netflix.request.toplevel.uuid": "90AFE39F-ADF1-4D8A-B33E-528730990FE3",
+        "x-netflix.request.client.timezoneid": "Asia/Dhaka",
+    }
     
-    def has_any_kw(text, kws):
-        for kw in kws:
-            if re.match(r'^[a-z]+$', kw):
-                if re.search(r'\b' + kw + r'\b', text):
-                    return True
-            else:
-                if kw in text:
-                    return True
-        return False
+    try:
+        response = requests.get(
+            NETFLIX_API_URL, 
+            params=params, 
+            headers=headers,
+            proxies=proxy_dict, 
+            timeout=15, 
+            verify=False
+        )
+        
+        if response.status_code in [403, 429]:
+            return "ERROR"
+        
+        if not response.ok:
+            return None
+        
+        data = response.json()
+        
+        # Kiểm tra toàn bộ response cho dấu hiệu lỗi payment
+        data_str = json.dumps(data).lower()
+        die_indicators = [
+            '"on_hold"', '"canceled"', '"former_member"', '"never_member"',
+            '"cancelled"', '"delinquent"', 'restart', 'suspended'
+        ]
+        for indicator in die_indicators:
+            if indicator in data_str:
+                print(f"Payment issue in token response: found '{indicator}'")
+                return None
+        
+        # Lấy token
+        token_data = ((((data.get("value") or {}).get("account") or {}).get("token") or {}).get("default") or {})
+        token = token_data.get("token")
+        
+        if not token:
+            return None
+        
+        # Tìm gói cước trong response
+        plan = _detect_plan_from_api(data_str)
+        
+        return plan if plan else "VALID"
+        
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.ProxyError):
+        return "ERROR"
+    except Exception as e:
+        print(f"Token API error: {e}")
+        return "ERROR"
 
-    for pattern in patterns:
-        match = re.search(pattern, html_text, flags=re.IGNORECASE | re.DOTALL)
-        if match:
-            extracted = match.group(1).lower()
-            if has_any_kw(extracted, premium_kws):
-                return "Premium"
-            elif has_any_kw(extracted, standard_kws):
-                if has_any_kw(extracted, ads_kws):
-                    return "Standard_Ads"
-                else:
-                    return "Standard"
-            elif has_any_kw(extracted, basic_kws):
-                return "Basic"
+
+def _detect_plan_from_api(data_str):
+    """Phát hiện gói cước từ API response JSON string."""
+    data_lower = data_str.lower()
+    
+    if '"premium"' in data_lower or '"ultra"' in data_lower:
+        return "Premium"
+    elif '"standard with ads"' in data_lower or '"standard_ads"' in data_lower:
+        return "Standard_Ads"
+    elif '"standard"' in data_lower:
+        return "Standard"
+    elif '"basic"' in data_lower:
+        return "Basic"
     
     return None
