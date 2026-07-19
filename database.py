@@ -140,8 +140,12 @@ def create_request(code, image_url):
     get_supabase().table("requests").insert(data).execute()
 
 def get_pending_requests():
-    response = get_supabase().table("requests").select("*").eq("status", "pending").order("created_at", desc=True).execute()
-    return response.data if response.data else []
+    try:
+        response = get_supabase().table("requests").select("*").eq("status", "pending").order("created_at", desc=True).execute()
+        return response.data if response.data else []
+    except Exception as e:
+        print(f"Lỗi get_pending_requests (Có thể chưa tạo bảng requests): {e}")
+        return []
 
 def update_request_status(req_id, status):
     data = {"status": status}
