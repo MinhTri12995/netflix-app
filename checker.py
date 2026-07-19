@@ -113,8 +113,7 @@ def _check_membership_status(netflix_id, proxy_dict):
         die_indicators = [
             '"on_hold"', '"canceled"', '"former_member"', '"never_member"',
             '"cancelled"', '"delinquent"', '"pending_cancellation"',
-            'payment', 'billing', 'restart', 'suspended',
-            '"status":"hold"', '"status":"inactive"'
+            '"status":"hold"', '"status":"inactive"', '"suspended"'
         ]
         
         for indicator in die_indicators:
@@ -206,7 +205,7 @@ def _check_token_and_plan(netflix_id, proxy_dict):
         data_str = json.dumps(data).lower()
         die_indicators = [
             '"on_hold"', '"canceled"', '"former_member"', '"never_member"',
-            '"cancelled"', '"delinquent"', 'restart', 'suspended'
+            '"cancelled"', '"delinquent"', '"status":"hold"', '"status":"inactive"'
         ]
         for indicator in die_indicators:
             if indicator in data_str:
