@@ -22,7 +22,7 @@ app = Flask(__name__)
 app.secret_key = "super_secret_key_for_flash_messages_and_sessions_123"
 
 ADMIN_EMAIL = "concumm2@gmail.com"
-ADMIN_PASS = "Concumm1!"
+ADMIN_PASS = "Nmtyeunnqt1!"
 
 def login_required(f):
     @wraps(f)
