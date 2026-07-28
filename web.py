@@ -994,7 +994,14 @@ def fetch_netflix_nftoken_api(netflix_id):
     if response.status_code in [403, 429]:
         raise ProxyError("Proxy bị Netflix block (403/429)")
         
-    response.raise_for_status()
+    if response.status_code >= 500:
+        raise ProxyError(f"Netflix Server Error ({response.status_code})")
+        
+    try:
+        response.raise_for_status()
+    except requests.exceptions.HTTPError as e:
+        raise CookieError(f"Cookie invalid (HTTP {response.status_code})")
+        
     data = response.json()
     token_data = ((((data.get("value") or {}).get("account") or {}).get("token") or {}).get("default") or {})
     token = token_data.get("token")
@@ -1200,7 +1207,7 @@ def api_generate_nftoken():
                     print(f"Expiration parse error: {e}")
             
             # Auto-rotation loop
-            max_attempts = 5
+            max_attempts = 15
             for attempt in range(max_attempts):
                 acc = database.get_account_by_email(assigned_email)
                 

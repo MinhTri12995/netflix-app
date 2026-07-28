@@ -124,7 +124,7 @@ def _get_token_and_plan_api(netflix_id, proxy_dict):
             verify=False
         )
         
-        if response.status_code in [403, 429]:
+        if response.status_code in [403, 429] or response.status_code >= 500:
             return "ERROR"
         if not response.ok:
             return None
