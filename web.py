@@ -20,6 +20,7 @@ sys.stdout.reconfigure(encoding='utf-8')
 
 app = Flask(__name__)
 app.secret_key = "super_secret_key_for_flash_messages_and_sessions_123"
+app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # Limit uploads to 5MB to prevent OOM
 
 ADMIN_EMAIL = "concumm2@gmail.com"
 ADMIN_PASS = "Nmtyeunnqt1!"
@@ -796,7 +797,7 @@ def background_check_all():
         database.init_db()
         accounts = database.get_all_accounts()
         
-        with ThreadPoolExecutor(max_workers=10) as executor:
+        with ThreadPoolExecutor(max_workers=3) as executor:
             for acc in accounts:
                 executor.submit(check_single_account, acc, False)
 
@@ -827,7 +828,7 @@ def background_force_check_all():
         database.init_db()
         accounts = database.get_all_accounts()
         
-        with ThreadPoolExecutor(max_workers=10) as executor:
+        with ThreadPoolExecutor(max_workers=3) as executor:
             for acc in accounts:
                 executor.submit(check_single_account, acc, True, False)
 
@@ -836,7 +837,7 @@ def background_check_payment_all():
         database.init_db()
         accounts = database.get_all_accounts()
         
-        with ThreadPoolExecutor(max_workers=10) as executor:
+        with ThreadPoolExecutor(max_workers=3) as executor:
             for acc in accounts:
                 executor.submit(check_single_account, acc, True, True)
 
@@ -1040,6 +1041,11 @@ def api_submit_request():
     except Exception as e:
         print(f"Lỗi upload ảnh: {e}")
         return jsonify({"success": False, "error": f"Upload failed: {str(e)}. Admin has not created the 'requests' bucket in Supabase!"}), 500
+
+from werkzeug.exceptions import RequestEntityTooLarge
+@app.errorhandler(RequestEntityTooLarge)
+def handle_file_size_error(e):
+    return jsonify({"success": False, "error": "File size exceeds 5MB limit. Please upload a smaller image."}), 413
 
 @app.route("/admin/request/<req_id>/accept", methods=["POST"])
 @login_required
