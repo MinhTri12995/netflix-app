@@ -1024,7 +1024,7 @@ def api_submit_request():
         return jsonify({"success": False, "error": "Invalid or non-existent access code."}), 400
         
     if database.has_recent_request(code):
-        return jsonify({"success": False, "error": "Vui lòng thử lại sau 5p nha."}), 429
+        return jsonify({"success": False, "error": "Please try again after 5 minutes."}), 429
         
     try:
         import uuid
@@ -1089,20 +1089,20 @@ Reply with ONLY ONE WORD from the following options:
             rotated = database.rotate_access_key(code)
             if rotated:
                 database.create_request(code, image_url, "accepted_no_plan")
-                return jsonify({"success": True, "message": "Báo cáo chính xác. Tài khoản của bạn đã được đổi, vui lòng lấy link mới!"})
+                return jsonify({"success": True, "message": "Report confirmed. Your account has been updated, please generate a new link!"})
             else:
-                return jsonify({"success": False, "error": "Hệ thống đã hết tài khoản dự phòng!"})
+                return jsonify({"success": False, "error": "The system is out of backup accounts!"})
                 
         elif "TOO_MANY" in ai_response:
             rotated = database.rotate_access_key(code)
             if rotated:
                 database.create_request(code, image_url, "accepted_too_many_people")
-                return jsonify({"success": True, "message": "Báo cáo chính xác. Tài khoản của bạn đã được đổi, vui lòng lấy link mới!"})
+                return jsonify({"success": True, "message": "Report confirmed. Your account has been updated, please generate a new link!"})
             else:
-                return jsonify({"success": False, "error": "Hệ thống đã hết tài khoản dự phòng!"})
+                return jsonify({"success": False, "error": "The system is out of backup accounts!"})
         else:
             database.create_request(code, image_url, "rejected_other")
-            return jsonify({"success": False, "error": "Ảnh báo cáo không hợp lệ hoặc lỗi không được hỗ trợ xử lý tự động."})
+            return jsonify({"success": False, "error": "Invalid report image or unsupported error."})
 
         
     except Exception as e:
