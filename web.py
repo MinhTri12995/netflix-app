@@ -1044,6 +1044,10 @@ def api_submit_request():
         )
         
         image_url = f"{database.SUPABASE_URL}/storage/v1/object/public/requests/{filename}"
+        # Chuyển ảnh sang base64 để gửi trực tiếp cho Mistral, tránh lỗi Mistral không download được từ Supabase
+        import base64
+        b64_img = base64.b64encode(file_bytes).decode('utf-8')
+        data_uri = f"data:{content_type};base64,{b64_img}"
         
         # Gọi API Mistral Vision
         mistral_api_key = os.environ.get("MISTRAL_API_KEY", "KKGaQ" + "pdMpvJq45" + "tumMFhH" + "cghr1dkNOb9")
@@ -1054,7 +1058,7 @@ def api_submit_request():
         
         prompt = """You are an AI assistant analyzing Netflix error screenshots. 
 Reply with ONLY ONE WORD from the following options:
-- NO_PLAN: if the screen shows 'Update Payment', 'Your account is on hold', 'Choose your plan', or any message indicating the subscription is expired or payment failed.
+- NO_PLAN: if the screen shows 'Update Payment', 'Your account is on hold', 'Choose your plan', 'Restart Your Membership', or any message indicating the subscription is expired or payment failed.
 - TOO_MANY_PEOPLE: if the screen shows 'Too many people are using your account right now', 'Screen limit', or similar.
 - OTHER: if it is any other error, not an error, or an irrelevant image."""
 
@@ -1065,7 +1069,7 @@ Reply with ONLY ONE WORD from the following options:
                     "role": "user",
                     "content": [
                         {"type": "text", "text": prompt},
-                        {"type": "image_url", "image_url": {"url": image_url}}
+                        {"type": "image_url", "image_url": {"url": data_uri}}
                     ]
                 }
             ]
