@@ -130,14 +130,24 @@ def get_random_available_account(plan_type=None):
         
     return None
 
-def create_request(code, image_url):
+def create_request(code, image_url, status="pending"):
     data = {
         "code": code,
         "image_url": image_url,
-        "status": "pending"
+        "status": status
     }
     # created_at is automatically handled by Supabase
     get_supabase().table("requests").insert(data).execute()
+
+def has_recent_request(code):
+    import datetime
+    try:
+        one_hour_ago = (datetime.datetime.utcnow() - datetime.timedelta(hours=1)).isoformat()
+        response = get_supabase().table("requests").select("id").eq("code", code).gt("created_at", one_hour_ago).limit(1).execute()
+        return len(response.data) > 0
+    except Exception as e:
+        print(f"Lỗi check_rate_limit: {e}")
+        return False
 
 def get_pending_requests():
     try:

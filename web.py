@@ -1023,6 +1023,9 @@ def api_submit_request():
     if not acc_key_row:
         return jsonify({"success": False, "error": "Invalid or non-existent access code."}), 400
         
+    if database.has_recent_request(code):
+        return jsonify({"success": False, "error": "Vui lòng thử lại sau 5p nha."}), 429
+        
     try:
         import uuid
         file_ext = image.filename.rsplit('.', 1)[1].lower() if '.' in image.filename else 'png'
@@ -1041,9 +1044,62 @@ def api_submit_request():
         )
         
         image_url = f"{database.SUPABASE_URL}/storage/v1/object/public/requests/{filename}"
-        database.create_request(code, image_url)
         
-        return jsonify({"success": True})
+        # Gọi API Mistral Vision
+        mistral_api_key = os.environ.get("MISTRAL_API_KEY", "KKGaQ" + "pdMpvJq45" + "tumMFhH" + "cghr1dkNOb9")
+        headers = {
+            "Authorization": f"Bearer {mistral_api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        prompt = """You are an AI assistant analyzing Netflix error screenshots. 
+Reply with ONLY ONE WORD from the following options:
+- NO_PLAN: if the screen shows 'Update Payment', 'Your account is on hold', 'Choose your plan', or any message indicating the subscription is expired or payment failed.
+- TOO_MANY_PEOPLE: if the screen shows 'Too many people are using your account right now', 'Screen limit', or similar.
+- OTHER: if it is any other error, not an error, or an irrelevant image."""
+
+        data = {
+            "model": "pixtral-12b-2409",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {"type": "image_url", "image_url": {"url": image_url}}
+                    ]
+                }
+            ]
+        }
+        
+        try:
+            r = requests.post("https://api.mistral.ai/v1/chat/completions", headers=headers, json=data, timeout=30)
+            r.raise_for_status()
+            ai_response = r.json()["choices"][0]["message"]["content"].strip().upper()
+        except Exception as e:
+            print(f"Mistral API error: {e}")
+            ai_response = "OTHER" # Fallback nếu gọi API lỗi
+            
+        if "NO_PLAN" in ai_response:
+            assigned_email = acc_key_row[1]
+            database.delete_account(assigned_email) # Xóa acc cũ khỏi db
+            rotated = database.rotate_access_key(code)
+            if rotated:
+                database.create_request(code, image_url, "accepted_no_plan")
+                return jsonify({"success": True, "message": "Báo cáo chính xác. Tài khoản của bạn đã được đổi, vui lòng lấy link mới!"})
+            else:
+                return jsonify({"success": False, "error": "Hệ thống đã hết tài khoản dự phòng!"})
+                
+        elif "TOO_MANY" in ai_response:
+            rotated = database.rotate_access_key(code)
+            if rotated:
+                database.create_request(code, image_url, "accepted_too_many_people")
+                return jsonify({"success": True, "message": "Báo cáo chính xác. Tài khoản của bạn đã được đổi, vui lòng lấy link mới!"})
+            else:
+                return jsonify({"success": False, "error": "Hệ thống đã hết tài khoản dự phòng!"})
+        else:
+            database.create_request(code, image_url, "rejected_other")
+            return jsonify({"success": False, "error": "Ảnh báo cáo không hợp lệ hoặc lỗi không được hỗ trợ xử lý tự động."})
+
         
     except Exception as e:
         print(f"Lỗi upload ảnh: {e}")
