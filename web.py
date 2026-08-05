@@ -492,11 +492,36 @@ ADMIN_TEMPLATE = r"""
         </div>
 
         <div class="glass-panel">
-            <h3 style="margin-top: 0; margin-bottom: 20px; font-weight: 400;">Import Cookies Database</h3>
+            <h3 style="margin-top: 0; margin-bottom: 20px; font-weight: 400;">Import Cookies Database (Single File)</h3>
             <form style="display: flex; gap: 15px; align-items: center;" action="/upload" method="POST" enctype="multipart/form-data" onsubmit="showLoading(this.querySelector('button'))">
                 <input type="file" name="account_file" accept=".txt" required style="padding: 10px; background: rgba(0,0,0,0.2); border: 1px dashed var(--border-color); color: #ccc;">
                 <button type="submit">Upload Database</button>
             </form>
+        </div>
+        
+        <div class="glass-panel" style="border-left: 4px solid #3498db;">
+            <h3 style="margin-top: 0; margin-bottom: 10px; font-weight: 400; color: #3498db;">🚀 Smart Bulk Folder Scanner</h3>
+            <p style="font-size: 0.9rem; color: #aaa; margin-bottom: 20px;">Upload an entire folder containing multiple subfolders and text files. The browser will automatically extract cookies and check them LIVE one by one to prevent server overload.</p>
+            
+            <div style="display: flex; gap: 15px; align-items: center; margin-bottom: 15px;">
+                <input type="file" id="bulkFolderInput" webkitdirectory directory multiple style="padding: 10px; background: rgba(0,0,0,0.2); border: 1px dashed #3498db; color: #ccc; flex: 1;">
+                <button id="startScanBtn" onclick="startBulkScan()" style="background: #3498db; padding: 12px 20px;">Start Scanning</button>
+            </div>
+            
+            <div id="scanProgressArea" style="display: none; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.9rem;">
+                    <span id="scanStatusText" style="color: #f39c12; font-weight: bold;">Parsing files...</span>
+                    <span id="scanCountText">0 / 0</span>
+                </div>
+                <div style="width: 100%; background: #222; border-radius: 4px; overflow: hidden; height: 10px; margin-bottom: 15px;">
+                    <div id="scanProgressBar" style="height: 100%; width: 0%; background: #2ecc71; transition: width 0.3s;"></div>
+                </div>
+                
+                <div style="display: flex; gap: 15px; font-size: 0.85rem; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 4px;">
+                    <div style="flex: 1; text-align: center;"><span style="color: #2ecc71; font-weight: bold; font-size: 1.2rem;" id="scanLiveCount">0</span><br>LIVE Added</div>
+                    <div style="flex: 1; text-align: center;"><span style="color: #e74c3c; font-weight: bold; font-size: 1.2rem;" id="scanDieCount">0</span><br>DIE / ERROR</div>
+                </div>
+            </div>
         </div>
 
         <div class="glass-panel">
@@ -565,6 +590,223 @@ ADMIN_TEMPLATE = r"""
             {% endif %}
         </div>
     </div>
+    
+    <script>
+        function copyCookie(text, btn) {
+            let originalText = btn.innerHTML;
+            btn.innerHTML = '✔ Copied';
+            btn.style.background = '#20bf6b';
+            setTimeout(() => { btn.innerHTML = originalText; btn.style.background = '#2d98da'; }, 2000);
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).catch(err => {
+                    fallbackCopy(text);
+                });
+            } else {
+                fallbackCopy(text);
+            }
+        }
+        function fallbackCopy(text) {
+            let textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-999999px";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try { document.execCommand('copy'); } catch (err) { }
+            textArea.remove();
+        }
+        function showLoading(btn) {
+            btn.innerHTML = '⏳ Processing...';
+            btn.style.pointerEvents = 'none';
+            btn.style.opacity = '0.7';
+        }
+
+        // Bulk Scan Logic
+        async function startBulkScan() {
+            const fileInput = document.getElementById('bulkFolderInput');
+            if (!fileInput.files || fileInput.files.length === 0) {
+                alert("Please select a folder first!");
+                return;
+            }
+
+            const btn = document.getElementById('startScanBtn');
+            btn.disabled = true;
+            btn.innerHTML = "⏳ Scanning files...";
+
+            document.getElementById('scanProgressArea').style.display = "block";
+            
+            let allCookies = [];
+            
+            // 1. Lọc và Đọc File Cục Bộ (Client-side)
+            for (let i = 0; i < fileInput.files.length; i++) {
+                const file = fileInput.files[i];
+                if (file.name.endsWith('.txt')) {
+                    try {
+                        const text = await file.text();
+                        const lines = text.split('\n');
+                        
+                        let current_email = null;
+                        let current_expire = null;
+                        let current_plan = null;
+                        let current_netflix_id = null;
+                        let current_secure_netflix_id = "";
+
+                        const push_account = () => {
+                            if (current_netflix_id) {
+                                if (!current_email) {
+                                    current_email = "auto_" + Math.random().toString(36).substr(2, 8) + "@netflix.com";
+                                }
+                                allCookies.push({
+                                    email: current_email,
+                                    expire: current_expire,
+                                    plan: current_plan,
+                                    netflix_id: current_netflix_id,
+                                    secure_netflix_id: current_secure_netflix_id
+                                });
+                            }
+                            current_email = null;
+                            current_expire = null;
+                            current_plan = null;
+                            current_netflix_id = null;
+                            current_secure_netflix_id = "";
+                        };
+
+                        for (let line of lines) {
+                            line = line.trim();
+                            if (!line) continue;
+                            
+                            if (line.includes('|') && line.toLowerCase().includes('cookies:')) {
+                                let email_part = line.includes(':') ? line.split(':')[0] : null;
+                                if (email_part && email_part.includes('@')) current_email = email_part.trim();
+                                
+                                let exp_match = line.match(/Nextbillingdate\s*=\s*([^|]+)/i);
+                                if (exp_match) current_expire = exp_match[1].trim();
+                                
+                                let plan_match = line.match(/Membership:\s*([^|]+)/i);
+                                if (plan_match) current_plan = plan_match[1].trim();
+                                
+                                let cookie_match = line.match(/cookies:\s*(.+?)(?: general login link|$)/i);
+                                if (cookie_match) {
+                                    let c_str = cookie_match[1].trim();
+                                    let n_id = c_str.match(/NetflixId=([^;\s]+)/i);
+                                    let s_n_id = c_str.match(/SecureNetflixId=([^;\s]+)/i);
+                                    if (n_id) current_netflix_id = n_id[1].trim();
+                                    if (s_n_id) current_secure_netflix_id = s_n_id[1].trim();
+                                    if (current_netflix_id) push_account();
+                                }
+                                continue;
+                            }
+                            
+                            if (line.toUpperCase().startsWith("NETFLIX ACCOUNT DETAILS")) { push_account(); continue; }
+                            
+                            let d_email = line.match(/^(?:–|-)\s*Email:\s*(.+)/i);
+                            if (d_email) { push_account(); current_email = d_email[1].trim(); continue; }
+                            
+                            let d_exp = line.match(/^(?:–|-)\s*Next Billing:\s*(.+)/i);
+                            if (d_exp) { current_expire = d_exp[1].trim(); continue; }
+                            
+                            let d_plan = line.match(/^(?:–|-)\s*Plan:\s*(.+)/i);
+                            if (d_plan) { current_plan = d_plan[1].trim(); continue; }
+                            
+                            let p_match = line.match(/^(?:#PLAN\s*:|Plan:)\s*(.+)/i);
+                            if (p_match) { current_plan = p_match[1].trim(); continue; }
+                            
+                            let e_match = line.match(/^(?:#EMAIL\s*:|Email:)\s*(.+)/i);
+                            if (e_match) { push_account(); current_email = e_match[1].trim(); continue; }
+                            
+                            let ex_match = line.match(/^(?:#EXPIRE\s*:|Expire:)\s*(.+)/i);
+                            if (ex_match) { current_expire = ex_match[1].trim(); continue; }
+                            
+                            let id_match = line.match(/^(?:#NETFLIXID\s*:|NetflixId:)\s*(.+)/i);
+                            if (id_match) { current_netflix_id = id_match[1].trim(); continue; }
+                            
+                            let sid_match = line.match(/^(?:#SECURENETFLIXID\s*:|SecureNetflixId:)\s*(.+)/i);
+                            if (sid_match) { current_secure_netflix_id = sid_match[1].trim(); push_account(); continue; }
+                        }
+                        push_account(); // push last
+                        
+                    } catch (e) {
+                        console.error("Error reading file:", file.name, e);
+                    }
+                }
+            }
+            
+            // Lọc trùng lặp
+            let uniqueCookies = [];
+            let seenIds = new Set();
+            for (let c of allCookies) {
+                if (!seenIds.has(c.netflix_id)) {
+                    seenIds.add(c.netflix_id);
+                    uniqueCookies.push(c);
+                }
+            }
+            
+            const total = uniqueCookies.length;
+            if (total === 0) {
+                alert("No valid cookies found in the selected folder!");
+                btn.disabled = false;
+                btn.innerHTML = "Start Scanning";
+                return;
+            }
+
+            document.getElementById('scanStatusText').innerText = "Checking Live via API...";
+            document.getElementById('scanStatusText').style.color = "#3498db";
+            
+            let processed = 0;
+            let liveCount = 0;
+            let dieCount = 0;
+            
+            // 2. Gửi API Check từng cái (Concurrency = 3 để không sập proxy/server)
+            const CONCURRENCY = 3;
+            let index = 0;
+            
+            async function worker() {
+                while (index < total) {
+                    const currentIndex = index++;
+                    const acc = uniqueCookies[currentIndex];
+                    
+                    try {
+                        const res = await fetch('/api/check_and_import', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(acc)
+                        });
+                        const data = await res.json();
+                        
+                        if (data.status === 'LIVE') {
+                            liveCount++;
+                            document.getElementById('scanLiveCount').innerText = liveCount;
+                        } else {
+                            dieCount++;
+                            document.getElementById('scanDieCount').innerText = dieCount;
+                        }
+                    } catch (e) {
+                        dieCount++;
+                        document.getElementById('scanDieCount').innerText = dieCount;
+                    }
+                    
+                    processed++;
+                    document.getElementById('scanCountText').innerText = `${processed} / ${total}`;
+                    document.getElementById('scanProgressBar').style.width = `${(processed / total) * 100}%`;
+                }
+            }
+            
+            const workers = [];
+            for (let i = 0; i < Math.min(CONCURRENCY, total); i++) {
+                workers.push(worker());
+            }
+            
+            await Promise.all(workers);
+            
+            document.getElementById('scanStatusText').innerText = "SCAN COMPLETE!";
+            document.getElementById('scanStatusText').style.color = "#2ecc71";
+            btn.disabled = false;
+            btn.innerHTML = "Scan Another Folder";
+            alert(`Complete! Added ${liveCount} LIVE accounts to Database.`);
+            window.location.reload();
+        }
+    </script>
 </body>
 </html>
 """
@@ -605,6 +847,30 @@ LOGIN_TEMPLATE = r"""
 def index():
     database.init_db()
     return render_template_string(PUBLIC_TEMPLATE)
+
+@app.route("/api/check_and_import", methods=["POST"])
+@login_required
+def check_and_import():
+    data = request.json
+    netflix_id = data.get("netflix_id")
+    secure_netflix_id = data.get("secure_netflix_id", "")
+    email = data.get("email", "")
+    expire = data.get("expire", "")
+    plan = data.get("plan", "")
+    
+    if not netflix_id:
+        return jsonify({"success": False, "error": "Missing NetflixId"})
+        
+    status, updated_plan = checker.check_account_live(netflix_id, secure_netflix_id, check_payment=True)
+    
+    if status == "LIVE":
+        final_plan = updated_plan if updated_plan else plan
+        database.save_account(email, expire, netflix_id, secure_netflix_id, final_plan)
+        return jsonify({"success": True, "status": "LIVE", "plan": final_plan})
+    elif status == "ERROR":
+        return jsonify({"success": False, "status": "ERROR", "error": "Proxy or API error. Retry later."})
+    else:
+        return jsonify({"success": False, "status": "DIE", "error": "Account is dead or payment issue."})
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
