@@ -700,29 +700,31 @@ ADMIN_TEMPLATE = r"""
                             
                             if (line.toUpperCase().startsWith("NETFLIX ACCOUNT DETAILS")) { push_account(); continue; }
                             
-                            let d_email = line.match(/^(?:–|-)\s*Email:\s*(.+)/i);
-                            if (d_email) { push_account(); current_email = d_email[1].trim(); continue; }
-                            
-                            let d_exp = line.match(/^(?:–|-)\s*Next Billing:\s*(.+)/i);
-                            if (d_exp) { current_expire = d_exp[1].trim(); continue; }
-                            
-                            let d_plan = line.match(/^(?:–|-)\s*Plan:\s*(.+)/i);
-                            if (d_plan) { current_plan = d_plan[1].trim(); continue; }
-                            
-                            let p_match = line.match(/^(?:#PLAN\s*:|Plan:)\s*(.+)/i);
-                            if (p_match) { current_plan = p_match[1].trim(); continue; }
-                            
-                            let e_match = line.match(/^(?:#EMAIL\s*:|Email:)\s*(.+)/i);
+                            let e_match = line.match(/^(?:–|-|#)?\s*Email:\s*(.+)/i);
                             if (e_match) { push_account(); current_email = e_match[1].trim(); continue; }
                             
-                            let ex_match = line.match(/^(?:#EXPIRE\s*:|Expire:)\s*(.+)/i);
+                            let ex_match = line.match(/^(?:–|-|#)?\s*(?:Next Billing|Expire):\s*(.+)/i);
                             if (ex_match) { current_expire = ex_match[1].trim(); continue; }
                             
-                            let id_match = line.match(/^(?:#NETFLIXID\s*:|NetflixId:)\s*(.+)/i);
+                            let p_match = line.match(/^(?:–|-|#)?\s*(?:Plan|Membership):\s*(.+)/i);
+                            if (p_match) { current_plan = p_match[1].trim(); continue; }
+                            
+                            let id_match = line.match(/^(?:–|-|#)?\s*NetflixId:\s*(.+)/i);
                             if (id_match) { current_netflix_id = id_match[1].trim(); continue; }
                             
-                            let sid_match = line.match(/^(?:#SECURENETFLIXID\s*:|SecureNetflixId:)\s*(.+)/i);
+                            let sid_match = line.match(/^(?:–|-|#)?\s*SecureNetflixId:\s*(.+)/i);
                             if (sid_match) { current_secure_netflix_id = sid_match[1].trim(); push_account(); continue; }
+                            
+                            if (line.includes('.netflix.com')) {
+                                let parts = line.trim().split(/\s+/);
+                                if (parts.length >= 3) {
+                                    let c_name = parts[parts.length - 2];
+                                    let c_val = parts[parts.length - 1];
+                                    if (c_name === 'NetflixId') current_netflix_id = c_val;
+                                    if (c_name === 'SecureNetflixId') { current_secure_netflix_id = c_val; push_account(); }
+                                }
+                                continue;
+                            }
                         }
                         push_account(); // push last
                         
