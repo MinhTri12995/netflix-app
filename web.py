@@ -208,6 +208,9 @@ PUBLIC_TEMPLATE = r"""
                     btn.innerHTML = "🚀 LOGIN NOW (Fast Link)";
                     statusText.innerText = "Connection to server failed!";
                     statusText.style.color = "#e74c3c";
+                    pcLink.innerText = "❌ Lỗi";
+                    mobileLink.innerText = "❌ Lỗi";
+                    tvLink.innerText = "❌ Lỗi";
                 });
             } else {
                 resultDiv.style.display = "none";
@@ -1004,7 +1007,7 @@ def fetch_netflix_nftoken_api(netflix_id, secure_netflix_id=""):
     try:
         response = requests.get(
             url, params=params, headers=headers,
-            proxies=proxy_dict, timeout=15, verify=False
+            proxies=proxy_dict, timeout=5, verify=False
         )
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.ProxyError) as e:
         print(f"Lỗi Proxy / Mạng: {e}")
@@ -1302,7 +1305,7 @@ def api_generate_nftoken():
                     print(f"Expiration parse error: {e}")
             
             # Auto-rotation loop
-            max_attempts = 15
+            max_attempts = 5
             for attempt in range(max_attempts):
                 acc = database.get_account_by_email(assigned_email)
                 
@@ -1340,12 +1343,8 @@ def api_generate_nftoken():
                     assigned_email = database.get_access_key(code)[1]
                     continue
                 except Exception as e:
-                    print(f"Cookie {assigned_email} DIE, attempting rotation... (Error: {e})")
-                    database.delete_account(assigned_email)
-                    rotated = database.rotate_access_key(code)
-                    if not rotated:
-                        return jsonify({"success": False, "error": "Cookie is broken and system ran out of backup Cookies!"}), 500
-                    assigned_email = database.get_access_key(code)[1]
+                    print(f"Lỗi không xác định với tài khoản {assigned_email}: {e}")
+                    # Không xóa tài khoản nếu gặp lỗi không xác định (vd: JSONDecodeError do proxy trả HTML)
                     continue
                     
             return jsonify({"success": False, "error": "Server overloaded or all proxies died. Please try again later."}), 500
