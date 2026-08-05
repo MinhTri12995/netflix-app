@@ -172,11 +172,9 @@ PUBLIC_TEMPLATE = r"""
                 statusText.style.color = "#f39c12";
                 resultDiv.style.display = "flex";
                 
-                // Show links
-                document.getElementById("quickPcLink").parentElement.style.display = "flex";
-                document.getElementById("quickMobileLink").parentElement.style.display = "flex";
-                document.getElementById("quickTvLink").parentElement.style.display = "flex";
-
+                // Hide the cookie container initially
+                document.getElementById("cookieContainer").style.display = "none";
+                
                 fetch("/api/generate_nftoken", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -188,19 +186,21 @@ PUBLIC_TEMPLATE = r"""
                     btn.innerHTML = "🚀 LOGIN NOW (Fast Link)";
                     if (data.success) {
                         pcLink.href = data.pc_link;
-                        pcLink.innerText = "💻 PC Link (Watch now)";
                         mobileLink.href = data.mobile_link;
-                        mobileLink.innerText = "📱 Mobile Link (Watch now)";
                         tvLink.href = data.tv_link;
-                        tvLink.innerText = "📺 TV Link (Watch now)";
-                        statusText.innerText = "Success! Click a link below to watch.";
+                        
+                        pcLink.innerText = "💻 Máy Tính (PC/Laptop)";
+                        mobileLink.innerText = "📱 Điện Thoại (iPhone/Android)";
+                        tvLink.innerText = "📺 Tivi (Smart TV)";
+                        
+                        statusText.innerText = "Success! Please select your device below:";
                         statusText.style.color = "#2ecc71";
                     } else {
                         statusText.innerText = "Error: " + data.error;
                         statusText.style.color = "#e74c3c";
-                        document.getElementById("quickPcLink").parentElement.style.display = "none";
-                        document.getElementById("quickMobileLink").parentElement.style.display = "none";
-                        document.getElementById("quickTvLink").parentElement.style.display = "none";
+                        pcLink.innerText = "❌ Lỗi";
+                        mobileLink.innerText = "❌ Lỗi";
+                        tvLink.innerText = "❌ Lỗi";
                     }
                 })
                 .catch(err => {
@@ -302,19 +302,18 @@ PUBLIC_TEMPLATE = r"""
             <button id="submitBtn" onclick="generateQuickLinks()" style="width: 100%; margin-top: 10px; padding: 15px; font-size: 1.1rem; background: #27ae60; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">🚀 LOGIN NOW (Fast Link)</button>
             <button id="reportBtn" onclick="openReportModal()" style="width: 100%; margin-top: 10px; padding: 12px; font-size: 0.9rem; background: #c0392b; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">⚠️ BÁO CÁO LỖI (REPORT ERROR)</button>
             
-            <div id="quickLinksResult" style="display: flex; flex-direction: column; gap: 15px; margin-top: 25px; display: none; background: rgba(0,0,0,0.2); padding: 20px; border-radius: 8px;">
+            <div id="quickLinksResult" style="display: flex; flex-direction: column; gap: 15px; margin-top: 25px; display: none;">
                 <p id="statusText" style="text-align: center; margin: 0; font-weight: bold;"></p>
-                <div style="display: flex; gap: 10px; justify-content: center; align-items: center;">
-                    <a id="quickPcLink" href="#" target="_blank" rel="noreferrer" class="btn-login" style="background: #e74c3c !important; font-size: 1rem; padding: 12px 20px !important;">💻 PC Link</a>
-                    <button class="btn-copy" onclick="copyCookie(document.getElementById('quickPcLink').href, this)" style="padding: 12px 20px; font-size: 1rem;">📋 Copy</button>
-                </div>
-                <div style="display: flex; gap: 10px; justify-content: center; align-items: center;">
-                    <a id="quickMobileLink" href="#" target="_blank" rel="noreferrer" class="btn-login" style="background: #3498db !important; font-size: 1rem; padding: 12px 20px !important;">📱 Mobile Link</a>
-                    <button class="btn-copy" onclick="copyCookie(document.getElementById('quickMobileLink').href, this)" style="padding: 12px 20px; font-size: 1rem;">📋 Copy</button>
-                </div>
-                <div style="display: flex; gap: 10px; justify-content: center; align-items: center;">
-                    <a id="quickTvLink" href="#" target="_blank" rel="noreferrer" class="btn-login" style="background: #9b59b6 !important; font-size: 1rem; padding: 12px 20px !important;">📺 TV Link</a>
-                    <button class="btn-copy" onclick="copyCookie(document.getElementById('quickTvLink').href, this)" style="padding: 12px 20px; font-size: 1rem;">📋 Copy</button>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                    <a id="quickPcLink" class="btn-login" href="#" target="_blank" onclick="showLoading(this)" style="padding: 15px !important; text-align: center; font-size: 1rem !important; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                        💻 Máy Tính (PC/Laptop)
+                    </a>
+                    <a id="quickMobileLink" class="btn-login" href="#" target="_blank" onclick="showLoading(this)" style="padding: 15px !important; text-align: center; font-size: 1rem !important; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                        📱 Điện Thoại (iPhone/Android)
+                    </a>
+                    <a id="quickTvLink" class="btn-login" href="#" target="_blank" onclick="showLoading(this)" style="padding: 15px !important; text-align: center; font-size: 1rem !important; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                        📺 Tivi (Smart TV)
+                    </a>
                 </div>
             </div>
         </div>
@@ -976,15 +975,35 @@ class CookieError(Exception): pass
 
 import proxies_list
 
-def fetch_netflix_nftoken_api(netflix_id):
-    headers = dict(NETFLIX_BASE_HEADERS)
-    headers["Cookie"] = f"NetflixId={netflix_id}"
+def fetch_netflix_nftoken_api(netflix_id, secure_netflix_id=""):
+    url = "https://ios.prod.ftl.netflix.com/iosui/user/15.48"
+    params = {
+        'path': '["account","token","default"]',
+        'pathFormat': 'graph'
+    }
+    cookie_str = f"NetflixId={netflix_id}"
+    if secure_netflix_id:
+        cookie_str += f"; SecureNetflixId={secure_netflix_id}"
+        
+    headers = {
+        'Accept': '*/*',
+        'Accept-Encoding': 'gzip, deflate, br, zstd',
+        'Accept-Language': 'en-US;q=1',
+        'Host': 'ios.prod.ftl.netflix.com',
+        'User-Agent': 'Argo/15.48.1 (iPhone; iOS 15.8.5; Scale/2.00)',
+        'x-netflix.client.appversion': '15.48.1',
+        'x-netflix.client.type': 'argo',
+        'x-netflix.context.app-version': '15.48.1',
+        'x-netflix.context.ui-flavor': 'argo',
+        'x-netflix.request.routing': '{"path":"/nq/mobile/nqios/~15.48.0/user","control_tag":"iosui_argo"}',
+        'Cookie': cookie_str
+    }
     
     proxy_dict = proxies_list.get_random_proxy()
     
     try:
         response = requests.get(
-            NETFLIX_API_URL, params=NETFLIX_QUERY_PARAMS, headers=headers,
+            url, params=params, headers=headers,
             proxies=proxy_dict, timeout=15, verify=False
         )
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.ProxyError) as e:
@@ -999,6 +1018,19 @@ def fetch_netflix_nftoken_api(netflix_id):
         
     if response.status_code == 404:
         raise ProxyError("Netflix API endpoint deprecated (404). Cannot fetch token.")
+        
+    try:
+        response.raise_for_status()
+        data = response.json()
+        if 'value' in data and 'account' in data['value'] and 'token' in data['value']['account']:
+            token_data = data['value']['account']['token']['default']
+            if isinstance(token_data, dict) and 'token' in token_data:
+                return token_data['token']
+            elif isinstance(token_data, str):
+                return token_data
+        raise CookieError("Cookie invalid or expired (No token in JSON)")
+    except requests.exceptions.HTTPError as e:
+        raise CookieError(f"Cookie invalid (HTTP {response.status_code})")
         
     try:
         response.raise_for_status()
@@ -1285,12 +1317,11 @@ def api_generate_nftoken():
                 secure_netflix_id = urllib.parse.unquote(acc[3]) if acc[3] else ""
                 
                 try:
-                    # BYPASS BACKGROUND LIVE CHECK - EXPORT LINK DIRECTLY
-                    token = fetch_netflix_nftoken_api(netflix_id)
+                    token = fetch_netflix_nftoken_api(netflix_id, secure_netflix_id)
                     pc_link = f"https://www.netflix.com/login?nftoken={token}"
                     mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"
                     tv_link = f"https://www.netflix.com/tv8?nftoken={token}"
-
+                    
                     return jsonify({
                         "success": True,
                         "pc_link": pc_link,
@@ -1300,6 +1331,14 @@ def api_generate_nftoken():
                 except ProxyError as e:
                     print(f"Proxy error ({e}), retrying...")
                     continue
+                except CookieError as e:
+                    print(f"Cookie {assigned_email} DIE, attempting rotation... (Error: {e})")
+                    database.delete_account(assigned_email)
+                    rotated = database.rotate_access_key(code)
+                    if not rotated:
+                        return jsonify({"success": False, "error": "Cookie is broken and system ran out of backup Cookies!"}), 500
+                    assigned_email = database.get_access_key(code)[1]
+                    continue
                 except Exception as e:
                     print(f"Cookie {assigned_email} DIE, attempting rotation... (Error: {e})")
                     database.delete_account(assigned_email)
@@ -1307,6 +1346,7 @@ def api_generate_nftoken():
                     if not rotated:
                         return jsonify({"success": False, "error": "Cookie is broken and system ran out of backup Cookies!"}), 500
                     assigned_email = database.get_access_key(code)[1]
+                    continue
                     
             return jsonify({"success": False, "error": "Server overloaded or all proxies died. Please try again later."}), 500
 
@@ -1324,9 +1364,9 @@ def api_generate_nftoken():
             pc_link = f"https://www.netflix.com/login?nftoken={token}"
             mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"
             tv_link = f"https://www.netflix.com/tv8?nftoken={token}"
-            tv_link = f"https://www.netflix.com/tv8?nftoken={token}"
             return jsonify({"success": True, "pc_link": pc_link, "mobile_link": mobile_link, "tv_link": tv_link})
         
+        secure_netflix_id = ""
         if "NetflixId=" in cookie_value:
             match = re.search(r'NetflixId\s*=\s*([^;]+)', cookie_value)
             if match:
@@ -1344,14 +1384,30 @@ def api_generate_nftoken():
             netflix_id = cookie_value
             
         netflix_id = urllib.parse.unquote(netflix_id)
+        if secure_netflix_id:
+            secure_netflix_id = urllib.parse.unquote(secure_netflix_id)
         
         try:
-            token = fetch_netflix_nftoken_api(netflix_id)
-            pc_link = f"https://www.netflix.com/login?nftoken={token}"
-            mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"
-            tv_link = f"https://www.netflix.com/tv8?nftoken={token}"
-            tv_link = f"https://www.netflix.com/tv8?nftoken={token}"
-            return jsonify({"success": True, "pc_link": pc_link, "mobile_link": mobile_link, "tv_link": tv_link})
+            import json, time
+            exp_time = int(time.time()) + 86400 * 365 # 1 year
+            cookie_data = [
+                {
+                    "domain": ".netflix.com", "expirationDate": exp_time, "hostOnly": False,
+                    "httpOnly": True, "name": "NetflixId", "path": "/", "sameSite": "no_restriction",
+                    "secure": True, "session": False, "value": netflix_id
+                }
+            ]
+            if secure_netflix_id:
+                cookie_data.append({
+                    "domain": ".netflix.com", "expirationDate": exp_time, "hostOnly": False,
+                    "httpOnly": True, "name": "SecureNetflixId", "path": "/", "sameSite": "no_restriction",
+                    "secure": True, "session": False, "value": secure_netflix_id
+                })
+            
+            return jsonify({
+                "success": True,
+                "cookie_json": json.dumps(cookie_data, indent=2)
+            })
         except ProxyError as e:
             return jsonify({"success": False, "error": f"Lỗi Proxy. Vui lòng bấm thử lại. Chi tiết: {str(e)}"}), 500
         except Exception as e:
