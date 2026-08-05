@@ -83,18 +83,19 @@ def parse_lines(lines):
             current_plan = deadflix_plan_match.group(1).strip()
             continue
             
-        plan_match = re.search(r'^(?:#PLAN\s*:|Plan:)\s*(.+)', line, re.IGNORECASE)
+        plan_match = re.search(r'^(?:–|-|#)?\s*(?:Plan|Membership):\s*(.+)', line, re.IGNORECASE)
         if plan_match:
             current_plan = plan_match.group(1).strip()
             continue
             
-        email_match = re.search(r'^(?:#EMAIL\s*:|Email:)\s*(.+)', line, re.IGNORECASE)
+        email_match = re.search(r'^(?:–|-|#)?\s*Email:\s*(.+)', line, re.IGNORECASE)
         if email_match:
-            push_account()
+            if current_netflix_id:
+                push_account()
             current_email = email_match.group(1).strip()
             continue
             
-        expire_match = re.search(r'^(?:#EXPIRE\s*:|Expire:)\s*(.+)', line, re.IGNORECASE)
+        expire_match = re.search(r'^(?:–|-|#)?\s*(?:Next Billing|Expire):\s*(.+)', line, re.IGNORECASE)
         if expire_match:
             current_expire = expire_match.group(1).strip()
             continue
