@@ -997,6 +997,9 @@ def fetch_netflix_nftoken_api(netflix_id):
     if response.status_code >= 500:
         raise ProxyError(f"Netflix Server Error ({response.status_code})")
         
+    if response.status_code == 404:
+        raise ProxyError("Netflix API endpoint deprecated (404). Cannot fetch token.")
+        
     try:
         response.raise_for_status()
     except requests.exceptions.HTTPError as e:
