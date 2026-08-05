@@ -154,19 +154,7 @@ PUBLIC_TEMPLATE = r"""
         }
 
         function generateQuickLinks() {
-            let rawInput = document.getElementById("rawTokenInput").value.trim();
-            let resultDiv = document.getElementById("quickLinksResult");
-            let pcLink = document.getElementById("quickPcLink");
-            let mobileLink = document.getElementById("quickMobileLink");
-            let tvLink = document.getElementById("quickTvLink");
-            let statusText = document.getElementById("statusText");
-            let btn = document.getElementById("submitBtn");
 
-            if (rawInput) {
-                btn.disabled = true;
-                btn.innerHTML = "⏳ Connecting...";
-                pcLink.innerText = "⏳ Generating link...";
-                mobileLink.innerText = "⏳ Generating link...";
             var rawInput = document.getElementById("rawTokenInput").value.trim();
             if (!rawInput) {
                 alert("Vui lòng dán Cookie hoặc Mã truy cập!");
