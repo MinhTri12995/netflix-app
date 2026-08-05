@@ -167,54 +167,72 @@ PUBLIC_TEMPLATE = r"""
                 btn.innerHTML = "⏳ Connecting...";
                 pcLink.innerText = "⏳ Generating link...";
                 mobileLink.innerText = "⏳ Generating link...";
-                tvLink.innerText = "⏳ Generating link...";
-                statusText.innerText = "Generating high-speed link...";
-                statusText.style.color = "#f39c12";
-                resultDiv.style.display = "flex";
-                
-                // Hide the cookie container initially
-                document.getElementById("cookieContainer").style.display = "none";
-                
-                fetch("/api/generate_nftoken", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ cookie: rawInput })
-                })
-                .then(res => res.json())
-                .then(data => {
-                    btn.disabled = false;
-                    btn.innerHTML = "🚀 LOGIN NOW (Fast Link)";
-                    if (data.success) {
-                        pcLink.href = data.pc_link;
-                        mobileLink.href = data.mobile_link;
-                        tvLink.href = data.tv_link;
-                        
-                        pcLink.innerText = "💻 Máy Tính (PC/Laptop)";
-                        mobileLink.innerText = "📱 Điện Thoại (iPhone/Android)";
-                        tvLink.innerText = "📺 Tivi (Smart TV)";
-                        
-                        statusText.innerText = "Success! Please select your device below:";
-                        statusText.style.color = "#2ecc71";
-                    } else {
-                        statusText.innerText = "Error: " + data.error;
-                        statusText.style.color = "#e74c3c";
-                        pcLink.innerText = "❌ Lỗi";
-                        mobileLink.innerText = "❌ Lỗi";
-                        tvLink.innerText = "❌ Lỗi";
-                    }
-                })
-                .catch(err => {
-                    btn.disabled = false;
-                    btn.innerHTML = "🚀 LOGIN NOW (Fast Link)";
-                    statusText.innerText = "Connection to server failed!";
+            var rawInput = document.getElementById("rawTokenInput").value.trim();
+            if (!rawInput) {
+                alert("Vui lòng dán Cookie hoặc Mã truy cập!");
+                return;
+            }
+
+            var resultDiv = document.getElementById("quickLinksResult");
+            var pcLink = document.getElementById("quickPcLink");
+            var mobileLink = document.getElementById("quickMobileLink");
+            var tvLink = document.getElementById("quickTvLink");
+            var statusText = document.getElementById("statusText");
+            var btn = document.getElementById("submitBtn");
+
+            btn.disabled = true;
+            btn.innerHTML = "⏳ Connecting...";
+            
+            pcLink.innerText = "⏳ Generating link...";
+            mobileLink.innerText = "⏳ Generating link...";
+            tvLink.innerText = "⏳ Generating link...";
+            statusText.innerText = "Generating high-speed link...";
+            
+            resultDiv.style.display = "flex";
+            
+            // Nếu người dùng nhập mã truy cập, gọi API lấy links
+            fetch("/api/generate_nftoken", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ cookie: rawInput })
+            })
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error("HTTP " + res.status);
+                }
+                return res.json();
+            })
+            .then(data => {
+                btn.disabled = false;
+                btn.innerHTML = "🚀 LOGIN NOW (Fast Link)";
+                if (data.success) {
+                    pcLink.href = data.pc_link;
+                    mobileLink.href = data.mobile_link;
+                    tvLink.href = data.tv_link;
+                    
+                    pcLink.innerText = "💻 Máy Tính (PC/Laptop)";
+                    mobileLink.innerText = "📱 Điện Thoại (iPhone/Android)";
+                    tvLink.innerText = "📺 Tivi (Smart TV)";
+                    
+                    statusText.innerText = "Success! Please select your device below:";
+                    statusText.style.color = "#2ecc71";
+                } else {
+                    statusText.innerText = "Error: " + data.error;
                     statusText.style.color = "#e74c3c";
                     pcLink.innerText = "❌ Lỗi";
                     mobileLink.innerText = "❌ Lỗi";
                     tvLink.innerText = "❌ Lỗi";
-                });
-            } else {
-                resultDiv.style.display = "none";
-            }
+                }
+            })
+            .catch(err => {
+                btn.disabled = false;
+                btn.innerHTML = "🚀 LOGIN NOW (Fast Link)";
+                statusText.innerText = "Connection to server failed!";
+                statusText.style.color = "#e74c3c";
+                pcLink.innerText = "❌ Lỗi";
+                mobileLink.innerText = "❌ Lỗi";
+                tvLink.innerText = "❌ Lỗi";
+            });
         }
         
         function openReportModal() {
