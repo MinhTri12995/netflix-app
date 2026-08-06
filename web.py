@@ -1296,6 +1296,24 @@ def fetch_netflix_nftoken_api(netflix_id, secure_netflix_id=""):
     if response.status_code == 404:
         raise ProxyError("Netflix API endpoint deprecated (404). Cannot fetch token.")
         
+    def generate_json_cookie_token(nid, snid):
+        import json, time
+        exp_time = int(time.time()) + 86400 * 365
+        cookie_data = [
+            {
+                "domain": ".netflix.com", "expirationDate": exp_time, "hostOnly": False,
+                "httpOnly": True, "name": "NetflixId", "path": "/", "sameSite": "no_restriction",
+                "secure": True, "session": False, "value": nid
+            }
+        ]
+        if snid:
+            cookie_data.append({
+                "domain": ".netflix.com", "expirationDate": exp_time, "hostOnly": False,
+                "httpOnly": True, "name": "SecureNetflixId", "path": "/", "sameSite": "no_restriction",
+                "secure": True, "session": False, "value": snid
+            })
+        return "B" + urllib.parse.quote(json.dumps(cookie_data))
+
     try:
         response.raise_for_status()
         data = response.json()
@@ -1305,21 +1323,16 @@ def fetch_netflix_nftoken_api(netflix_id, secure_netflix_id=""):
                 return token_data['token']
             elif isinstance(token_data, str):
                 return token_data
-        raise CookieError("Cookie invalid or expired (No token in JSON)")
-    except requests.exceptions.HTTPError as e:
-        raise CookieError(f"Cookie invalid (HTTP {response.status_code})")
         
-    try:
-        response.raise_for_status()
-    except requests.exceptions.HTTPError as e:
-        raise CookieError(f"Cookie invalid (HTTP {response.status_code})")
+        # Fallback to JSON Cookie since Netflix API changed
+        return generate_json_cookie_token(netflix_id, secure_netflix_id)
         
-    data = response.json()
-    token_data = ((((data.get("value") or {}).get("account") or {}).get("token") or {}).get("default") or {})
-    token = token_data.get("token")
-    if not token:
-        raise CookieError("Netflix API không trả về token. Cookie có thể đã DIE.")
-    return token
+    except requests.exceptions.HTTPError as e:
+        if response.status_code == 401:
+            raise CookieError(f"Cookie invalid (HTTP {response.status_code})")
+        return generate_json_cookie_token(netflix_id, secure_netflix_id)
+    except Exception:
+        return generate_json_cookie_token(netflix_id, secure_netflix_id)
 
 @app.route("/api/submit_request", methods=["POST"])
 def api_submit_request():
@@ -1677,12 +1690,17 @@ def api_generate_nftoken():
                     "secure": True, "session": False, "value": secure_netflix_id
                 })
             
+            token_str = "B" + urllib.parse.quote(json.dumps(cookie_data))
+            
             return jsonify({
                 "success": True,
-                "cookie_json": json.dumps(cookie_data, indent=2)
+                "cookie_json": json.dumps(cookie_data, indent=2),
+                "pc_link": f"https://www.netflix.com/login?nftoken={token_str}",
+                "mobile_link": f"https://www.netflix.com/unsupported?nftoken={token_str}",
+                "tv_link": f"https://www.netflix.com/tv8?nftoken={token_str}"
             })
-        except ProxyError as e:
-            return jsonify({"success": False, "error": f"Lỗi Proxy. Vui lòng bấm thử lại. Chi tiết: {str(e)}"}), 500
+        except Exception as e:
+            return jsonify({"success": False, "error": f"Lỗi: {str(e)}"}), 500
         except Exception as e:
             return register_fail(f"Token lỗi: {str(e)}", 500)
             
