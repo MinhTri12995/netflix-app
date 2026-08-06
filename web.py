@@ -194,16 +194,37 @@ PUBLIC_TEMPLATE = r"""
                 btn.disabled = false;
                 btn.innerHTML = "🚀 LOGIN NOW (Fast Link)";
                 if (data.success) {
-                    pcLink.href = data.pc_link;
-                    mobileLink.href = data.mobile_link;
-                    tvLink.href = data.tv_link;
-                    
-                    pcLink.innerText = "💻 Máy Tính (PC/Laptop)";
-                    mobileLink.innerText = "📱 Điện Thoại (iPhone/Android)";
-                    tvLink.innerText = "📺 Tivi (Smart TV)";
-                    
-                    statusText.innerText = "Success! Please select your device below:";
-                    statusText.style.color = "#2ecc71";
+                    if (data.is_json) {
+                        pcLink.href = "javascript:void(0)";
+                        pcLink.removeAttribute("target");
+                        pcLink.onclick = function(e) { e.preventDefault(); copyCookie(data.cookie_json, this); return false; };
+                        pcLink.innerText = "📋 Copy Mã Cookie (Cho Extension)";
+                        pcLink.style.background = "#2d98da";
+                        
+                        mobileLink.style.display = "none";
+                        tvLink.style.display = "none";
+                        
+                        statusText.innerHTML = "Do Netflix khóa Link truy cập. Bạn hãy bấm <b>Copy Mã Cookie</b> và dán vào tiện ích (Extension) trên máy tính để xem!";
+                        statusText.style.color = "#f39c12";
+                    } else {
+                        pcLink.href = data.pc_link;
+                        mobileLink.href = data.mobile_link;
+                        tvLink.href = data.tv_link;
+                        
+                        pcLink.setAttribute("target", "_blank");
+                        pcLink.onclick = function() { showLoading(this); };
+                        pcLink.style.background = ""; // Reset to default
+                        
+                        pcLink.innerText = "💻 Máy Tính (PC/Laptop)";
+                        mobileLink.innerText = "📱 Điện Thoại (iPhone/Android)";
+                        tvLink.innerText = "📺 Tivi (Smart TV)";
+                        
+                        mobileLink.style.display = "flex";
+                        tvLink.style.display = "flex";
+                        
+                        statusText.innerText = "Success! Please select your device below:";
+                        statusText.style.color = "#2ecc71";
+                    }
                 } else {
                     statusText.innerText = "Error: " + data.error;
                     statusText.style.color = "#e74c3c";
@@ -1608,6 +1629,9 @@ def api_generate_nftoken():
                 
                 try:
                     token = fetch_netflix_nftoken_api(netflix_id, secure_netflix_id)
+                    is_json = token.startswith("B")
+                    cookie_json = urllib.parse.unquote(token[1:]) if is_json else ""
+                    
                     pc_link = f"https://www.netflix.com/login?nftoken={token}"
                     mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"
                     tv_link = f"https://www.netflix.com/tv8?nftoken={token}"
@@ -1616,7 +1640,9 @@ def api_generate_nftoken():
                         "success": True,
                         "pc_link": pc_link,
                         "mobile_link": mobile_link,
-                        "tv_link": tv_link
+                        "tv_link": tv_link,
+                        "is_json": is_json,
+                        "cookie_json": cookie_json
                     })
                 except ProxyError as e:
                     print(f"Proxy error ({e}), retrying...")
@@ -1650,7 +1676,14 @@ def api_generate_nftoken():
             pc_link = f"https://www.netflix.com/login?nftoken={token}"
             mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"
             tv_link = f"https://www.netflix.com/tv8?nftoken={token}"
-            return jsonify({"success": True, "pc_link": pc_link, "mobile_link": mobile_link, "tv_link": tv_link})
+            return jsonify({
+                "success": True, 
+                "pc_link": pc_link, 
+                "mobile_link": mobile_link, 
+                "tv_link": tv_link,
+                "is_json": True,
+                "cookie_json": urllib.parse.unquote(token[1:])
+            })
         
         secure_netflix_id = ""
         if "NetflixId=" in cookie_value:
@@ -1693,6 +1726,7 @@ def api_generate_nftoken():
             
             return jsonify({
                 "success": True,
+                "is_json": True,
                 "cookie_json": json.dumps(cookie_data, indent=2),
                 "pc_link": f"https://www.netflix.com/login?nftoken={token_str}",
                 "mobile_link": f"https://www.netflix.com/unsupported?nftoken={token_str}",
