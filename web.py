@@ -1260,10 +1260,12 @@ class CookieError(Exception): pass
 import proxies_list
 
 def fetch_netflix_nftoken_api(netflix_id, secure_netflix_id=""):
-    url = "https://ios.prod.ftl.netflix.com/iosui/user/15.48"
+    url = "https://ios.prod.ftl.netflix.com/nq/mobile/nqios/~15.48.0/user"
     params = {
-        'path': '["account","token","default"]',
-        'pathFormat': 'graph'
+        "falcor_server": "0.1.0",
+        "withSize": "true",
+        "materialize": "true",
+        "path": '["account","token","default"]',
     }
     cookie_str = f"NetflixId={netflix_id}"
     if secure_netflix_id:
@@ -1280,6 +1282,7 @@ def fetch_netflix_nftoken_api(netflix_id, secure_netflix_id=""):
         'x-netflix.context.app-version': '15.48.1',
         'x-netflix.context.ui-flavor': 'argo',
         'x-netflix.request.routing': '{"path":"/nq/mobile/nqios/~15.48.0/user","control_tag":"iosui_argo"}',
+        'x-netflix.request.routing.original.path': '/nq/mobile/nqios/~15.48.0/user',
         'Cookie': cookie_str
     }
     

@@ -1,9 +1,9 @@
-﻿import requests
+import requests
 import time
 import json
 import proxies_list
 
-NETFLIX_API_URL = "https://ios.prod.ftl.netflix.com/iosui/user/15.48"
+NETFLIX_API_URL = "https://ios.prod.ftl.netflix.com/nq/mobile/nqios/~15.48.0/user"
 
 # Global flag: once we know API is dead, skip it entirely to save time
 _api_is_dead = False
@@ -111,32 +111,21 @@ def _get_plan_from_web(cookies, proxy_dict):
 
 def _get_token_and_plan_api(netflix_id, proxy_dict):
     params = {
-        "appVersion": "15.48.1",
-        "config": "{\"gamesInTrailersEnabled\":\"false\"}",
-        "device_type": "NFAPPL-02-",
-        "esn": "NFAPPL-02-IPHONE8%3D1-PXA-02026U9VV5O8AUKEAEO8PUJETCGDD4PQRI9DEB3MDLEMD0EACM4CS78LMD334MN3MQ3NMJ8SU9O9MVGS6BJCURM1PH1MUTGDPF4S4200",
-        "idiom": "phone",
-        "iosVersion": "15.8.5",
-        "isTablet": "false",
-        "languages": "en-US",
-        "locale": "en-US",
-        "maxDeviceWidth": "375",
-        "model": "saget",
-        "modelType": "IPHONE8-1",
-        "odpAware": "true",
-        "path": "[\"account\",\"token\",\"default\"]",
-        "pathFormat": "graph",
-        "pixelDensity": "2.0",
-        "progressive": "false",
-        "responseFormat": "json",
+        "falcor_server": "0.1.0",
+        "withSize": "true",
+        "materialize": "true",
+        "path": '["account","token","default"]',
     }
     headers = {
         "User-Agent": "Argo/15.48.1 (iPhone; iOS 15.8.5; Scale/2.00)",
         "Cookie": f"NetflixId={netflix_id}",
-        "x-netflix.request.attempt": "1",
+        "x-netflix.client.type": "argo",
+        "x-netflix.client.appversion": "15.48.1",
         "x-netflix.context.app-version": "15.48.1",
-        "x-netflix.context.locales": "en-US",
-        "accept-language": "en-US;q=1",
+        "x-netflix.context.ui-flavor": "argo",
+        "x-netflix.request.routing": '{"path":"/nq/mobile/nqios/~15.48.0/user","control_tag":"iosui_argo"}',
+        "x-netflix.request.routing.original.path": "/nq/mobile/nqios/~15.48.0/user",
+        "accept-language": "en-US;q=1"
     }
     try:
         response = requests.get(
