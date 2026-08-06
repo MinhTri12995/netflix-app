@@ -1331,7 +1331,6 @@ def fetch_netflix_nftoken_api(netflix_id, secure_netflix_id=""):
             token_data = data['value']['account']['token']['default']
             if isinstance(token_data, dict) and 'token' in token_data:
                 return token_data['token']
-        return generate_json_cookie_token(netflix_id, secure_netflix_id)
             elif isinstance(token_data, str):
                 return token_data
         
