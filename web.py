@@ -683,17 +683,17 @@ ADMIN_TEMPLATE = r"""
                             line = line.trim();
                             if (!line) continue;
                             
-                            if (line.includes('|') && line.toLowerCase().includes('cookies:')) {
+                            if (line.includes('|') && (line.toLowerCase().includes('cookies:') || line.toLowerCase().includes('cookies ='))) {
                                 let email_part = line.includes(':') ? line.split(':')[0] : null;
                                 if (email_part && email_part.includes('@')) current_email = email_part.trim();
                                 
-                                let exp_match = line.match(/Nextbillingdate\s*=\s*([^|]+)/i);
+                                let exp_match = line.match(/(?:Nextbillingdate|nextBillingDate)\s*=\s*([^|]+)/i);
                                 if (exp_match) current_expire = exp_match[1].trim();
                                 
-                                let plan_match = line.match(/Membership:\s*([^|]+)/i);
+                                let plan_match = line.match(/(?:Membership|memberPlan)\s*[=:]\s*([^|]+)/i);
                                 if (plan_match) current_plan = plan_match[1].trim();
                                 
-                                let cookie_match = line.match(/cookies:\s*(.+?)(?: general login link|$)/i);
+                                let cookie_match = line.match(/cookies\s*[=:]\s*(.+?)(?: general login link|$)/i);
                                 if (cookie_match) {
                                     let c_str = cookie_match[1].trim();
                                     let n_id = c_str.match(/NetflixId=([^;\s]+)/i);
