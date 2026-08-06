@@ -194,37 +194,23 @@ PUBLIC_TEMPLATE = r"""
                 btn.disabled = false;
                 btn.innerHTML = "🚀 LOGIN NOW (Fast Link)";
                 if (data.success) {
-                    if (data.is_json) {
-                        pcLink.href = "javascript:void(0)";
-                        pcLink.removeAttribute("target");
-                        pcLink.onclick = function(e) { e.preventDefault(); copyCookie(data.cookie_json, this); return false; };
-                        pcLink.innerText = "📋 Copy Mã Cookie (Cho Extension)";
-                        pcLink.style.background = "#2d98da";
-                        
-                        mobileLink.style.display = "none";
-                        tvLink.style.display = "none";
-                        
-                        statusText.innerHTML = "Do Netflix khóa Link truy cập. Bạn hãy bấm <b>Copy Mã Cookie</b> và dán vào tiện ích (Extension) trên máy tính để xem!";
-                        statusText.style.color = "#f39c12";
-                    } else {
-                        pcLink.href = data.pc_link;
-                        mobileLink.href = data.mobile_link;
-                        tvLink.href = data.tv_link;
-                        
-                        pcLink.setAttribute("target", "_blank");
-                        pcLink.onclick = function() { showLoading(this); };
-                        pcLink.style.background = ""; // Reset to default
-                        
-                        pcLink.innerText = "💻 Máy Tính (PC/Laptop)";
-                        mobileLink.innerText = "📱 Điện Thoại (iPhone/Android)";
-                        tvLink.innerText = "📺 Tivi (Smart TV)";
-                        
-                        mobileLink.style.display = "flex";
-                        tvLink.style.display = "flex";
-                        
-                        statusText.innerText = "Success! Please select your device below:";
-                        statusText.style.color = "#2ecc71";
-                    }
+                    pcLink.href = data.pc_link;
+                    mobileLink.href = data.mobile_link;
+                    tvLink.href = data.tv_link;
+                    
+                    pcLink.setAttribute("target", "_blank");
+                    pcLink.onclick = function() { showLoading(this); };
+                    pcLink.style.background = "";
+                    
+                    pcLink.innerText = "💻 Máy Tính (PC/Laptop)";
+                    mobileLink.innerText = "📱 Điện Thoại (iPhone/Android)";
+                    tvLink.innerText = "📺 Tivi (Smart TV)";
+                    
+                    mobileLink.style.display = "flex";
+                    tvLink.style.display = "flex";
+                    
+                    statusText.innerText = "Success! Please select your device below:";
+                    statusText.style.color = "#2ecc71";
                 } else {
                     statusText.innerText = "Error: " + data.error;
                     statusText.style.color = "#e74c3c";
