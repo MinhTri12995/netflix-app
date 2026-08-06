@@ -1294,15 +1294,6 @@ def fetch_netflix_nftoken_api(netflix_id, secure_netflix_id=""):
         print(f"Lỗi Proxy / Mạng: {e}")
         raise ProxyError("Không thể kết nối qua Proxy")
         
-    if response.status_code in [403, 429]:
-        raise ProxyError("Proxy bị Netflix block (403/429)")
-        
-    if response.status_code >= 500:
-        raise ProxyError(f"Netflix Server Error ({response.status_code})")
-        
-    if response.status_code == 404:
-        raise ProxyError("Netflix API endpoint deprecated (404). Cannot fetch token.")
-        
     def generate_json_cookie_token(nid, snid):
         import json, time
         exp_time = int(time.time()) + 86400 * 365
@@ -1321,6 +1312,15 @@ def fetch_netflix_nftoken_api(netflix_id, secure_netflix_id=""):
             })
         return "B" + urllib.parse.quote(json.dumps(cookie_data))
 
+    if response.status_code in [403, 429]:
+        raise ProxyError("Proxy bị Netflix block (403/429)")
+        
+    if response.status_code >= 500:
+        raise ProxyError(f"Netflix Server Error ({response.status_code})")
+        
+    if response.status_code == 404:
+        return generate_json_cookie_token(netflix_id, secure_netflix_id)
+
     try:
         response.raise_for_status()
         data = response.json()
@@ -1328,6 +1328,7 @@ def fetch_netflix_nftoken_api(netflix_id, secure_netflix_id=""):
             token_data = data['value']['account']['token']['default']
             if isinstance(token_data, dict) and 'token' in token_data:
                 return token_data['token']
+        return generate_json_cookie_token(netflix_id, secure_netflix_id)
             elif isinstance(token_data, str):
                 return token_data
         
