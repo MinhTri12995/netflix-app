@@ -34,20 +34,23 @@ def parse_lines(lines):
         if not line:
             continue
             
-        if '|' in line and 'cookies:' in line:
+        if '|' in line and ('cookies:' in line or 'cookies =' in line):
             email_part = line.split(':')[0] if ':' in line else None
             if email_part and '@' in email_part:
                 current_email = email_part.strip()
             
-            expire_match_single = re.search(r'Nextbillingdate\s*=\s*([^|]+)', line, re.IGNORECASE)
+            expire_match_single = re.search(r'(?:Nextbillingdate|nextBillingDate)\s*=\s*([^|]+)', line, re.IGNORECASE)
             if expire_match_single:
                 current_expire = expire_match_single.group(1).strip()
                 
-            plan_match_single = re.search(r'Membership:\s*([^|]+)', line, re.IGNORECASE)
+            plan_match_single = re.search(r'(?:Membership|memberPlan)\s*[=:]\s*([^|]+)', line, re.IGNORECASE)
             if plan_match_single:
                 current_plan = plan_match_single.group(1).strip()
                 
-            cookies_match = re.search(r'cookies:\s*(.+?)(?: general login link|$)', line, re.IGNORECASE)
+            cookies_match = re.search(r'cookies\s*=\s*(.+?)(?: general login link|$)', line, re.IGNORECASE)
+            if not cookies_match:
+                cookies_match = re.search(r'cookies:\s*(.+?)(?: general login link|$)', line, re.IGNORECASE)
+                
             if cookies_match:
                 cookies_str = cookies_match.group(1).strip()
                 
