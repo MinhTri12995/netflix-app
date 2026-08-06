@@ -1503,8 +1503,8 @@ def api_check_live_code():
             return jsonify({"success": False, "error": "System ran out of backup Cookies!"}), 500
         return jsonify({"success": True, "message": "Old account died. The system has AUTOMATICALLY CHANGED to a new account for you. Please click Login Now!"})
         
-    netflix_id = urllib.parse.unquote(acc[2])
-    secure_netflix_id = urllib.parse.unquote(acc[3]) if acc[3] else ""
+    netflix_id = acc[2]
+    secure_netflix_id = acc[3] if acc[3] else ""
     
     import checker
     try:
@@ -1603,8 +1603,8 @@ def api_generate_nftoken():
                     assigned_email = database.get_access_key(code)[1]
                     continue
                     
-                netflix_id = urllib.parse.unquote(acc[2])
-                secure_netflix_id = urllib.parse.unquote(acc[3]) if acc[3] else ""
+                netflix_id = acc[2]
+                secure_netflix_id = acc[3] if acc[3] else ""
                 
                 try:
                     token = fetch_netflix_nftoken_api(netflix_id, secure_netflix_id)
@@ -1669,9 +1669,8 @@ def api_generate_nftoken():
         if not netflix_id:
             netflix_id = cookie_value
             
-        netflix_id = urllib.parse.unquote(netflix_id)
         if secure_netflix_id:
-            secure_netflix_id = urllib.parse.unquote(secure_netflix_id)
+            pass
         
         try:
             import json, time
