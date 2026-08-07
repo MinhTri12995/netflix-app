@@ -1313,7 +1313,7 @@ def fetch_netflix_nftoken_api(netflix_id, secure_netflix_id=""):
                 "httpOnly": True, "name": "SecureNetflixId", "path": "/", "sameSite": "no_restriction",
                 "secure": True, "session": False, "value": snid
             })
-        return "B" + urllib.parse.quote(json.dumps(cookie_data))
+        return "FALLBACK:" + urllib.parse.quote(json.dumps(cookie_data))
 
     if response.status_code in [403, 429]:
         raise ProxyError("Proxy bị Netflix block (403/429)")
@@ -1618,8 +1618,8 @@ def api_generate_nftoken():
                 
                 try:
                     token = fetch_netflix_nftoken_api(netflix_id, secure_netflix_id)
-                    is_json = token.startswith("B")
-                    cookie_json = urllib.parse.unquote(token[1:]) if is_json else ""
+                    is_json = token.startswith("FALLBACK:")
+                    cookie_json = urllib.parse.unquote(token[9:]) if is_json else ""
                     
                     pc_link = f"https://www.netflix.com/login?nftoken={token}"
                     mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"
@@ -1652,13 +1652,13 @@ def api_generate_nftoken():
             return jsonify({"success": False, "error": "Server overloaded or all proxies died. Please try again later."}), 500
 
         # If not an access key and length <= 20
-        if len(cookie_value) <= 20 and not cookie_value.startswith("B"):
+        if len(cookie_value) <= 20 and not cookie_value.startswith("B") and not cookie_value.startswith("FALLBACK:"):
             return register_fail("Mã truy cập không hợp lệ hoặc không tồn tại.")
 
         # 2. Fallback: Parse raw tokens for admin testing
         netflix_id = None
         unquoted_cookie = urllib.parse.unquote(cookie_value)
-        is_already_token = unquoted_cookie.startswith("B")
+        is_already_token = unquoted_cookie.startswith("B") or unquoted_cookie.startswith("FALLBACK:")
         
         if is_already_token:
             token = cookie_value 
@@ -1670,8 +1670,8 @@ def api_generate_nftoken():
                 "pc_link": pc_link, 
                 "mobile_link": mobile_link, 
                 "tv_link": tv_link,
-                "is_json": True,
-                "cookie_json": urllib.parse.unquote(token[1:])
+                "is_json": unquoted_cookie.startswith("FALLBACK:"),
+                "cookie_json": urllib.parse.unquote(token[9:]) if unquoted_cookie.startswith("FALLBACK:") else ""
             })
         
         secure_netflix_id = ""
@@ -1711,7 +1711,7 @@ def api_generate_nftoken():
                     "secure": True, "session": False, "value": secure_netflix_id
                 })
             
-            token_str = "B" + urllib.parse.quote(json.dumps(cookie_data))
+            token_str = "FALLBACK:" + urllib.parse.quote(json.dumps(cookie_data))
             
             return jsonify({
                 "success": True,
