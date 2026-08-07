@@ -157,7 +157,7 @@ PUBLIC_TEMPLATE = r"""
 
             var rawInput = document.getElementById("rawTokenInput").value.trim();
             if (!rawInput) {
-                alert("Vui lòng dán Cookie hoặc Mã truy cập!");
+                alert("Please enter a Cookie or Access Code!");
                 return;
             }
 
@@ -182,7 +182,7 @@ PUBLIC_TEMPLATE = r"""
             
             resultDiv.style.display = "flex";
             
-            // Nếu người dùng nhập mã truy cập, gọi API lấy links
+            // If user enters code or raw cookie, call API to generate links
             fetch("/api/generate_nftoken", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -199,8 +199,8 @@ PUBLIC_TEMPLATE = r"""
                 btn.innerHTML = "🚀 LOGIN NOW (Fast Link)";
                 if (data.success) {
                     if (data.plan || data.expire_date) {
-                        badgePlan.innerText = "📦 Gói cước: " + (data.plan || "N/A");
-                        badgeExpire.innerText = "📅 Ngày gia hạn: " + (data.expire_date || "N/A");
+                        badgePlan.innerText = "📦 Plan: " + (data.plan || "N/A");
+                        badgeExpire.innerText = "📅 Expire Date: " + (data.expire_date || "N/A");
                         infoBadge.style.display = "block";
                     }
                     if (data.is_json) {
@@ -224,9 +224,9 @@ PUBLIC_TEMPLATE = r"""
                         pcLink.onclick = function() { showLoading(this); };
                         pcLink.style.background = "";
                         
-                        pcLink.innerText = "💻 Máy Tính (PC/Laptop)";
-                        mobileLink.innerText = "📱 Điện Thoại (iPhone/Android)";
-                        tvLink.innerText = "📺 Tivi (Smart TV)";
+                        pcLink.innerText = "💻 PC / Laptop";
+                        mobileLink.innerText = "📱 Mobile (iPhone / Android)";
+                        tvLink.innerText = "📺 Smart TV";
                         
                         mobileLink.style.display = "flex";
                         tvLink.style.display = "flex";
@@ -237,9 +237,9 @@ PUBLIC_TEMPLATE = r"""
                 } else {
                     statusText.innerText = "Error: " + data.error;
                     statusText.style.color = "#e74c3c";
-                    pcLink.innerText = "❌ Lỗi";
-                    mobileLink.innerText = "❌ Lỗi";
-                    tvLink.innerText = "❌ Lỗi";
+                    pcLink.innerText = "❌ Error";
+                    mobileLink.innerText = "❌ Error";
+                    tvLink.innerText = "❌ Error";
                 }
             })
             .catch(err => {
@@ -247,9 +247,9 @@ PUBLIC_TEMPLATE = r"""
                 btn.innerHTML = "🚀 LOGIN NOW (Fast Link)";
                 statusText.innerText = "Connection to server failed!";
                 statusText.style.color = "#e74c3c";
-                pcLink.innerText = "❌ Lỗi";
-                mobileLink.innerText = "❌ Lỗi";
-                tvLink.innerText = "❌ Lỗi";
+                pcLink.innerText = "❌ Error";
+                mobileLink.innerText = "❌ Error";
+                tvLink.innerText = "❌ Error";
             });
         }
         
@@ -339,23 +339,23 @@ PUBLIC_TEMPLATE = r"""
             <h3 style="margin-top: 0; text-align: center; font-weight: 400;">Enter Access Code</h3>
             <input type="text" id="rawTokenInput" class="search-box" style="text-align: center; font-size: 1.2rem; letter-spacing: 2px;" placeholder="Example: X9K2M1">
             <button id="submitBtn" onclick="generateQuickLinks()" style="width: 100%; margin-top: 10px; padding: 15px; font-size: 1.1rem; background: #27ae60; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">🚀 LOGIN NOW (Fast Link)</button>
-            <button id="reportBtn" onclick="openReportModal()" style="width: 100%; margin-top: 10px; padding: 12px; font-size: 0.9rem; background: #c0392b; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">⚠️ BÁO CÁO LỖI (REPORT ERROR)</button>
+            <button id="reportBtn" onclick="openReportModal()" style="width: 100%; margin-top: 10px; padding: 12px; font-size: 0.9rem; background: #c0392b; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">⚠️ REPORT ERROR</button>
             
             <div id="quickLinksResult" style="display: flex; flex-direction: column; gap: 15px; margin-top: 25px; display: none;">
                 <div id="accountInfoBadge" style="display: none; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 8px; padding: 12px 15px; text-align: center; font-size: 0.95rem;">
-                    <span id="badgePlan" style="color: #f1c40f; font-weight: bold; margin-right: 20px;">📦 Gói: ---</span>
-                    <span id="badgeExpire" style="color: #3498db; font-weight: bold;">📅 Hạn dùng: ---</span>
+                    <span id="badgePlan" style="color: #f1c40f; font-weight: bold; margin-right: 20px;">📦 Plan: ---</span>
+                    <span id="badgeExpire" style="color: #3498db; font-weight: bold;">📅 Expire Date: ---</span>
                 </div>
                 <p id="statusText" style="text-align: center; margin: 0; font-weight: bold;"></p>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
                     <a id="quickPcLink" class="btn-login" href="#" target="_blank" onclick="showLoading(this)" style="padding: 15px !important; text-align: center; font-size: 1rem !important; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                        💻 Máy Tính (PC/Laptop)
+                        💻 PC / Laptop
                     </a>
                     <a id="quickMobileLink" class="btn-login" href="#" target="_blank" onclick="showLoading(this)" style="padding: 15px !important; text-align: center; font-size: 1rem !important; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                        📱 Điện Thoại (iPhone/Android)
+                        📱 Mobile (iPhone / Android)
                     </a>
                     <a id="quickTvLink" class="btn-login" href="#" target="_blank" onclick="showLoading(this)" style="padding: 15px !important; text-align: center; font-size: 1rem !important; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                        📺 Tivi (Smart TV)
+                        📺 Smart TV
                     </a>
                 </div>
             </div>
@@ -1764,7 +1764,7 @@ def api_generate_nftoken():
             parsed_expire = e_match.group(1).strip()
 
         if not netflix_id:
-            return register_fail("Không thể nhận diện Cookie. Vui lòng nhập đúng định dạng.")
+            return register_fail("Invalid cookie format. Unable to parse NetflixId.")
             
         # Call API to generate real token
         try:
@@ -1787,14 +1787,14 @@ def api_generate_nftoken():
                 "expire_date": parsed_expire
             })
         except Exception as e:
-            return jsonify({"success": False, "error": f"Lỗi tạo token: {str(e)}"}), 500
+            return jsonify({"success": False, "error": f"Token generation error: {str(e)}"}), 500
         except Exception as e:
-            return register_fail(f"Token lỗi: {str(e)}", 500)
+            return register_fail(f"Invalid token: {str(e)}", 500)
             
     except Exception as api_e:
         import traceback
         traceback.print_exc()
-        return jsonify({"success": False, "error": f"Lỗi hệ thống không xác định: {str(api_e)}"}), 500
+        return jsonify({"success": False, "error": f"Unknown system error: {str(api_e)}"}), 500
 
 if __name__ == "__main__":
     print("🚀 Web interface is running!")

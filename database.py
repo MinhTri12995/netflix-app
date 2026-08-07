@@ -200,25 +200,23 @@ def create_access_key(code, expire_at=None):
     
     email = get_random_available_account(plan_type)
     if not email:
-        return False, f"Không còn Cookie {plan_type} nào khả dụng trong kho."
-    
-    # Kiểm tra mã đã tồn tại chưa
-    exist = get_supabase().table("access_keys").select("code").eq("code", code).execute()
-    if exist.data:
-        return False, "Mã này đã tồn tại."
+        return False, f"No available {plan_type} cookies left in the vault."
         
-    data = {
-        "code": code,
-        "assigned_email": email
-    }
-    if expire_at:
-        data["expire_at"] = expire_at
+    if get_access_key(code):
+        return False, "This access key already exists."
         
     try:
+        data = {
+            "code": code,
+            "assigned_email": email
+        }
+        if expire_at:
+            data["expire_at"] = expire_at
+            
         get_supabase().table("access_keys").insert(data).execute()
-        return True, "Thành công"
+        return True, "Success"
     except Exception as e:
-        return False, f"Lỗi DB: {e}"
+        return False, f"Database error: {e}"
 
 def get_access_key(code):
     response = get_supabase().table("access_keys").select("*").eq("code", code).execute()
