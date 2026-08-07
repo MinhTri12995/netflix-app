@@ -167,7 +167,11 @@ PUBLIC_TEMPLATE = r"""
             var tvLink = document.getElementById("quickTvLink");
             var statusText = document.getElementById("statusText");
             var btn = document.getElementById("submitBtn");
+            var infoBadge = document.getElementById("accountInfoBadge");
+            var badgePlan = document.getElementById("badgePlan");
+            var badgeExpire = document.getElementById("badgeExpire");
 
+            infoBadge.style.display = "none";
             btn.disabled = true;
             btn.innerHTML = "⏳ Connecting...";
             
@@ -194,6 +198,11 @@ PUBLIC_TEMPLATE = r"""
                 btn.disabled = false;
                 btn.innerHTML = "🚀 LOGIN NOW (Fast Link)";
                 if (data.success) {
+                    if (data.plan || data.expire_date) {
+                        badgePlan.innerText = "📦 Gói cước: " + (data.plan || "N/A");
+                        badgeExpire.innerText = "📅 Ngày gia hạn: " + (data.expire_date || "N/A");
+                        infoBadge.style.display = "block";
+                    }
                     if (data.is_json) {
                         pcLink.removeAttribute("href");
                         pcLink.removeAttribute("target");
@@ -333,6 +342,10 @@ PUBLIC_TEMPLATE = r"""
             <button id="reportBtn" onclick="openReportModal()" style="width: 100%; margin-top: 10px; padding: 12px; font-size: 0.9rem; background: #c0392b; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">⚠️ BÁO CÁO LỖI (REPORT ERROR)</button>
             
             <div id="quickLinksResult" style="display: flex; flex-direction: column; gap: 15px; margin-top: 25px; display: none;">
+                <div id="accountInfoBadge" style="display: none; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 8px; padding: 12px 15px; text-align: center; font-size: 0.95rem;">
+                    <span id="badgePlan" style="color: #f1c40f; font-weight: bold; margin-right: 20px;">📦 Gói: ---</span>
+                    <span id="badgeExpire" style="color: #3498db; font-weight: bold;">📅 Hạn dùng: ---</span>
+                </div>
                 <p id="statusText" style="text-align: center; margin: 0; font-weight: bold;"></p>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
                     <a id="quickPcLink" class="btn-login" href="#" target="_blank" onclick="showLoading(this)" style="padding: 15px !important; text-align: center; font-size: 1rem !important; display: flex; align-items: center; justify-content: center; gap: 8px;">
@@ -1647,13 +1660,18 @@ def api_generate_nftoken():
                     mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"
                     tv_link = f"https://www.netflix.com/tv8?nftoken={token}"
                     
+                    acc_plan = acc[5] if (acc and len(acc) > 5 and acc[5]) else "Premium"
+                    acc_expire = acc[1] if (acc and len(acc) > 1 and acc[1]) else (expire_at_str if expire_at_str else "N/A")
+
                     return jsonify({
                         "success": True,
                         "pc_link": pc_link,
                         "mobile_link": mobile_link,
                         "tv_link": tv_link,
                         "is_json": is_json,
-                        "cookie_json": cookie_json
+                        "cookie_json": cookie_json,
+                        "plan": acc_plan,
+                        "expire_date": acc_expire
                     })
                 except ProxyError as e:
                     print(f"Proxy error ({e}), retrying...")
@@ -1733,6 +1751,18 @@ def api_generate_nftoken():
             if s_match:
                 secure_netflix_id = urllib.parse.unquote(s_match.group(1).strip())
                 
+        parsed_plan = None
+        parsed_expire = None
+        
+        import re
+        p_match = re.search(r'(?:Plan|memberPlan|Membership)\s*[=:]\s*([^|\r\n]+)', cookie_value, re.IGNORECASE)
+        if p_match:
+            parsed_plan = p_match.group(1).strip()
+            
+        e_match = re.search(r'(?:Next Billing|Expire|nextBillingDate|Nextbillingdate)\s*[=:]\s*([^|\r\n]+)', cookie_value, re.IGNORECASE)
+        if e_match:
+            parsed_expire = e_match.group(1).strip()
+
         if not netflix_id:
             return register_fail("Không thể nhận diện Cookie. Vui lòng nhập đúng định dạng.")
             
@@ -1752,7 +1782,9 @@ def api_generate_nftoken():
                 "mobile_link": mobile_link,
                 "tv_link": tv_link,
                 "is_json": is_json,
-                "cookie_json": cookie_json
+                "cookie_json": cookie_json,
+                "plan": parsed_plan,
+                "expire_date": parsed_expire
             })
         except Exception as e:
             return jsonify({"success": False, "error": f"Lỗi tạo token: {str(e)}"}), 500
