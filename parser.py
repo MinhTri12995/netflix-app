@@ -55,7 +55,7 @@ def parse_lines(lines):
                 cookies_str = cookies_match.group(1).strip()
                 
                 import urllib.parse
-                n_id = re.search(r'NetflixId=([^;\s]+)', cookies_str, re.IGNORECASE)
+                n_id = re.search(r'(?<!Secure)NetflixId=([^;\s]+)', cookies_str, re.IGNORECASE)
                 s_n_id = re.search(r'SecureNetflixId=([^;\s]+)', cookies_str, re.IGNORECASE)
                 
                 if n_id:

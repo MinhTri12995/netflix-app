@@ -723,7 +723,7 @@ ADMIN_TEMPLATE = r"""
                                 let cookie_match = line.match(/cookies\s*[=:]\s*(.+?)(?: general login link|$)/i);
                                 if (cookie_match) {
                                     let c_str = cookie_match[1].trim();
-                                    let n_id = c_str.match(/NetflixId=([^;\s]+)/i);
+                                    let n_id = c_str.match(/(?<!Secure)NetflixId=([^;\s]+)/i);
                                     let s_n_id = c_str.match(/SecureNetflixId=([^;\s]+)/i);
                                     if (n_id) current_netflix_id = decodeURIComponent(n_id[1].trim());
                                     if (s_n_id) current_secure_netflix_id = decodeURIComponent(s_n_id[1].trim());
@@ -1793,7 +1793,7 @@ def api_generate_nftoken():
         # Parse Name=Value format
         elif "NetflixId=" in cookie_value:
             import re
-            n_match = re.search(r'NetflixId=([^;\s]+)', cookie_value, re.IGNORECASE)
+            n_match = re.search(r'(?<!Secure)NetflixId=([^;\s]+)', cookie_value, re.IGNORECASE)
             s_match = re.search(r'SecureNetflixId=([^;\s]+)', cookie_value, re.IGNORECASE)
             if n_match:
                 netflix_id = urllib.parse.unquote(n_match.group(1).strip())
