@@ -54,13 +54,14 @@ def parse_lines(lines):
             if cookies_match:
                 cookies_str = cookies_match.group(1).strip()
                 
+                import urllib.parse
                 n_id = re.search(r'NetflixId=([^;\s]+)', cookies_str, re.IGNORECASE)
                 s_n_id = re.search(r'SecureNetflixId=([^;\s]+)', cookies_str, re.IGNORECASE)
                 
                 if n_id:
-                    current_netflix_id = n_id.group(1).strip()
+                    current_netflix_id = urllib.parse.unquote(n_id.group(1).strip())
                 if s_n_id:
-                    current_secure_netflix_id = s_n_id.group(1).strip()
+                    current_secure_netflix_id = urllib.parse.unquote(s_n_id.group(1).strip())
                     
                 if current_netflix_id:
                     push_account()

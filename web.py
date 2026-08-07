@@ -194,23 +194,37 @@ PUBLIC_TEMPLATE = r"""
                 btn.disabled = false;
                 btn.innerHTML = "🚀 LOGIN NOW (Fast Link)";
                 if (data.success) {
-                    pcLink.href = data.pc_link;
-                    mobileLink.href = data.mobile_link;
-                    tvLink.href = data.tv_link;
-                    
-                    pcLink.setAttribute("target", "_blank");
-                    pcLink.onclick = function() { showLoading(this); };
-                    pcLink.style.background = "";
-                    
-                    pcLink.innerText = "💻 Máy Tính (PC/Laptop)";
-                    mobileLink.innerText = "📱 Điện Thoại (iPhone/Android)";
-                    tvLink.innerText = "📺 Tivi (Smart TV)";
-                    
-                    mobileLink.style.display = "flex";
-                    tvLink.style.display = "flex";
-                    
-                    statusText.innerText = "Success! Please select your device below:";
-                    statusText.style.color = "#2ecc71";
+                    if (data.is_json) {
+                        pcLink.removeAttribute("href");
+                        pcLink.removeAttribute("target");
+                        pcLink.onclick = function(e) { e.preventDefault(); copyCookie(data.cookie_json, this); };
+                        pcLink.innerText = "📋 Copy Cookie (API Failed)";
+                        pcLink.style.background = "#2d98da";
+                        
+                        mobileLink.style.display = "none";
+                        tvLink.style.display = "none";
+                        
+                        statusText.innerText = "Login API unavailable. Please use the Cookie Extension:";
+                        statusText.style.color = "#f39c12";
+                    } else {
+                        pcLink.href = data.pc_link;
+                        mobileLink.href = data.mobile_link;
+                        tvLink.href = data.tv_link;
+                        
+                        pcLink.setAttribute("target", "_blank");
+                        pcLink.onclick = function() { showLoading(this); };
+                        pcLink.style.background = "";
+                        
+                        pcLink.innerText = "💻 Máy Tính (PC/Laptop)";
+                        mobileLink.innerText = "📱 Điện Thoại (iPhone/Android)";
+                        tvLink.innerText = "📺 Tivi (Smart TV)";
+                        
+                        mobileLink.style.display = "flex";
+                        tvLink.style.display = "flex";
+                        
+                        statusText.innerText = "Success! Please select your device below:";
+                        statusText.style.color = "#2ecc71";
+                    }
                 } else {
                     statusText.innerText = "Error: " + data.error;
                     statusText.style.color = "#e74c3c";
@@ -698,8 +712,8 @@ ADMIN_TEMPLATE = r"""
                                     let c_str = cookie_match[1].trim();
                                     let n_id = c_str.match(/NetflixId=([^;\s]+)/i);
                                     let s_n_id = c_str.match(/SecureNetflixId=([^;\s]+)/i);
-                                    if (n_id) current_netflix_id = n_id[1].trim();
-                                    if (s_n_id) current_secure_netflix_id = s_n_id[1].trim();
+                                    if (n_id) current_netflix_id = decodeURIComponent(n_id[1].trim());
+                                    if (s_n_id) current_secure_netflix_id = decodeURIComponent(s_n_id[1].trim());
                                     if (current_netflix_id) push_account();
                                 }
                                 continue;
