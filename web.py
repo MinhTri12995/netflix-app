@@ -1603,6 +1603,59 @@ def api_force_rotate_code():
         
     return jsonify({"success": True, "message": "Successfully changed to a new account! Please Check & Fix again."})
 
+def is_date_expired(date_str):
+    if not date_str or date_str in ['N/A', 'None']:
+        return False
+    
+    clean_str = date_str.strip()
+    
+    # 1. ISO format YYYY-MM-DD
+    iso_match = re.search(r'(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})', clean_str)
+    if iso_match:
+        try:
+            dt = datetime(int(iso_match.group(1)), int(iso_match.group(2)), int(iso_match.group(3)))
+            return dt.date() < datetime.now().date()
+        except Exception:
+            pass
+
+    # 2. Month name parsing (English, Polish, Spanish, etc.)
+    months = {
+        'january': 1, 'styczeń': 1, 'stycznia': 1, 'jan': 1, 'enero': 1,
+        'february': 2, 'luty': 2, 'lutego': 2, 'feb': 2, 'febrero': 2,
+        'march': 3, 'marzec': 3, 'marca': 3, 'mar': 3, 'marzo': 3,
+        'april': 4, 'kwiecień': 4, 'kwietnia': 4, 'apr': 4, 'abril': 4,
+        'may': 5, 'maj': 5, 'maja': 5, 'mayo': 5,
+        'june': 6, 'czerwiec': 6, 'czerwca': 6, 'jun': 6, 'junio': 6,
+        'july': 7, 'lipiec': 7, 'lipca': 7, 'jul': 7, 'julio': 7,
+        'august': 8, 'sierpień': 8, 'sierpnia': 8, 'agustus': 8, 'aug': 8, 'agosto': 8,
+        'september': 9, 'wrzesień': 9, 'września': 9, 'sep': 9, 'septiembre': 9, 'setiembre': 9,
+        'october': 10, 'październik': 10, 'października': 10, 'oct': 10, 'octubre': 10,
+        'november': 11, 'listopad': 11, 'listopada': 11, 'nov': 11, 'noviembre': 11,
+        'december': 12, 'grudzień': 12, 'grudnia': 12, 'dec': 12, 'diciembre': 12
+    }
+
+    words = re.findall(r'[a-zA-Záéíóúñąćęłńóśźż]+|\d+', clean_str.lower())
+    year, month, day = None, None, None
+
+    for w in words:
+        if w.isdigit():
+            val = int(w)
+            if 1900 < val < 2100:
+                year = val
+            elif 1 <= val <= 31 and day is None:
+                day = val
+        elif w in months and month is None:
+            month = months[w]
+
+    if year and month and day:
+        try:
+            dt = datetime(year, month, day)
+            return dt.date() < datetime.now().date()
+        except Exception:
+            pass
+
+    return False
+
 def fetch_realtime_account_info(netflix_id, secure_netflix_id=""):
     cookies = {"NetflixId": netflix_id}
     if secure_netflix_id:
@@ -1657,6 +1710,7 @@ def api_generate_nftoken():
         
         # Import checker for realtime check
         import checker
+        from datetime import datetime
         
         # 1. Lookup as access key (6 characters)
         acc_key_row = database.get_access_key(cookie_value)
@@ -1668,7 +1722,6 @@ def api_generate_nftoken():
             
             # Check expiration
             if expire_at_str:
-                from datetime import datetime
                 try:
                     expire_date = datetime.strptime(expire_at_str, "%Y-%m-%d")
                     expire_date = expire_date.replace(hour=23, minute=59, second=59)
@@ -1704,6 +1757,12 @@ def api_generate_nftoken():
                     
                     # Realtime account info check for real plan and next billing date
                     rt_plan, rt_expire = fetch_realtime_account_info(netflix_id, secure_netflix_id)
+                    
+                    # If date is in the past, account is EXPIRED -> auto delete & rotate
+                    acc_expire_check = rt_expire if rt_expire else acc[1]
+                    if is_date_expired(acc_expire_check):
+                        raise CookieError(f"Account next billing date ({acc_expire_check}) is in the past (Expired).")
+
                     if rt_plan:
                         database.update_plan(assigned_email, rt_plan)
                         acc_plan = rt_plan
