@@ -734,15 +734,20 @@ ADMIN_TEMPLATE = r"""
                             if (id_match) { current_netflix_id = id_match[1].trim(); continue; }
                             
                             let sid_match = line.match(/^(?:–|-|#)?\s*SecureNetflixId:\s*(.+)/i);
-                            if (sid_match) { current_secure_netflix_id = sid_match[1].trim(); push_account(); continue; }
+                            if (sid_match) { current_secure_netflix_id = sid_match[1].trim(); continue; }
                             
+                            if (line.startsWith("# ===")) {
+                                push_account();
+                                continue;
+                            }
+
                             if (line.includes('.netflix.com')) {
                                 let parts = line.trim().split(/\s+/);
                                 if (parts.length >= 3) {
                                     let c_name = parts[parts.length - 2];
-                                    let c_val = parts[parts.length - 1];
+                                    let c_val = decodeURIComponent(parts[parts.length - 1]);
                                     if (c_name === 'NetflixId') current_netflix_id = c_val;
-                                    if (c_name === 'SecureNetflixId') { current_secure_netflix_id = c_val; push_account(); }
+                                    if (c_name === 'SecureNetflixId') current_secure_netflix_id = c_val;
                                 }
                                 continue;
                             }
@@ -1708,12 +1713,14 @@ def api_generate_nftoken():
         # Parse Netscape format
         elif ".netflix.com" in cookie_value:
             for line in cookie_value.splitlines():
-                parts = line.split("\t")
-                if len(parts) >= 7:
-                    if parts[5].strip() == "NetflixId":
-                        netflix_id = urllib.parse.unquote(parts[6].strip())
-                    elif parts[5].strip() == "SecureNetflixId":
-                        secure_netflix_id = urllib.parse.unquote(parts[6].strip())
+                parts = line.split()
+                if len(parts) >= 3:
+                    c_name = parts[-2]
+                    c_val = urllib.parse.unquote(parts[-1])
+                    if c_name == "NetflixId":
+                        netflix_id = c_val
+                    elif c_name == "SecureNetflixId":
+                        secure_netflix_id = c_val
                         
         # Parse Name=Value format
         elif "NetflixId=" in cookie_value:

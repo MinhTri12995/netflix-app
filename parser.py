@@ -116,11 +116,17 @@ def parse_lines(lines):
             current_secure_netflix_id = secure_netflixid_match.group(1).strip()
             continue
 
+        if line.startswith("# ==="):
+            if current_netflix_id:
+                push_account()
+            continue
+
         if '.netflix.com' in line:
+            import urllib.parse
             parts = line.split()
             if len(parts) >= 3:
                 cookie_name = parts[-2]
-                cookie_value = parts[-1]
+                cookie_value = urllib.parse.unquote(parts[-1])
                 
                 if cookie_name == 'NetflixId':
                     current_netflix_id = cookie_value
