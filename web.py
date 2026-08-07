@@ -1426,11 +1426,13 @@ def api_submit_request():
             "Content-Type": "application/json"
         }
         
-        prompt = """You are an AI assistant analyzing Netflix error screenshots. 
-Reply with ONLY ONE WORD from the following options:
-- NO_PLAN: if the screen shows 'Update Payment', 'Your account is on hold', 'Choose your plan', 'Restart Your Membership', or any message indicating the subscription is expired or payment failed.
-- TOO_MANY_PEOPLE: if the screen shows 'Too many people are using your account right now', 'Screen limit', or similar.
-- OTHER: if it is any other error, not an error, or an irrelevant image."""
+        prompt = """You are an AI assistant analyzing Netflix error and subscription status screenshots.
+The screenshot can be in ANY LANGUAGE (English, Spanish, Vietnamese, Polish, Portuguese, German, French, etc.).
+
+Analyze the image carefully. Reply with ONLY ONE WORD from the following options:
+- NO_PLAN: If the image shows ANY Netflix screen indicating membership/subscription is canceled, expired, inactive, on hold, payment update required, choose a plan, or restart membership (for example: 'Reactivar tu suscripción', 'Update Payment', 'Your account is on hold', 'Choose your plan', 'Restart Your Membership', 'Reactivar la suscripción', 'Tái kích hoạt tư cách thành viên', 'Renovar assinatura', etc.).
+- TOO_MANY_PEOPLE: If the image shows a Netflix error about too many people watching, screen limit reached, or device limit reached.
+- OTHER: ONLY if the image is completely unrelated to Netflix or shows a normal video playing without any error/subscription prompt."""
 
         data = {
             "model": "pixtral-12b-2409",
@@ -1449,13 +1451,14 @@ Reply with ONLY ONE WORD from the following options:
             r = requests.post("https://api.mistral.ai/v1/chat/completions", headers=headers, json=data, timeout=30)
             r.raise_for_status()
             ai_response = r.json()["choices"][0]["message"]["content"].strip().upper()
+            print(f"Mistral AI Response: {ai_response}")
         except Exception as e:
             print(f"Mistral API error: {e}")
-            ai_response = "OTHER" # Fallback nếu gọi API lỗi
+            ai_response = "OTHER" # Fallback if API fails
             
-        if "NO_PLAN" in ai_response:
+        if "NO_PLAN" in ai_response or "REACTIVAR" in ai_response or "PAYMENT" in ai_response or "HOLD" in ai_response or "RESTART" in ai_response or "SUSCRIPCI" in ai_response:
             assigned_email = acc_key_row[1]
-            database.delete_account(assigned_email) # Xóa acc cũ khỏi db
+            database.delete_account(assigned_email) # Delete old dead account from db
             rotated = database.rotate_access_key(code)
             if rotated:
                 database.create_request(code, image_url, "accepted_no_plan")
@@ -1463,7 +1466,7 @@ Reply with ONLY ONE WORD from the following options:
             else:
                 return jsonify({"success": False, "error": "The system is out of backup accounts!"})
                 
-        elif "TOO_MANY" in ai_response:
+        elif "TOO_MANY" in ai_response or "LIMIT" in ai_response or "SCREEN" in ai_response:
             rotated = database.rotate_access_key(code)
             if rotated:
                 database.create_request(code, image_url, "accepted_too_many_people")
