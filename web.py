@@ -291,9 +291,9 @@ PUBLIC_TEMPLATE = r"""
                 btn.disabled = false;
                 btn.innerHTML = "Submit Report";
                 if (data.success) {
-                    statusText.innerText = "Report submitted successfully! The admin will check and fix it soon.";
+                    statusText.innerText = data.message || "Report submitted successfully! The account has been updated.";
                     statusText.style.color = "#2ecc71";
-                    setTimeout(closeReportModal, 3000);
+                    setTimeout(closeReportModal, 4000);
                 } else {
                     statusText.innerText = "Error: " + data.error;
                     statusText.style.color = "#e74c3c";
@@ -1379,8 +1379,9 @@ def api_submit_request():
     if not acc_key_row:
         return jsonify({"success": False, "error": "Invalid or non-existent access code."}), 400
         
-    if database.has_recent_request(code):
-        return jsonify({"success": False, "error": "Please try again after 5 minutes."}), 429
+    # Anti-spam check removed as requested by user
+    # if database.has_recent_request(code):
+    #     return jsonify({"success": False, "error": "Please try again after 5 minutes."}), 429
         
     try:
         import uuid
