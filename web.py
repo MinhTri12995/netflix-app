@@ -1335,8 +1335,8 @@ def fetch_netflix_nftoken_api(netflix_id, secure_netflix_id=""):
     if response.status_code >= 500:
         raise ProxyError(f"Netflix Server Error ({response.status_code})")
         
-    if response.status_code == 404:
-        return generate_json_cookie_token(netflix_id, secure_netflix_id)
+    if response.status_code in [401, 404]:
+        raise CookieError(f"Cookie invalid (HTTP {response.status_code})")
 
     try:
         response.raise_for_status()
@@ -1348,15 +1348,17 @@ def fetch_netflix_nftoken_api(netflix_id, secure_netflix_id=""):
             elif isinstance(token_data, str):
                 return token_data
         
-        # Fallback to JSON Cookie since Netflix API changed
-        return generate_json_cookie_token(netflix_id, secure_netflix_id)
+        # Token field missing means cookie is dead or session invalid
+        raise CookieError("Netflix token not found in response - Cookie is likely dead.")
         
     except requests.exceptions.HTTPError as e:
-        if response.status_code == 401:
+        if response.status_code in [401, 404]:
             raise CookieError(f"Cookie invalid (HTTP {response.status_code})")
-        return generate_json_cookie_token(netflix_id, secure_netflix_id)
-    except Exception:
-        return generate_json_cookie_token(netflix_id, secure_netflix_id)
+        raise ProxyError(f"HTTP Error: {e}")
+    except (CookieError, ProxyError):
+        raise
+    except Exception as e:
+        raise ProxyError(f"Parse/Network Error: {e}")
 
 @app.route("/api/submit_request", methods=["POST"])
 def api_submit_request():
