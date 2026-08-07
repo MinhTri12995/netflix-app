@@ -195,8 +195,10 @@ def create_access_key(code, expire_at=None):
         plan_type = "Standard"
     elif len(code) == 8:
         plan_type = "Standard_Ads"
-    else:
+    elif len(code) == 5:
         plan_type = "Basic"
+    else:
+        plan_type = "Premium"
     
     email = get_random_available_account(plan_type)
     if not email:
@@ -243,8 +245,10 @@ def rotate_access_key(code):
         plan_type = "Standard"
     elif len(code) == 8:
         plan_type = "Standard_Ads"
-    else:
+    elif len(code) == 5:
         plan_type = "Basic"
+    else:
+        plan_type = "Premium"
     
     email = get_random_available_account(plan_type)
     if not email:

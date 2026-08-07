@@ -1773,6 +1773,8 @@ def api_generate_nftoken():
                         expected_plan = "Standard"
                     elif len(code) == 8:
                         expected_plan = "Standard_Ads"
+                    elif len(code) == 5:
+                        expected_plan = "Basic"
                     else:
                         expected_plan = "Premium"
 
