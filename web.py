@@ -188,12 +188,7 @@ PUBLIC_TEMPLATE = r"""
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ cookie: rawInput })
             })
-            .then(res => {
-                if (!res.ok) {
-                    throw new Error("HTTP " + res.status);
-                }
-                return res.json();
-            })
+            .then(res => res.json())
             .then(data => {
                 btn.disabled = false;
                 btn.innerHTML = "🚀 LOGIN NOW (Fast Link)";
@@ -235,7 +230,7 @@ PUBLIC_TEMPLATE = r"""
                         statusText.style.color = "#2ecc71";
                     }
                 } else {
-                    statusText.innerText = "Error: " + data.error;
+                    statusText.innerText = "Error: " + (data.error || "Failed to generate link.");
                     statusText.style.color = "#e74c3c";
                     pcLink.innerText = "❌ Error";
                     mobileLink.innerText = "❌ Error";
