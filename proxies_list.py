@@ -105,7 +105,11 @@ ROTATING_PROXIES = [
     "http://gvxrfmsr:cfd5ym3vkh1h@104.143.245.102:6342/"
 ]
 
+USE_DIRECT_RENDER = True  # Tạm thời dùng trực tiếp mạng/IP của Render
+
 def get_random_proxy():
+    if USE_DIRECT_RENDER:
+        return None
     proxy = random.choice(ROTATING_PROXIES)
     return {
         "http": proxy,
