@@ -1766,6 +1766,35 @@ def api_generate_nftoken():
                         
                     acc_expire = rt_expire if rt_expire else (acc[1] if (acc and len(acc) > 1 and acc[1]) else (expire_at_str if expire_at_str else "N/A"))
 
+                    # Determine expected plan type for this access code
+                    if len(code) == 15:
+                        expected_plan = "Premium"
+                    elif len(code) == 10:
+                        expected_plan = "Standard"
+                    elif len(code) == 8:
+                        expected_plan = "Standard_Ads"
+                    else:
+                        expected_plan = "Premium"
+
+                    # Plan mismatch check & auto-rotation
+                    plan_check_str = str(acc_plan).lower()
+                    is_ads = any(kw in plan_check_str for kw in ['ads', 'adverts', 'anuncios', 'pub', 'werbung', 'quảng cáo', 'โฆษณา', '広告', '광고', 'рекламо', 'reklam', 'rek'])
+                    
+                    should_rotate_mismatch = False
+                    if expected_plan == "Premium":
+                        if (is_ads or "standard" in plan_check_str or "basic" in plan_check_str) and not ("premium" in plan_check_str or "ultra" in plan_check_str):
+                            should_rotate_mismatch = True
+                    elif expected_plan == "Standard":
+                        if is_ads or "basic" in plan_check_str:
+                            should_rotate_mismatch = True
+
+                    if should_rotate_mismatch:
+                        print(f"Plan mismatch for code {code}: account {assigned_email} has real plan '{acc_plan}', expected '{expected_plan}'. Auto-rotating to matching account...")
+                        rotated = database.rotate_access_key(code)
+                        if rotated:
+                            assigned_email = database.get_access_key(code)[1]
+                            continue # Retry loop to fetch link for newly assigned matching account!
+
                     return jsonify({
                         "success": True,
                         "pc_link": pc_link,
