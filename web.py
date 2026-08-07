@@ -1600,6 +1600,45 @@ def api_force_rotate_code():
         
     return jsonify({"success": True, "message": "Successfully changed to a new account! Please Check & Fix again."})
 
+def fetch_realtime_account_info(netflix_id, secure_netflix_id=""):
+    cookies = {"NetflixId": netflix_id}
+    if secure_netflix_id:
+        cookies["SecureNetflixId"] = secure_netflix_id
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9"
+    }
+    proxy_dict = proxies_list.get_random_proxy()
+    try:
+        r = requests.get("https://www.netflix.com/YourAccount", cookies=cookies, headers=headers, proxies=proxy_dict, timeout=8, allow_redirects=True)
+        html = r.text
+        
+        plan = None
+        plan_m = re.search(r'(?:localizedPlanName|planName)"\s*:\s*\{"fieldType":"String","value":"([^"]+)"\}', html)
+        if plan_m:
+            plan = plan_m.group(1).replace(r'\x20', ' ').strip()
+        else:
+            text_lower = html.lower()
+            if "premium" in text_lower or "ultra" in text_lower:
+                plan = "Premium"
+            elif "standard with ads" in text_lower or "standard_ads" in text_lower:
+                plan = "Standard with Ads"
+            elif "standard" in text_lower:
+                plan = "Standard"
+            elif "basic" in text_lower:
+                plan = "Basic"
+
+        expire_date = None
+        date_m = re.search(r'nextBillingDate"\s*:\s*\{"fieldType":"String","value":"([^"]+)"\}', html)
+        if date_m:
+            expire_date = date_m.group(1).replace(r'\x20', ' ').strip()
+
+        return plan, expire_date
+    except Exception as e:
+        print(f"Realtime fetch error: {e}")
+        return None, None
+
 @app.route("/api/generate_nftoken", methods=["POST"])
 def api_generate_nftoken():
     def register_fail(err_msg, status_code=400):
@@ -1660,8 +1699,15 @@ def api_generate_nftoken():
                     mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"
                     tv_link = f"https://www.netflix.com/tv8?nftoken={token}"
                     
-                    acc_plan = acc[5] if (acc and len(acc) > 5 and acc[5]) else "Premium"
-                    acc_expire = acc[1] if (acc and len(acc) > 1 and acc[1]) else (expire_at_str if expire_at_str else "N/A")
+                    # Realtime account info check for real plan and next billing date
+                    rt_plan, rt_expire = fetch_realtime_account_info(netflix_id, secure_netflix_id)
+                    if rt_plan:
+                        database.update_plan(assigned_email, rt_plan)
+                        acc_plan = rt_plan
+                    else:
+                        acc_plan = acc[5] if (acc and len(acc) > 5 and acc[5]) else "Premium"
+                        
+                    acc_expire = rt_expire if rt_expire else (acc[1] if (acc and len(acc) > 1 and acc[1]) else (expire_at_str if expire_at_str else "N/A"))
 
                     return jsonify({
                         "success": True,
@@ -1772,6 +1818,11 @@ def api_generate_nftoken():
             is_json = token.startswith("FALLBACK:")
             cookie_json = urllib.parse.unquote(token[9:]) if is_json else ""
             
+            # Fetch realtime plan and next billing date
+            rt_plan, rt_expire = fetch_realtime_account_info(netflix_id, secure_netflix_id)
+            final_plan = rt_plan if rt_plan else (parsed_plan if parsed_plan else "Premium")
+            final_expire = rt_expire if rt_expire else (parsed_expire if parsed_expire else "N/A")
+
             pc_link = f"https://www.netflix.com/login?nftoken={token}"
             mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"
             tv_link = f"https://www.netflix.com/tv8?nftoken={token}"
@@ -1783,8 +1834,8 @@ def api_generate_nftoken():
                 "tv_link": tv_link,
                 "is_json": is_json,
                 "cookie_json": cookie_json,
-                "plan": parsed_plan,
-                "expire_date": parsed_expire
+                "plan": final_plan,
+                "expire_date": final_expire
             })
         except Exception as e:
             return jsonify({"success": False, "error": f"Token generation error: {str(e)}"}), 500
