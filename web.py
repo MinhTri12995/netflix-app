@@ -1669,8 +1669,10 @@ def api_generate_nftoken():
         if len(cookie_value) <= 20 and not cookie_value.startswith("B") and not cookie_value.startswith("FALLBACK:"):
             return register_fail("Mã truy cập không hợp lệ hoặc không tồn tại.")
 
-        # 2. Fallback: Parse raw tokens for admin testing
+        # 2. Fallback: Parse raw tokens
         netflix_id = None
+        secure_netflix_id = ""
+        
         unquoted_cookie = urllib.parse.unquote(cookie_value)
         is_already_token = unquoted_cookie.startswith("B") or unquoted_cookie.startswith("FALLBACK:")
         
@@ -1687,56 +1689,63 @@ def api_generate_nftoken():
                 "is_json": unquoted_cookie.startswith("FALLBACK:"),
                 "cookie_json": urllib.parse.unquote(token[9:]) if unquoted_cookie.startswith("FALLBACK:") else ""
             })
-        
-        secure_netflix_id = ""
-        if "NetflixId=" in cookie_value:
-            match = re.search(r'NetflixId\s*=\s*([^;]+)', cookie_value)
-            if match:
-                netflix_id = match.group(1).strip()
+            
+        # Parse JSON format
+        if cookie_value.strip().startswith("["):
+            try:
+                import json
+                data = json.loads(cookie_value)
+                for cookie in data:
+                    if cookie.get('name') == 'NetflixId':
+                        netflix_id = urllib.parse.unquote(cookie.get('value', ''))
+                    elif cookie.get('name') == 'SecureNetflixId':
+                        secure_netflix_id = urllib.parse.unquote(cookie.get('value', ''))
+            except Exception:
+                pass
+                
+        # Parse Netscape format
         elif ".netflix.com" in cookie_value:
             for line in cookie_value.splitlines():
                 parts = line.split("\t")
-                if len(parts) >= 7 and parts[5].strip() == "NetflixId":
-                    netflix_id = parts[6].strip()
-                    break
-        else:
-            netflix_id = cookie_value.replace('"', '').replace("'", "").strip()
-            
+                if len(parts) >= 7:
+                    if parts[5].strip() == "NetflixId":
+                        netflix_id = urllib.parse.unquote(parts[6].strip())
+                    elif parts[5].strip() == "SecureNetflixId":
+                        secure_netflix_id = urllib.parse.unquote(parts[6].strip())
+                        
+        # Parse Name=Value format
+        elif "NetflixId=" in cookie_value:
+            import re
+            n_match = re.search(r'NetflixId=([^;\s]+)', cookie_value, re.IGNORECASE)
+            s_match = re.search(r'SecureNetflixId=([^;\s]+)', cookie_value, re.IGNORECASE)
+            if n_match:
+                netflix_id = urllib.parse.unquote(n_match.group(1).strip())
+            if s_match:
+                secure_netflix_id = urllib.parse.unquote(s_match.group(1).strip())
+                
         if not netflix_id:
-            netflix_id = cookie_value
+            return register_fail("Không thể nhận diện Cookie. Vui lòng nhập đúng định dạng.")
             
-        if secure_netflix_id:
-            pass
-        
+        # Call API to generate real token
         try:
-            import json, time
-            exp_time = int(time.time()) + 86400 * 365 # 1 year
-            cookie_data = [
-                {
-                    "domain": ".netflix.com", "expirationDate": exp_time, "hostOnly": False,
-                    "httpOnly": True, "name": "NetflixId", "path": "/", "sameSite": "no_restriction",
-                    "secure": True, "session": False, "value": netflix_id
-                }
-            ]
-            if secure_netflix_id:
-                cookie_data.append({
-                    "domain": ".netflix.com", "expirationDate": exp_time, "hostOnly": False,
-                    "httpOnly": True, "name": "SecureNetflixId", "path": "/", "sameSite": "no_restriction",
-                    "secure": True, "session": False, "value": secure_netflix_id
-                })
+            token = fetch_netflix_nftoken_api(netflix_id, secure_netflix_id)
+            is_json = token.startswith("FALLBACK:")
+            cookie_json = urllib.parse.unquote(token[9:]) if is_json else ""
             
-            token_str = "FALLBACK:" + urllib.parse.quote(json.dumps(cookie_data))
+            pc_link = f"https://www.netflix.com/login?nftoken={token}"
+            mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"
+            tv_link = f"https://www.netflix.com/tv8?nftoken={token}"
             
             return jsonify({
                 "success": True,
-                "is_json": True,
-                "cookie_json": json.dumps(cookie_data, indent=2),
-                "pc_link": f"https://www.netflix.com/login?nftoken={token_str}",
-                "mobile_link": f"https://www.netflix.com/unsupported?nftoken={token_str}",
-                "tv_link": f"https://www.netflix.com/tv8?nftoken={token_str}"
+                "pc_link": pc_link,
+                "mobile_link": mobile_link,
+                "tv_link": tv_link,
+                "is_json": is_json,
+                "cookie_json": cookie_json
             })
         except Exception as e:
-            return jsonify({"success": False, "error": f"Lỗi: {str(e)}"}), 500
+            return jsonify({"success": False, "error": f"Lỗi tạo token: {str(e)}"}), 500
         except Exception as e:
             return register_fail(f"Token lỗi: {str(e)}", 500)
             
