@@ -1939,7 +1939,7 @@ def api_generate_nftoken():
         
         if is_already_token:
             token = cookie_value 
-            pc_link = f"https://www.netflix.com/login?nftoken={token}"
+            pc_link = f"https://www.netflix.com/account?nftoken={token}"
             mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"
             tv_link = f"https://www.netflix.com/tv8?nftoken={token}"
             return jsonify({
@@ -2012,7 +2012,7 @@ def api_generate_nftoken():
             final_plan = rt_plan if rt_plan else (parsed_plan if parsed_plan else "Premium")
             final_expire = rt_expire if rt_expire else (parsed_expire if parsed_expire else "N/A")
 
-            pc_link = f"https://www.netflix.com/login?nftoken={token}"
+            pc_link = f"https://www.netflix.com/account?nftoken={token}"
             mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"
             tv_link = f"https://www.netflix.com/tv8?nftoken={token}"
             
