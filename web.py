@@ -403,6 +403,28 @@ ADMIN_TEMPLATE = r"""
           {% endif %}
         {% endwith %}
 
+        <div class="glass-panel" style="border: 1px solid #3498db; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin: 0; font-weight: 400; color: #3498db;">📊 System Stock & Statistics</h3>
+            </div>
+            <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                <div style="flex: 1; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; min-width: 250px;">
+                    <h4 style="margin-top: 0; color: #f1c40f; border-bottom: 1px solid #444; padding-bottom: 10px; font-weight: 400;">🔑 Access Codes (Sold)</h4>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;"><span>Premium (15 chars):</span> <strong style="color: #fff;">{{ stats.codes.Premium }}</strong></div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;"><span>Standard (10 chars):</span> <strong style="color: #fff;">{{ stats.codes.Standard }}</strong></div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;"><span>Standard w/ Ads (8 chars):</span> <strong style="color: #fff;">{{ stats.codes.Standard_Ads }}</strong></div>
+                    <div style="display: flex; justify-content: space-between;"><span>Basic (5 chars):</span> <strong style="color: #fff;">{{ stats.codes.Basic }}</strong></div>
+                </div>
+                <div style="flex: 1; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; min-width: 250px;">
+                    <h4 style="margin-top: 0; color: #2ecc71; border-bottom: 1px solid #444; padding-bottom: 10px; font-weight: 400;">📦 Accounts Vault (Stock)</h4>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;"><span>Premium:</span> <strong style="color: #fff;">{{ stats.accounts.Premium }}</strong></div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;"><span>Standard:</span> <strong style="color: #fff;">{{ stats.accounts.Standard }}</strong></div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;"><span>Standard w/ Ads:</span> <strong style="color: #fff;">{{ stats.accounts.Standard_Ads }}</strong></div>
+                    <div style="display: flex; justify-content: space-between;"><span>Basic:</span> <strong style="color: #fff;">{{ stats.accounts.Basic }}</strong></div>
+                </div>
+            </div>
+        </div>
+
         <div class="glass-panel" style="border: 1px solid #c0392b;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <h3 style="margin: 0; font-weight: 400; color: #ff7675;">⚠️ Pending Error Reports</h3>
@@ -935,6 +957,28 @@ def admin():
     search_email = request.args.get("search_email", "").strip().lower()
     search_code = request.args.get("search_code", "").strip().upper()
     
+    # Calculate stats
+    stats = {
+        'codes': {'Premium': 0, 'Standard': 0, 'Standard_Ads': 0, 'Basic': 0},
+        'accounts': {'Premium': 0, 'Standard': 0, 'Standard_Ads': 0, 'Basic': 0}
+    }
+    
+    for code in all_access_keys:
+        length = len(code[0])
+        if length == 15: stats['codes']['Premium'] += 1
+        elif length == 10: stats['codes']['Standard'] += 1
+        elif length == 8: stats['codes']['Standard_Ads'] += 1
+        elif length == 5: stats['codes']['Basic'] += 1
+        else: stats['codes']['Premium'] += 1
+
+    for acc in all_accounts:
+        plan = str(acc[5]).strip() if len(acc) > 5 and acc[5] else "Premium"
+        if plan == "Premium": stats['accounts']['Premium'] += 1
+        elif plan == "Standard": stats['accounts']['Standard'] += 1
+        elif plan == "Standard_Ads": stats['accounts']['Standard_Ads'] += 1
+        elif plan == "Basic": stats['accounts']['Basic'] += 1
+        else: stats['accounts']['Premium'] += 1
+
     # Filter keys
     if search_code:
         access_keys = [k for k in all_access_keys if search_code in k[0].upper()]
@@ -986,7 +1030,8 @@ def admin():
         key_total_pages=key_total_pages,
         acc_page=acc_page,
         acc_total_pages=acc_total_pages,
-        pending_requests=pending_requests
+        pending_requests=pending_requests,
+        stats=stats
     )
 
 from datetime import datetime, timedelta
