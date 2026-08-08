@@ -141,19 +141,34 @@ def get_random_available_account(plan_type=None):
     else:
         all_emails = [r["email"] for r in acc_data]
     
-    # Lấy toàn bộ email ĐÃ ĐƯỢC GÁN cho các mã truy cập (đang sử dụng)
     keys_data = fetch_all_rows("access_keys", "assigned_email")
-    used_emails = []
+    from collections import Counter
+    email_counts = Counter()
     for r in keys_data:
         if r.get("assigned_email"):
-            for e in r["assigned_email"].split(","):
-                used_emails.append(e.strip())
+            email = r["assigned_email"].strip()
+            if email:
+                email_counts[email] += 1
     
-    # Lọc ra những email CHƯA ĐƯỢC AI XÀI (Tạo mảng riêng biệt, không trùng nhau)
-    available_emails = list(set(all_emails) - set(used_emails))
+    available_emails_0 = []
+    available_emails_1 = []
     
-    if available_emails:
-        return random.choice(available_emails)
+    for email in all_emails:
+        count = email_counts.get(email, 0)
+        if count == 0:
+            available_emails_0.append(email)
+        elif count == 1:
+            available_emails_1.append(email)
+            
+    share_mode = get_config("SHARE_MODE_ENABLED", False)
+    
+    # Nếu Share Mode BẬT, ưu tiên các tài khoản đã được gán 1 lần
+    if share_mode and available_emails_1:
+        return random.choice(available_emails_1)
+        
+    # Nếu Share Mode TẮT hoặc không còn tài khoản nào gán 1 lần, lấy tài khoản chưa gán
+    if available_emails_0:
+        return random.choice(available_emails_0)
         
     return None
 
@@ -232,18 +247,6 @@ def create_access_key(code, expire_at=None):
         return False, f"No available {plan_type} cookies left in the vault."
         
     email = email1
-    # Check if Share Mode is enabled
-    if get_config("SHARE_MODE_ENABLED", False):
-        # Temp reserve email1 so we don't pick it again for email2
-        try:
-            get_supabase().table("access_keys").insert({"code": f"TEMP_{code}", "assigned_email": email1}).execute()
-            email2 = get_random_available_account(plan_type)
-            get_supabase().table("access_keys").delete().eq("code", f"TEMP_{code}").execute()
-            if email2:
-                email = f"{email1},{email2}"
-        except Exception:
-            pass
-        
     if get_access_key(code):
         return False, "This access key already exists."
         
@@ -277,7 +280,7 @@ def get_all_access_keys():
         rows.append((r["code"], r["assigned_email"], r.get("created_at"), r.get("expire_at")))
     return rows
 
-def rotate_access_key(code, specific_email_to_replace=None):
+def rotate_access_key(code):
     # Xác định gói cước dựa trên độ dài mã
     if len(code) == 15:
         plan_type = "Premium"
@@ -294,26 +297,7 @@ def rotate_access_key(code, specific_email_to_replace=None):
     if not new_email:
         return False
         
-    # Get current emails assigned to this key
-    key_data = get_access_key(code)
-    if not key_data:
-        return False
-        
-    current_emails = [e.strip() for e in key_data[1].split(",")] if key_data[1] else []
-    
-    if specific_email_to_replace and specific_email_to_replace in current_emails:
-        # Replace only the specific dead email
-        current_emails = [new_email if e == specific_email_to_replace else e for e in current_emails]
-        final_email_str = ",".join(current_emails)
-    else:
-        # If no specific email, or specific not found, just replace the first one
-        if current_emails:
-            current_emails[0] = new_email
-            final_email_str = ",".join(current_emails)
-        else:
-            final_email_str = new_email
-    
-    data = {"assigned_email": final_email_str}
+    data = {"assigned_email": new_email}
     try:
         get_supabase().table("access_keys").update(data).eq("code", code).execute()
         return True
