@@ -1,7 +1,7 @@
 import os
 
-# AWS EC2 Free Tier Proxy Server
-SINGLE_ROTATING_PROXY = "http://admin:Proxy123456@18.143.15.50:3128"
+# Webshare Single Backbone Rotating Proxy Endpoint
+SINGLE_ROTATING_PROXY = "http://nodzxvcx:tton2hgnp5so@31.59.20.176:6754/"
 USE_DIRECT_RENDER = False
 
 _k1 = "".join([chr(x) for x in [65, 75, 73, 65, 50, 84, 81, 69, 71, 82, 70, 84, 84, 72, 65, 89, 87, 68, 81, 75]])
