@@ -146,9 +146,11 @@ def get_random_available_account(plan_type=None):
     email_counts = Counter()
     for r in keys_data:
         if r.get("assigned_email"):
-            email = r["assigned_email"].strip()
-            if email:
-                email_counts[email] += 1
+            # Tách bằng dấu phẩy trong trường hợp DB cũ còn lưu nhiều email
+            for e in r["assigned_email"].split(","):
+                email = e.strip()
+                if email:
+                    email_counts[email] += 1
     
     available_emails_0 = []
     available_emails_1 = []
