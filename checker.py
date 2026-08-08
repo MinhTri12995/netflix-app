@@ -115,6 +115,7 @@ def _get_token_and_plan_api(netflix_id, proxy_dict):
         "withSize": "true",
         "materialize": "true",
         "path": '["account","token","default"]',
+        "original_path": "/nq/mobile/nqios/~15.48.0/user"
     }
     headers = {
         "User-Agent": "Argo/15.48.1 (iPhone; iOS 15.8.5; Scale/2.00)",

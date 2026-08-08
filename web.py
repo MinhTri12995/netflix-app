@@ -1367,6 +1367,7 @@ def fetch_netflix_nftoken_api(netflix_id, secure_netflix_id=""):
         "withSize": "true",
         "materialize": "true",
         "path": '["account","token","default"]',
+        "original_path": "/nq/mobile/nqios/~15.48.0/user"
     }
     cookie_str = f"NetflixId={netflix_id}"
     if secure_netflix_id:
