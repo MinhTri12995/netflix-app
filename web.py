@@ -154,7 +154,6 @@ PUBLIC_TEMPLATE = r"""
         }
 
         function generateQuickLinks() {
-
             var rawInput = document.getElementById("rawTokenInput").value.trim();
             if (!rawInput) {
                 alert("Please enter a Cookie or Access Code!");
@@ -162,27 +161,14 @@ PUBLIC_TEMPLATE = r"""
             }
 
             var resultDiv = document.getElementById("quickLinksResult");
-            var pcLink = document.getElementById("quickPcLink");
-            var mobileLink = document.getElementById("quickMobileLink");
-            var tvLink = document.getElementById("quickTvLink");
-            var statusText = document.getElementById("statusText");
             var btn = document.getElementById("submitBtn");
-            var infoBadge = document.getElementById("accountInfoBadge");
-            var badgePlan = document.getElementById("badgePlan");
-            var badgeExpire = document.getElementById("badgeExpire");
 
-            infoBadge.style.display = "none";
             btn.disabled = true;
             btn.innerHTML = "⏳ Connecting...";
             
-            pcLink.innerText = "⏳ Generating link...";
-            mobileLink.innerText = "⏳ Generating link...";
-            tvLink.innerText = "⏳ Generating link...";
-            statusText.innerText = "Generating high-speed link...";
-            
             resultDiv.style.display = "flex";
+            resultDiv.innerHTML = "<p style='text-align:center; font-weight:bold; color:#f39c12;'>⏳ Generating high-speed link...</p>";
             
-            // If user enters code or raw cookie, call API to generate links
             fetch("/api/generate_nftoken", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -192,59 +178,60 @@ PUBLIC_TEMPLATE = r"""
             .then(data => {
                 btn.disabled = false;
                 btn.innerHTML = "🚀 LOGIN NOW (Fast Link)";
+                
                 if (data.success) {
-                    if (data.plan || data.expire_date) {
-                        badgePlan.innerText = "📦 Plan: " + (data.plan || "N/A");
-                        badgeExpire.innerText = "📅 Expire Date: " + (data.expire_date || "N/A");
-                        infoBadge.style.display = "block";
-                    }
-                    if (data.is_json) {
-                        pcLink.removeAttribute("href");
-                        pcLink.removeAttribute("target");
-                        pcLink.onclick = function(e) { e.preventDefault(); copyCookie(data.cookie_json, this); };
-                        pcLink.innerText = "📋 Copy Cookie (API Failed)";
-                        pcLink.style.background = "#2d98da";
+                    resultDiv.innerHTML = "";
+                    let successText = document.createElement("p");
+                    successText.innerText = "Success! Please select your device below:";
+                    successText.style.color = "#2ecc71";
+                    successText.style.textAlign = "center";
+                    successText.style.fontWeight = "bold";
+                    successText.style.marginBottom = "5px";
+                    resultDiv.appendChild(successText);
+                    
+                    let accounts = data.accounts || [data];
+                    
+                    accounts.forEach((acc, index) => {
+                        let isJson = acc.is_json;
+                        let titleHtml = accounts.length > 1 ? `<h4 style="color:#3498db; margin: 10px 0 5px 0;">🎬 Account Profile ${index + 1}</h4>` : "";
                         
-                        mobileLink.style.display = "none";
-                        tvLink.style.display = "none";
+                        let infoHtml = "";
+                        if (acc.plan || acc.expire_date) {
+                            infoHtml = `<div style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 8px; padding: 12px 15px; text-align: center; font-size: 0.95rem; margin-bottom: 15px;">
+                                <span style="color: #f1c40f; font-weight: bold; margin-right: 20px;">📦 Plan: ${acc.plan || "N/A"}</span>
+                                <span style="color: #3498db; font-weight: bold;">📅 Expire Date: ${acc.expire_date || "N/A"}</span>
+                            </div>`;
+                        }
                         
-                        statusText.innerText = "Login API unavailable. Please use the Cookie Extension:";
-                        statusText.style.color = "#f39c12";
-                    } else {
-                        pcLink.href = data.pc_link;
-                        mobileLink.href = data.mobile_link;
-                        tvLink.href = data.tv_link;
+                        let buttonsHtml = "";
+                        if (isJson) {
+                            buttonsHtml = `<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                                <button class="btn-login" style="padding: 15px; font-size: 1rem; background: #2d98da; border:none; border-radius:4px; color:white; font-weight:bold; cursor:pointer;" onclick="copyCookie('${acc.cookie_json}', this)">📋 Copy Cookie (API Failed)</button>
+                            </div>
+                            <p style="text-align:center; color:#f39c12; margin-top:10px; font-weight:bold; font-size: 0.9rem;">Login API unavailable. Please use the Cookie Extension.</p>`;
+                        } else {
+                            buttonsHtml = `<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                                <a class="btn-login" href="${acc.pc_link}" target="_blank" onclick="showLoading(this)" style="padding: 15px !important; text-align: center; font-size: 1rem !important; display: flex; align-items: center; justify-content: center; gap: 8px;">💻 PC / Laptop</a>
+                                <a class="btn-login" href="${acc.mobile_link}" target="_blank" onclick="showLoading(this)" style="padding: 15px !important; text-align: center; font-size: 1rem !important; display: flex; align-items: center; justify-content: center; gap: 8px;">📱 Mobile (iPhone / Android)</a>
+                                <a class="btn-login" href="${acc.tv_link}" target="_blank" onclick="showLoading(this)" style="padding: 15px !important; text-align: center; font-size: 1rem !important; display: flex; align-items: center; justify-content: center; gap: 8px;">📺 Smart TV</a>
+                            </div>`;
+                        }
                         
-                        pcLink.setAttribute("target", "_blank");
-                        pcLink.onclick = function() { showLoading(this); };
-                        pcLink.style.background = "";
-                        
-                        pcLink.innerText = "💻 PC / Laptop";
-                        mobileLink.innerText = "📱 Mobile (iPhone / Android)";
-                        tvLink.innerText = "📺 Smart TV";
-                        
-                        mobileLink.style.display = "flex";
-                        tvLink.style.display = "flex";
-                        
-                        statusText.innerText = "Success! Please select your device below:";
-                        statusText.style.color = "#2ecc71";
-                    }
+                        let accDiv = document.createElement("div");
+                        accDiv.style.marginBottom = "15px";
+                        accDiv.style.borderBottom = (accounts.length > 1 && index < accounts.length - 1) ? "1px dashed #444" : "none";
+                        accDiv.style.paddingBottom = (accounts.length > 1 && index < accounts.length - 1) ? "20px" : "0";
+                        accDiv.innerHTML = titleHtml + infoHtml + buttonsHtml;
+                        resultDiv.appendChild(accDiv);
+                    });
                 } else {
-                    statusText.innerText = "Error: " + (data.error || "Failed to generate link.");
-                    statusText.style.color = "#e74c3c";
-                    pcLink.innerText = "❌ Error";
-                    mobileLink.innerText = "❌ Error";
-                    tvLink.innerText = "❌ Error";
+                    resultDiv.innerHTML = `<p style="text-align:center; color:#e74c3c; font-weight:bold;">Error: ${data.error || "Failed to generate link."}</p>`;
                 }
             })
             .catch(err => {
                 btn.disabled = false;
                 btn.innerHTML = "🚀 LOGIN NOW (Fast Link)";
-                statusText.innerText = "Connection to server failed!";
-                statusText.style.color = "#e74c3c";
-                pcLink.innerText = "❌ Error";
-                mobileLink.innerText = "❌ Error";
-                tvLink.innerText = "❌ Error";
+                resultDiv.innerHTML = `<p style="text-align:center; color:#e74c3c; font-weight:bold;">Connection to server failed!</p>`;
             });
         }
         
@@ -337,22 +324,7 @@ PUBLIC_TEMPLATE = r"""
             <button id="reportBtn" onclick="openReportModal()" style="width: 100%; margin-top: 10px; padding: 12px; font-size: 0.9rem; background: #c0392b; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">⚠️ REPORT ERROR</button>
             
             <div id="quickLinksResult" style="display: flex; flex-direction: column; gap: 15px; margin-top: 25px; display: none;">
-                <div id="accountInfoBadge" style="display: none; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 8px; padding: 12px 15px; text-align: center; font-size: 0.95rem;">
-                    <span id="badgePlan" style="color: #f1c40f; font-weight: bold; margin-right: 20px;">📦 Plan: ---</span>
-                    <span id="badgeExpire" style="color: #3498db; font-weight: bold;">📅 Expire Date: ---</span>
-                </div>
-                <p id="statusText" style="text-align: center; margin: 0; font-weight: bold;"></p>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-                    <a id="quickPcLink" class="btn-login" href="#" target="_blank" onclick="showLoading(this)" style="padding: 15px !important; text-align: center; font-size: 1rem !important; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                        💻 PC / Laptop
-                    </a>
-                    <a id="quickMobileLink" class="btn-login" href="#" target="_blank" onclick="showLoading(this)" style="padding: 15px !important; text-align: center; font-size: 1rem !important; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                        📱 Mobile (iPhone / Android)
-                    </a>
-                    <a id="quickTvLink" class="btn-login" href="#" target="_blank" onclick="showLoading(this)" style="padding: 15px !important; text-align: center; font-size: 1rem !important; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                        📺 Smart TV
-                    </a>
-                </div>
+                <!-- Dynamically populated by JS -->
             </div>
         </div>
         <div style="text-align: center; margin-top: 20px;">
@@ -406,7 +378,16 @@ ADMIN_TEMPLATE = r"""
         <div class="glass-panel" style="border: 1px solid #3498db; margin-bottom: 20px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
                 <h3 style="margin: 0; font-weight: 400; color: #3498db;">📊 System Stock & Proxy</h3>
-                <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <form action="/admin/toggle_share_mode" method="POST" style="margin: 0; display: flex; align-items: center; gap: 5px;">
+                        <span style="font-size: 0.9rem; color: #aaa;">Share Mode (1 Code = 2 Accs):</span>
+                        <label class="switch" style="position: relative; display: inline-block; width: 40px; height: 20px;">
+                            <input type="checkbox" onChange="this.form.submit()" {% if share_mode_enabled %}checked{% endif %} style="opacity: 0; width: 0; height: 0;">
+                            <span class="slider round" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: {% if share_mode_enabled %}#2ecc71{% else %}#ccc{% endif %}; transition: .4s; border-radius: 20px;">
+                                <span style="position: absolute; height: 16px; width: 16px; left: {% if share_mode_enabled %}22px{% else %}2px{% endif %}; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%;"></span>
+                            </span>
+                        </label>
+                    </form>
                     <span style="font-size: 0.9rem; color: #aaa;">Current Proxy: <strong style="color: #2ecc71; font-family: monospace;">{{ current_proxy }}</strong></span>
                 </div>
             </div>
@@ -1024,6 +1005,8 @@ def admin():
     
     import proxies_list
     current_proxy = proxies_list.SINGLE_ROTATING_PROXY.split('@')[-1] if '@' in proxies_list.SINGLE_ROTATING_PROXY else proxies_list.SINGLE_ROTATING_PROXY
+    
+    share_mode_enabled = database.get_config("SHARE_MODE_ENABLED", False)
 
     return render_template_string(
         ADMIN_TEMPLATE, 
@@ -1038,10 +1021,21 @@ def admin():
         acc_total_pages=acc_total_pages,
         pending_requests=pending_requests,
         stats=stats,
-        current_proxy=current_proxy
+        current_proxy=current_proxy,
+        share_mode_enabled=share_mode_enabled
     )
 
 from datetime import datetime, timedelta
+
+@app.route("/admin/toggle_share_mode", methods=["POST"])
+@login_required
+def toggle_share_mode():
+    current_mode = database.get_config("SHARE_MODE_ENABLED", False)
+    new_mode = not current_mode
+    database.set_config("SHARE_MODE_ENABLED", new_mode)
+    status_str = "BẬT" if new_mode else "TẮT"
+    flash(f"✅ Đã {status_str} chế độ Share Mode (1 Code = 2 Accounts). Chỉ áp dụng cho code mới tạo.", "success")
+    return redirect(url_for("admin"))
 
 @app.route("/admin/generate_key", methods=["POST"])
 @login_required
@@ -1788,104 +1782,129 @@ def api_generate_nftoken():
                 except Exception as e:
                     print(f"Expiration parse error: {e}")
             
-            # Auto-rotation loop
-            max_attempts = 5
-            for attempt in range(max_attempts):
-                acc = database.get_account_by_email(assigned_email)
+            # Determine expected plan type for this access code
+            if len(code) == 15:
+                expected_plan = "Premium"
+            elif len(code) == 10:
+                expected_plan = "Standard"
+            elif len(code) == 8:
+                expected_plan = "Standard_Ads"
+            elif len(code) == 5:
+                expected_plan = "Basic"
+            else:
+                expected_plan = "Premium"
+            
+            assigned_emails = [e.strip() for e in assigned_email.split(",") if e.strip()]
+            accounts_response = []
+            
+            for index in range(len(assigned_emails)):
+                max_attempts = 5
+                success_for_index = False
                 
-                if not acc:
-                    rotated = database.rotate_access_key(code)
-                    if not rotated:
-                        return jsonify({"success": False, "error": "System ran out of backup Cookies!"}), 500
-                    assigned_email = database.get_access_key(code)[1]
-                    continue
+                for attempt in range(max_attempts):
+                    # Always fetch fresh assigned_emails in case of rotation
+                    current_key = database.get_access_key(code)
+                    if not current_key:
+                        break
+                    current_emails = [e.strip() for e in current_key[1].split(",") if e.strip()]
+                    if index >= len(current_emails):
+                        break
                     
-                netflix_id = acc[2]
-                secure_netflix_id = acc[3] if acc[3] else ""
-                
-                try:
-                    token = fetch_netflix_nftoken_api(netflix_id, secure_netflix_id)
-                    is_json = token.startswith("FALLBACK:")
-                    cookie_json = urllib.parse.unquote(token[9:]) if is_json else ""
+                    email_to_process = current_emails[index]
+                    acc = database.get_account_by_email(email_to_process)
                     
-                    pc_link = f"https://www.netflix.com/login?nftoken={token}"
-                    mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"
-                    tv_link = f"https://www.netflix.com/tv8?nftoken={token}"
-                    
-                    # Realtime account info check for real plan and next billing date
-                    rt_plan, rt_expire = fetch_realtime_account_info(netflix_id, secure_netflix_id)
-                    
-                    # If date is in the past, account is EXPIRED -> auto delete & rotate
-                    acc_expire_check = rt_expire if rt_expire else acc[1]
-                    if is_date_expired(acc_expire_check):
-                        raise CookieError(f"Account next billing date ({acc_expire_check}) is in the past (Expired).")
-
-                    if rt_plan:
-                        database.update_plan(assigned_email, rt_plan)
-                        acc_plan = rt_plan
-                    else:
-                        acc_plan = acc[5] if (acc and len(acc) > 5 and acc[5]) else "Premium"
+                    if not acc:
+                        rotated = database.rotate_access_key(code, specific_email_to_replace=email_to_process)
+                        if not rotated:
+                            break
+                        continue # Retry with new email at this index
                         
-                    acc_expire = rt_expire if rt_expire else (acc[1] if (acc and len(acc) > 1 and acc[1]) else (expire_at_str if expire_at_str else "N/A"))
-
-                    # Determine expected plan type for this access code
-                    if len(code) == 15:
-                        expected_plan = "Premium"
-                    elif len(code) == 10:
-                        expected_plan = "Standard"
-                    elif len(code) == 8:
-                        expected_plan = "Standard_Ads"
-                    elif len(code) == 5:
-                        expected_plan = "Basic"
-                    else:
-                        expected_plan = "Premium"
-
-                    # Plan mismatch check & auto-rotation
-                    plan_check_str = str(acc_plan).lower()
-                    is_ads = any(kw in plan_check_str for kw in ['ads', 'adverts', 'anuncios', 'pub', 'werbung', 'quảng cáo', 'โฆษณา', '広告', '광고', 'рекламо', 'reklam', 'rek'])
+                    netflix_id = acc[2]
+                    secure_netflix_id = acc[3] if acc[3] else ""
                     
-                    should_rotate_mismatch = False
-                    if expected_plan == "Premium":
-                        if (is_ads or "standard" in plan_check_str or "basic" in plan_check_str) and not ("premium" in plan_check_str or "ultra" in plan_check_str):
-                            should_rotate_mismatch = True
-                    elif expected_plan == "Standard":
-                        if is_ads or "basic" in plan_check_str:
-                            should_rotate_mismatch = True
+                    try:
+                        token = fetch_netflix_nftoken_api(netflix_id, secure_netflix_id)
+                        is_json = token.startswith("FALLBACK:")
+                        cookie_json = urllib.parse.unquote(token[9:]) if is_json else ""
+                        
+                        pc_link = f"https://www.netflix.com/login?nftoken={token}"
+                        mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"
+                        tv_link = f"https://www.netflix.com/tv8?nftoken={token}"
+                        
+                        # Realtime account info check for real plan and next billing date
+                        rt_plan, rt_expire = fetch_realtime_account_info(netflix_id, secure_netflix_id)
+                        
+                        # If date is in the past, account is EXPIRED -> auto delete & rotate
+                        acc_expire_check = rt_expire if rt_expire else acc[1]
+                        if is_date_expired(acc_expire_check):
+                            raise CookieError(f"Account next billing date ({acc_expire_check}) is in the past (Expired).")
 
-                    if should_rotate_mismatch:
-                        print(f"Plan mismatch for code {code}: account {assigned_email} has real plan '{acc_plan}', expected '{expected_plan}'. Auto-rotating to matching account...")
-                        rotated = database.rotate_access_key(code)
-                        if rotated:
-                            assigned_email = database.get_access_key(code)[1]
+                        if rt_plan:
+                            database.update_plan(email_to_process, rt_plan)
+                            acc_plan = rt_plan
+                        else:
+                            acc_plan = acc[5] if (acc and len(acc) > 5 and acc[5]) else "Premium"
+                            
+                        acc_expire = rt_expire if rt_expire else (acc[1] if (acc and len(acc) > 1 and acc[1]) else (expire_at_str if expire_at_str else "N/A"))
+
+                        # Plan mismatch check & auto-rotation
+                        plan_check_str = str(acc_plan).lower()
+                        is_ads = any(kw in plan_check_str for kw in ['ads', 'adverts', 'anuncios', 'pub', 'werbung', 'quảng cáo', 'โฆษณา', '広告', '광고', 'рекламо', 'reklam', 'rek'])
+                        
+                        should_rotate_mismatch = False
+                        if expected_plan == "Premium":
+                            if (is_ads or "standard" in plan_check_str or "basic" in plan_check_str) and not ("premium" in plan_check_str or "ultra" in plan_check_str):
+                                should_rotate_mismatch = True
+                        elif expected_plan == "Standard":
+                            if is_ads or "basic" in plan_check_str:
+                                should_rotate_mismatch = True
+
+                        if should_rotate_mismatch:
+                            print(f"Plan mismatch for code {code}: account {email_to_process} has real plan '{acc_plan}', expected '{expected_plan}'. Auto-rotating to matching account...")
+                            database.rotate_access_key(code, specific_email_to_replace=email_to_process)
                             continue # Retry loop to fetch link for newly assigned matching account!
 
-                    return jsonify({
-                        "success": True,
-                        "pc_link": pc_link,
-                        "mobile_link": mobile_link,
-                        "tv_link": tv_link,
-                        "is_json": is_json,
-                        "cookie_json": cookie_json,
-                        "plan": acc_plan,
-                        "expire_date": acc_expire
-                    })
-                except ProxyError as e:
-                    print(f"Proxy error ({e}), retrying...")
-                    continue
-                except CookieError as e:
-                    print(f"Cookie {assigned_email} DIE, attempting rotation... (Error: {e})")
-                    database.delete_account(assigned_email)
-                    rotated = database.rotate_access_key(code)
-                    if not rotated:
-                        return jsonify({"success": False, "error": "Cookie is broken and system ran out of backup Cookies!"}), 500
-                    assigned_email = database.get_access_key(code)[1]
-                    continue
-                except Exception as e:
-                    print(f"Lỗi không xác định với tài khoản {assigned_email}: {e}")
-                    # Không xóa tài khoản nếu gặp lỗi không xác định (vd: JSONDecodeError do proxy trả HTML)
-                    continue
-                    
-            return jsonify({"success": False, "error": "Server overloaded or all proxies died. Please try again later."}), 500
+                        accounts_response.append({
+                            "pc_link": pc_link,
+                            "mobile_link": mobile_link,
+                            "tv_link": tv_link,
+                            "is_json": is_json,
+                            "cookie_json": cookie_json,
+                            "plan": acc_plan,
+                            "expire_date": acc_expire
+                        })
+                        success_for_index = True
+                        break # Successfully generated token for this index
+                    except ProxyError as e:
+                        print(f"Proxy error ({e}), retrying...")
+                        continue
+                    except CookieError as e:
+                        print(f"Cookie {email_to_process} DIE, attempting rotation... (Error: {e})")
+                        database.delete_account(email_to_process)
+                        database.rotate_access_key(code, specific_email_to_replace=email_to_process)
+                        continue
+                    except Exception as e:
+                        print(f"Lỗi không xác định với tài khoản {email_to_process}: {e}")
+                        continue
+                
+                if not success_for_index:
+                    print(f"Failed to generate token for account index {index} after {max_attempts} attempts.")
+            
+            if not accounts_response:
+                return jsonify({"success": False, "error": "Server overloaded, all proxies died, or no valid accounts left. Please try again later."}), 500
+
+            return jsonify({
+                "success": True,
+                # For backwards compatibility with single account scripts, return the first account's fields at root
+                "pc_link": accounts_response[0]["pc_link"],
+                "mobile_link": accounts_response[0]["mobile_link"],
+                "tv_link": accounts_response[0]["tv_link"],
+                "is_json": accounts_response[0]["is_json"],
+                "cookie_json": accounts_response[0]["cookie_json"],
+                "plan": accounts_response[0]["plan"],
+                "expire_date": accounts_response[0]["expire_date"],
+                "accounts": accounts_response
+            })
 
         # If not an access key and length <= 20
         if len(cookie_value) <= 20 and not cookie_value.startswith("B") and not cookie_value.startswith("FALLBACK:"):

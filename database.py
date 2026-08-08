@@ -13,6 +13,29 @@ def get_supabase() -> Client:
         _local.client = create_client(SUPABASE_URL, SUPABASE_KEY)
     return _local.client
 
+import json
+
+CONFIG_FILE = "config.json"
+
+def get_config(key, default=None):
+    try:
+        with open(CONFIG_FILE, "r") as f:
+            return json.load(f).get(key, default)
+    except:
+        return default
+
+def set_config(key, value):
+    try:
+        data = {}
+        if os.path.exists(CONFIG_FILE):
+            with open(CONFIG_FILE, "r") as f:
+                data = json.load(f)
+        data[key] = value
+        with open(CONFIG_FILE, "w") as f:
+            json.dump(data, f)
+    except:
+        pass
+
 def init_db():
     # Bảng sẽ được tạo bằng tay trên giao diện Supabase
     print("Sử dụng Supabase REST API (Không cần init local)")
@@ -120,7 +143,11 @@ def get_random_available_account(plan_type=None):
     
     # Lấy toàn bộ email ĐÃ ĐƯỢC GÁN cho các mã truy cập (đang sử dụng)
     keys_data = fetch_all_rows("access_keys", "assigned_email")
-    used_emails = [r["assigned_email"] for r in keys_data if r.get("assigned_email")]
+    used_emails = []
+    for r in keys_data:
+        if r.get("assigned_email"):
+            for e in r["assigned_email"].split(","):
+                used_emails.append(e.strip())
     
     # Lọc ra những email CHƯA ĐƯỢC AI XÀI (Tạo mảng riêng biệt, không trùng nhau)
     available_emails = list(set(all_emails) - set(used_emails))
@@ -200,9 +227,22 @@ def create_access_key(code, expire_at=None):
     else:
         plan_type = "Premium"
     
-    email = get_random_available_account(plan_type)
-    if not email:
+    email1 = get_random_available_account(plan_type)
+    if not email1:
         return False, f"No available {plan_type} cookies left in the vault."
+        
+    email = email1
+    # Check if Share Mode is enabled
+    if get_config("SHARE_MODE_ENABLED", False):
+        # Temp reserve email1 so we don't pick it again for email2
+        try:
+            get_supabase().table("access_keys").insert({"code": f"TEMP_{code}", "assigned_email": email1}).execute()
+            email2 = get_random_available_account(plan_type)
+            get_supabase().table("access_keys").delete().eq("code", f"TEMP_{code}").execute()
+            if email2:
+                email = f"{email1},{email2}"
+        except Exception:
+            pass
         
     if get_access_key(code):
         return False, "This access key already exists."
@@ -237,7 +277,7 @@ def get_all_access_keys():
         rows.append((r["code"], r["assigned_email"], r.get("created_at"), r.get("expire_at")))
     return rows
 
-def rotate_access_key(code):
+def rotate_access_key(code, specific_email_to_replace=None):
     # Xác định gói cước dựa trên độ dài mã
     if len(code) == 15:
         plan_type = "Premium"
@@ -250,11 +290,30 @@ def rotate_access_key(code):
     else:
         plan_type = "Premium"
     
-    email = get_random_available_account(plan_type)
-    if not email:
+    new_email = get_random_available_account(plan_type)
+    if not new_email:
         return False
+        
+    # Get current emails assigned to this key
+    key_data = get_access_key(code)
+    if not key_data:
+        return False
+        
+    current_emails = [e.strip() for e in key_data[1].split(",")] if key_data[1] else []
     
-    data = {"assigned_email": email}
+    if specific_email_to_replace and specific_email_to_replace in current_emails:
+        # Replace only the specific dead email
+        current_emails = [new_email if e == specific_email_to_replace else e for e in current_emails]
+        final_email_str = ",".join(current_emails)
+    else:
+        # If no specific email, or specific not found, just replace the first one
+        if current_emails:
+            current_emails[0] = new_email
+            final_email_str = ",".join(current_emails)
+        else:
+            final_email_str = new_email
+    
+    data = {"assigned_email": final_email_str}
     try:
         get_supabase().table("access_keys").update(data).eq("code", code).execute()
         return True
