@@ -3,3 +3,4 @@ requests
 requests[socks]
 gunicorn
 supabase
+boto3
