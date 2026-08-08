@@ -2036,6 +2036,10 @@ def api_generate_nftoken():
         traceback.print_exc()
         return jsonify({"success": False, "error": f"Unknown system error: {str(api_e)}"}), 500
 
+@app.route("/ping", methods=["GET"])
+def ping():
+    return jsonify({"status": "ok", "message": "Server is awake!"}), 200
+
 if __name__ == "__main__":
     print("🚀 Web interface is running!")
     print("👉 Please open your browser and go to: http://127.0.0.1:5000")
