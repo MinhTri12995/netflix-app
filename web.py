@@ -1884,9 +1884,10 @@ def api_generate_nftoken():
                         "expire_date": acc_expire
                     })
                 except ProxyError as e:
-                    print(f"Proxy error ({e}), rotating AWS IP and retrying...")
+                    print(f"Proxy error ({e}), retrying...")
                     import proxies_list
-                    proxies_list.rotate_aws_ip()
+                    if "admin:Proxy123456" in proxies_list.SINGLE_ROTATING_PROXY:
+                        proxies_list.rotate_aws_ip()
                     continue
                 except CookieError as e:
                     print(f"Cookie {assigned_email} DIE, attempting rotation... (Error: {e})")
