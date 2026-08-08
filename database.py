@@ -182,15 +182,14 @@ def get_random_available_account(plan_type=None):
         elif count == 1:
             available_emails_1.append(email)
             
-    share_mode = get_config("SHARE_MODE_ENABLED", False)
-    
-    # Nếu Share Mode BẬT, ưu tiên các tài khoản đã được gán 1 lần
-    if share_mode and available_emails_1:
-        return random.choice(available_emails_1)
-        
-    # Nếu Share Mode TẮT hoặc không còn tài khoản nào gán 1 lần, lấy tài khoản chưa gán
+    # 1. Luôn ưu tiên dùng tài khoản mới tinh chưa gán cho code nào (1 code = 1 acc riêng biệt)
     if available_emails_0:
         return random.choice(available_emails_0)
+        
+    # 2. CHỈ KHI HẾT tài khoản mới (count == 0) VÀ Share Mode BẬT: mới bắt đầu gán chung tài khoản (tối đa 2 code / 1 acc)
+    share_mode = get_config("SHARE_MODE_ENABLED", False)
+    if share_mode and available_emails_1:
+        return random.choice(available_emails_1)
         
     return None
 
