@@ -1427,6 +1427,7 @@ The screenshot can be in ANY LANGUAGE (English, Spanish, Vietnamese, Polish, Por
 Analyze the image carefully. Reply with ONLY ONE WORD from the following options:
 - NO_PLAN: If the image shows ANY Netflix screen indicating membership/subscription is canceled, expired, inactive, on hold, payment update required, choose a plan, or restart membership (for example: 'Reactivar tu suscripción', 'Update Payment', 'Your account is on hold', 'Choose your plan', 'Restart Your Membership', 'Reactivar la suscripción', 'Tái kích hoạt tư cách thành viên', 'Renovar assinatura', etc.).
 - TOO_MANY_PEOPLE: If the image shows a Netflix error about too many people watching, screen limit reached, or device limit reached.
+- HOUSEHOLD: If the image shows a Netflix Household error (for example: 'Your device isn't part of the Netflix Household', 'This TV isn't part of your Netflix Household', 'Cập nhật Hộ gia đình', 'Update Netflix Household', 'Hộ gia đình Netflix').
 - OTHER: ONLY if the image is completely unrelated to Netflix or shows a normal video playing without any error/subscription prompt."""
 
         data = {
@@ -1468,6 +1469,15 @@ Analyze the image carefully. Reply with ONLY ONE WORD from the following options
                 return jsonify({"success": True, "message": "Report confirmed. Your account has been updated, please generate a new link!"})
             else:
                 return jsonify({"success": False, "error": "The system is out of backup accounts!"})
+
+        elif "HOUSEHOLD" in ai_response or "HỘ GIA ĐÌNH" in ai_response:
+            rotated = database.rotate_access_key(code)
+            if rotated:
+                database.create_request(code, image_url, "accepted_household")
+                return jsonify({"success": True, "message": "Report confirmed. Your account has been updated, please generate a new link!"})
+            else:
+                return jsonify({"success": False, "error": "The system is out of backup accounts!"})
+                
         else:
             database.create_request(code, image_url, "rejected_other")
             return jsonify({"success": False, "error": "Invalid report image or unsupported error."})
