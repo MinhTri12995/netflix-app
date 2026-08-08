@@ -1843,7 +1843,7 @@ def api_generate_nftoken():
                     is_json = token.startswith("FALLBACK:")
                     cookie_json = urllib.parse.unquote(token[9:]) if is_json else ""
                     
-                    pc_link = f"https://www.netflix.com/login?nftoken={token}"
+                    pc_link = f"https://www.netflix.com/account?nftoken={token}"
                     mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"
                     tv_link = f"https://www.netflix.com/tv8?nftoken={token}"
                     
