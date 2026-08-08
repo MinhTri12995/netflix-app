@@ -1823,6 +1823,7 @@ def api_generate_nftoken():
                 expected_plan = "Premium"
             # Auto-rotation loop
             max_attempts = 5
+            last_error_msg = ""
             for attempt in range(max_attempts):
                 acc = database.get_account_by_email(assigned_email)
                 
@@ -1890,6 +1891,7 @@ def api_generate_nftoken():
                         rotated = database.rotate_access_key(code)
                         if rotated:
                             assigned_email = database.get_access_key(code)[1]
+                            last_error_msg = f"Plan mismatch: {acc_plan} vs {expected_plan}"
                             continue # Retry loop to fetch link for newly assigned matching account!
 
                     return jsonify({
@@ -1903,22 +1905,25 @@ def api_generate_nftoken():
                         "expire_date": acc_expire
                     })
                 except ProxyError as e:
+                    last_error_msg = f"Proxy error: {str(e)}"
                     print(f"Proxy error ({e}), retrying...")
                     continue
                 except CookieError as e:
+                    last_error_msg = f"Cookie died: {str(e)}"
                     print(f"Cookie {assigned_email} DIE, attempting rotation... (Error: {e})")
                     database.delete_account(assigned_email)
                     rotated = database.rotate_access_key(code)
                     if not rotated:
-                        return jsonify({"success": False, "error": "Cookie is broken and system ran out of backup Cookies!"}), 500
+                        return jsonify({"success": False, "error": f"Cookie is broken and system ran out of backup Cookies! Last error: {str(e)}"}), 500
                     assigned_email = database.get_access_key(code)[1]
                     continue
                 except Exception as e:
+                    last_error_msg = f"Unknown error: {str(e)}"
                     print(f"Lỗi không xác định với tài khoản {assigned_email}: {e}")
                     # Không xóa tài khoản nếu gặp lỗi không xác định (vd: JSONDecodeError do proxy trả HTML)
                     continue
                     
-            return jsonify({"success": False, "error": "Server overloaded or all proxies died. Please try again later."}), 500
+            return jsonify({"success": False, "error": f"Failed to generate link after {max_attempts} attempts. Last error: {last_error_msg}"}), 500
 
         # If not an access key and length <= 20
         if len(cookie_value) <= 20 and not cookie_value.startswith("B") and not cookie_value.startswith("FALLBACK:"):
