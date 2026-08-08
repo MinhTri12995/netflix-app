@@ -405,12 +405,9 @@ ADMIN_TEMPLATE = r"""
 
         <div class="glass-panel" style="border: 1px solid #3498db; margin-bottom: 20px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
-                <h3 style="margin: 0; font-weight: 400; color: #3498db;">📊 System Stock & AWS Proxy</h3>
+                <h3 style="margin: 0; font-weight: 400; color: #3498db;">📊 System Stock & Proxy</h3>
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <span style="font-size: 0.9rem; color: #aaa;">Current Proxy: <strong style="color: #2ecc71; font-family: monospace;">{{ current_proxy }}</strong></span>
-                    <form action="/admin/rotate_aws_ip" method="POST" style="margin: 0;">
-                        <button type="submit" style="background: #e67e22; padding: 6px 12px; font-size: 0.85rem;" onclick="return confirm('Rotate AWS Elastic IP now?');">🔄 Rotate AWS IP</button>
-                    </form>
                 </div>
             </div>
             <div style="display: flex; gap: 20px; flex-wrap: wrap;">
@@ -1043,17 +1040,6 @@ def admin():
         stats=stats,
         current_proxy=current_proxy
     )
-
-@app.route("/admin/rotate_aws_ip", methods=["POST"])
-@login_required
-def admin_rotate_aws_ip():
-    import proxies_list
-    new_ip = proxies_list.rotate_aws_ip()
-    if new_ip:
-        flash(f"🎉 Successfully rotated AWS IP to: {new_ip}", "success")
-    else:
-        flash("❌ Failed to rotate AWS IP. Check server logs.", "error")
-    return redirect(url_for("admin"))
 
 from datetime import datetime, timedelta
 
@@ -1885,9 +1871,6 @@ def api_generate_nftoken():
                     })
                 except ProxyError as e:
                     print(f"Proxy error ({e}), retrying...")
-                    import proxies_list
-                    if "admin:Proxy123456" in proxies_list.SINGLE_ROTATING_PROXY:
-                        proxies_list.rotate_aws_ip()
                     continue
                 except CookieError as e:
                     print(f"Cookie {assigned_email} DIE, attempting rotation... (Error: {e})")
