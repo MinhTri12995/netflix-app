@@ -153,7 +153,13 @@ def _get_token_and_plan_api(netflix_id, proxy_dict):
             if indicator in data_str:
                 return None
         token_data = ((((data.get("value") or {}).get("account") or {}).get("token") or {}).get("default") or {})
-        token = token_data.get("token")
+        if isinstance(token_data, dict):
+            token = token_data.get("token")
+        elif isinstance(token_data, str):
+            token = token_data
+        else:
+            token = None
+            
         if not token:
             return None
         if "\"premium\"" in data_str or "\"ultra\"" in data_str:

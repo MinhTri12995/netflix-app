@@ -1253,6 +1253,15 @@ def filter_duplicates():
     seen_netflix_ids = {} # map netflix_id -> {'email': email, 'plan': plan}
     duplicates_to_delete = []
     
+    # Lấy danh sách email đang được gán cho các Mã truy cập (Access Keys) của khách
+    access_keys = database.get_all_access_keys()
+    assigned_emails_set = set()
+    for k in access_keys:
+        if len(k) > 1 and k[1]:
+            for e in k[1].split(","):
+                if e.strip():
+                    assigned_emails_set.add(e.strip())
+
     for acc in accounts:
         email = acc[0]
         netflix_id = acc[2]
@@ -1262,11 +1271,17 @@ def filter_duplicates():
             continue
             
         if netflix_id in seen_netflix_ids:
-            # Nếu acc hiện tại CÓ plan mà acc trước đó KHÔNG có, ta xóa acc trước đó và giữ acc hiện tại
             existing_email = seen_netflix_ids[netflix_id]['email']
             existing_plan = seen_netflix_ids[netflix_id]['plan']
             
-            if plan and not existing_plan:
+            # 1. Ưu tiên GIỮ LẠI email đang được gán cho Mã truy cập của khách
+            if existing_email in assigned_emails_set and email not in assigned_emails_set:
+                duplicates_to_delete.append(email)
+            elif email in assigned_emails_set and existing_email not in assigned_emails_set:
+                duplicates_to_delete.append(existing_email)
+                seen_netflix_ids[netflix_id] = {'email': email, 'plan': plan}
+            # 2. Nếu cả 2 đều được gán hoặc cả 2 chưa được gán: Ưu tiên giữ lại acc CÓ plan
+            elif plan and not existing_plan:
                 duplicates_to_delete.append(existing_email)
                 seen_netflix_ids[netflix_id] = {'email': email, 'plan': plan}
             else:
