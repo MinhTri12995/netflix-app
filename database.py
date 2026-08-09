@@ -136,10 +136,15 @@ def get_random_available_account(plan_type=None):
 
         all_emails = []
         for r in acc_data:
-            if not r.get("plan"):
-                continue
-            plan_str = str(r["plan"]).lower()
+            raw_plan = r.get("plan")
+            plan_str = str(raw_plan).lower() if raw_plan else ""
             
+            # Nếu chưa có thông tin gói (plan rỗng/None/N/A), mặc định coi là Premium (giống như thống kê ngoài Dashboard)
+            if not plan_str or plan_str == "none" or plan_str == "n/a":
+                if plan_type == "Premium":
+                    all_emails.append(r["email"])
+                continue
+                
             is_match = False
             if plan_type == "Premium":
                 if has_any_kw(plan_str, premium_kws):
