@@ -376,12 +376,12 @@ PUBLIC_TEMPLATE = r"""
         
         .chat-widget { position: fixed; bottom: 20px; right: 20px; z-index: 1000; }
         .chat-button {
-            background: #27ae60; color: white; border: none; border-radius: 50%;
-            width: 60px; height: 60px; font-size: 24px; cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;
-            transition: transform 0.2s;
+            background: #27ae60; color: white; border: none; border-radius: 30px;
+            padding: 12px 20px; font-size: 16px; cursor: pointer; font-family: 'Inter', sans-serif; font-weight: bold;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; gap: 10px;
+            transition: transform 0.2s, background 0.2s;
         }
-        .chat-button:hover { transform: scale(1.1); }
+        .chat-button:hover { transform: scale(1.05); background: #2ecc71; }
         .chat-window {
             display: none; position: fixed; bottom: 90px; right: 20px; width: 320px;
             background: #222; border-radius: 12px; border: 1px solid #444; box-shadow: 0 5px 15px rgba(0,0,0,0.6);
@@ -407,6 +407,15 @@ PUBLIC_TEMPLATE = r"""
         .chat-send {
             background: transparent; color: #27ae60; border: none; font-size: 20px;
             cursor: pointer; padding: 0 10px; margin-left: 5px;
+        }
+        
+        @media (max-width: 480px) {
+            .chat-window {
+                width: 90%; right: 5%; bottom: 80px;
+            }
+            .chat-button {
+                font-size: 14px; padding: 10px 15px;
+            }
         }
     </style>
 </head>
@@ -461,7 +470,9 @@ PUBLIC_TEMPLATE = r"""
     
     <!-- AI Chat Widget -->
     <div class="chat-widget">
-        <button class="chat-button" onclick="toggleChat()">💬</button>
+        <button class="chat-button" onclick="toggleChat()">
+            <span style="font-size: 20px;">💬</span> AI Chatbot for Help
+        </button>
     </div>
     
     <div class="chat-window" id="chatWindow">
