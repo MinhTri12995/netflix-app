@@ -1861,7 +1861,7 @@ def api_generate_nftoken():
             else:
                 expected_plan = "Premium"
             # Auto-rotation loop
-            max_attempts = 5
+            max_attempts = 15
             last_error_msg = ""
             for attempt in range(max_attempts):
                 acc = database.get_account_by_email(assigned_email)
@@ -1869,7 +1869,7 @@ def api_generate_nftoken():
                 if not acc:
                     rotated = database.rotate_access_key(code)
                     if not rotated:
-                        return jsonify({"success": False, "error": "System ran out of backup Cookies!"}), 500
+                        return jsonify({"success": False, "error": f"System ran out of backup Cookies for {expected_plan} plan!"}), 500
                     assigned_email = database.get_access_key(code)[1]
                     continue
                     
@@ -1877,18 +1877,10 @@ def api_generate_nftoken():
                 secure_netflix_id = acc[3] if acc[3] else ""
                 
                 try:
-                    token = fetch_netflix_nftoken_api(netflix_id, secure_netflix_id)
-                    is_json = token.startswith("FALLBACK:")
-                    cookie_json = urllib.parse.unquote(token[9:]) if is_json else ""
-                    
-                    pc_link = f"https://www.netflix.com/account?nftoken={token}"
-                    mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"
-                    tv_link = f"https://www.netflix.com/tv8?nftoken={token}"
-                    
-                    # Realtime account info check for real plan and next billing date
+                    # BƯỚC 1: Kiểm tra Realtime trạng thái tài khoản TRƯỚC (Loại bỏ ngay acc DIE / Lỗi thanh toán / Hết hạn)
                     rt_plan, rt_expire = fetch_realtime_account_info(netflix_id, secure_netflix_id)
                     
-                    # If date is in the past, account is EXPIRED -> auto delete & rotate
+                    # Nếu hạn cước nằm trong quá khứ -> Tự động xóa acc hết hạn & xoay acc mới
                     acc_expire_check = rt_expire if rt_expire else acc[1]
                     if is_date_expired(acc_expire_check):
                         raise CookieError(f"Account next billing date ({acc_expire_check}) is in the past (Expired).")
@@ -1901,19 +1893,7 @@ def api_generate_nftoken():
                         
                     acc_expire = rt_expire if rt_expire else (acc[1] if (acc and len(acc) > 1 and acc[1]) else (expire_at_str if expire_at_str else "N/A"))
 
-                    # Determine expected plan type for this access code
-                    if len(code) == 15:
-                        expected_plan = "Premium"
-                    elif len(code) == 10:
-                        expected_plan = "Standard"
-                    elif len(code) == 8:
-                        expected_plan = "Standard_Ads"
-                    elif len(code) == 5:
-                        expected_plan = "Basic"
-                    else:
-                        expected_plan = "Premium"
-
-                    # Plan mismatch check & auto-rotation
+                    # BƯỚC 2: Kiểm tra Chuẩn Gói (Strict Plan Verification)
                     plan_check_str = str(acc_plan).lower()
                     is_ads = any(kw in plan_check_str for kw in ['ads', 'adverts', 'anuncios', 'pub', 'werbung', 'quảng cáo', 'โฆษณา', '広告', '광고', 'рекламо', 'reklam', 'rek'])
                     
@@ -1924,14 +1904,26 @@ def api_generate_nftoken():
                     elif expected_plan == "Standard":
                         if is_ads or "basic" in plan_check_str:
                             should_rotate_mismatch = True
+                    elif expected_plan == "Standard_Ads":
+                        if not is_ads:
+                            should_rotate_mismatch = True
 
                     if should_rotate_mismatch:
                         print(f"Plan mismatch for code {code}: account {assigned_email} has real plan '{acc_plan}', expected '{expected_plan}'. Auto-rotating to matching account...")
                         rotated = database.rotate_access_key(code)
                         if rotated:
                             assigned_email = database.get_access_key(code)[1]
-                            last_error_msg = f"Plan mismatch: {acc_plan} vs {expected_plan}"
+                            last_error_msg = f"Account {assigned_email} has wrong plan ({acc_plan} vs {expected_plan}), rotating..."
                             continue # Retry loop to fetch link for newly assigned matching account!
+
+                    # BƯỚC 3: Tạo Token Đăng Nhập (CHỈ thực hiện khi tài khoản ĐÃ ĐẢM BẢO SỐNG + ĐÚNG GÓI)
+                    token = fetch_netflix_nftoken_api(netflix_id, secure_netflix_id)
+                    is_json = token.startswith("FALLBACK:")
+                    cookie_json = urllib.parse.unquote(token[9:]) if is_json else ""
+                    
+                    pc_link = f"https://www.netflix.com/account?nftoken={token}"
+                    mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"
+                    tv_link = f"https://www.netflix.com/tv8?nftoken={token}"
 
                     return jsonify({
                         "success": True,
