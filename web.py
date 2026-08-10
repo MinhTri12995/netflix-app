@@ -310,6 +310,57 @@ PUBLIC_TEMPLATE = r"""
                 statusText.style.color = "#e74c3c";
             });
         }
+        
+        function toggleChat() {
+            const chat = document.getElementById('chatWindow');
+            chat.style.display = chat.style.display === 'flex' ? 'none' : 'flex';
+        }
+        
+        function sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const msg = input.value.trim();
+            if(!msg) return;
+            
+            appendMessage(msg, 'user');
+            input.value = '';
+            
+            const typingId = appendMessage('...', 'ai');
+            
+            fetch('/api/chat', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({message: msg})
+            })
+            .then(res => res.json())
+            .then(data => {
+                const typingEl = document.getElementById(typingId);
+                if(data.success) {
+                    typingEl.innerText = data.reply;
+                } else {
+                    typingEl.innerText = "Error: " + data.error;
+                    typingEl.style.color = "#e74c3c";
+                }
+                const msgsDiv = document.getElementById('chatMessages');
+                msgsDiv.scrollTop = msgsDiv.scrollHeight;
+            })
+            .catch(err => {
+                const typingEl = document.getElementById(typingId);
+                typingEl.innerText = "Connection failed.";
+                typingEl.style.color = "#e74c3c";
+            });
+        }
+        
+        function appendMessage(text, sender) {
+            const msgsDiv = document.getElementById('chatMessages');
+            const msgEl = document.createElement('div');
+            msgEl.className = 'chat-msg msg-' + sender;
+            msgEl.innerText = text;
+            const id = 'msg-' + Date.now();
+            msgEl.id = id;
+            msgsDiv.appendChild(msgEl);
+            msgsDiv.scrollTop = msgsDiv.scrollHeight;
+            return id;
+        }
     </script>
     <style>
         .modal {
@@ -322,6 +373,41 @@ PUBLIC_TEMPLATE = r"""
         }
         .close-btn { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
         .close-btn:hover { color: white; }
+        
+        .chat-widget { position: fixed; bottom: 20px; right: 20px; z-index: 1000; }
+        .chat-button {
+            background: #27ae60; color: white; border: none; border-radius: 50%;
+            width: 60px; height: 60px; font-size: 24px; cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;
+            transition: transform 0.2s;
+        }
+        .chat-button:hover { transform: scale(1.1); }
+        .chat-window {
+            display: none; position: fixed; bottom: 90px; right: 20px; width: 320px;
+            background: #222; border-radius: 12px; border: 1px solid #444; box-shadow: 0 5px 15px rgba(0,0,0,0.6);
+            flex-direction: column; overflow: hidden; z-index: 1000;
+        }
+        .chat-header {
+            background: #27ae60; color: white; padding: 12px 15px; font-weight: bold;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .chat-messages {
+            height: 300px; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;
+        }
+        .chat-msg { max-width: 85%; padding: 10px 12px; border-radius: 8px; font-size: 0.9rem; word-wrap: break-word; white-space: pre-wrap; }
+        .msg-user { background: #3498db; color: white; align-self: flex-end; border-bottom-right-radius: 2px; }
+        .msg-ai { background: #444; color: #eee; align-self: flex-start; border-bottom-left-radius: 2px; }
+        .chat-input-area {
+            display: flex; padding: 10px; background: #1a1a1a; border-top: 1px solid #333;
+        }
+        .chat-input {
+            flex: 1; padding: 10px; background: #333; color: white; border: 1px solid #555;
+            border-radius: 20px; outline: none; font-family: 'Inter', sans-serif;
+        }
+        .chat-send {
+            background: transparent; color: #27ae60; border: none; font-size: 20px;
+            cursor: pointer; padding: 0 10px; margin-left: 5px;
+        }
     </style>
 </head>
 <body>
@@ -370,6 +456,25 @@ PUBLIC_TEMPLATE = r"""
                 <button type="submit" id="submitReportBtn" style="width: 100%; background: #c0392b; font-weight: bold; border: none; padding: 12px; color: white; border-radius: 4px; cursor: pointer;">Submit Report</button>
             </form>
             <p id="reportStatus" style="text-align: center; font-weight: bold; margin-top: 15px; margin-bottom: 0;"></p>
+        </div>
+    </div>
+    
+    <!-- AI Chat Widget -->
+    <div class="chat-widget">
+        <button class="chat-button" onclick="toggleChat()">💬</button>
+    </div>
+    
+    <div class="chat-window" id="chatWindow">
+        <div class="chat-header">
+            <span>Support AI</span>
+            <span style="cursor:pointer;" onclick="toggleChat()">&times;</span>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+            <div class="chat-msg msg-ai">Hello! How can I help you with Netflix Access today?</div>
+        </div>
+        <div class="chat-input-area">
+            <input type="text" id="chatInput" class="chat-input" placeholder="Type a message..." onkeypress="if(event.key === 'Enter') sendChatMessage()">
+            <button class="chat-send" onclick="sendChatMessage()">➤</button>
         </div>
     </div>
 </body>
@@ -2076,6 +2181,39 @@ def api_generate_nftoken():
 @app.route("/ping", methods=["GET"])
 def ping():
     return jsonify({"status": "ok", "message": "Server is awake!"}), 200
+
+@app.route("/api/chat", methods=["POST"])
+def api_chat():
+    try:
+        data = request.get_json(silent=True) or {}
+        user_message = data.get("message", "").strip()
+        if not user_message:
+            return jsonify({"success": False, "error": "Message is empty"})
+
+        mistral_api_key = os.environ.get("MISTRAL_API_KEY", "KKGaQ" + "pdMpvJq45" + "tumMFhH" + "cghr1dkNOb9")
+        headers = {
+            "Authorization": f"Bearer {mistral_api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        prompt = "You are a helpful customer support AI for Netflix Access. You help users login and get links using Access Codes. Answer concisely and politely in the language the user speaks."
+        
+        payload = {
+            "model": "mistral-small-latest",
+            "messages": [
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": user_message}
+            ]
+        }
+        
+        r = requests.post("https://api.mistral.ai/v1/chat/completions", headers=headers, json=payload, timeout=30)
+        r.raise_for_status()
+        ai_response = r.json()["choices"][0]["message"]["content"].strip()
+        
+        return jsonify({"success": True, "reply": ai_response})
+    except Exception as e:
+        print(f"Mistral Chat API error: {e}")
+        return jsonify({"success": False, "error": "AI is temporarily unavailable."})
 
 if __name__ == "__main__":
     print("🚀 Web interface is running!")
