@@ -1787,7 +1787,12 @@ def fetch_realtime_account_info(netflix_id, secure_netflix_id=""):
         plan = None
         plan_m = re.search(r'(?:localizedPlanName|planName)"\s*:\s*\{"fieldType":"String","value":"([^"]+)"\}', html)
         if plan_m:
-            plan = plan_m.group(1).replace(r'\x20', ' ').strip()
+            plan_raw = plan_m.group(1).replace(r'\x20', ' ').strip()
+            import codecs
+            try:
+                plan = codecs.decode(plan_raw, 'unicode_escape')
+            except Exception:
+                plan = plan_raw
         else:
             if "premium" in text_lower or "ultra" in text_lower:
                 plan = "Premium"
@@ -1894,7 +1899,9 @@ def api_generate_nftoken():
                     acc_expire = rt_expire if rt_expire else (acc[1] if (acc and len(acc) > 1 and acc[1]) else (expire_at_str if expire_at_str else "N/A"))
 
                     # BƯỚC 2: Kiểm tra Chuẩn Gói (Strict Plan Verification)
+                    import unicodedata
                     plan_check_str = str(acc_plan).lower()
+                    plan_check_str = unicodedata.normalize('NFKD', plan_check_str).encode('ASCII', 'ignore').decode('utf-8')
                     is_ads = any(kw in plan_check_str for kw in ['ads', 'adverts', 'anuncios', 'pub', 'werbung', 'quảng cáo', 'โฆษณา', '広告', '광고', 'рекламо', 'reklam', 'rek'])
                     
                     should_rotate_mismatch = False
