@@ -1763,14 +1763,32 @@ def fetch_realtime_account_info(netflix_id, secure_netflix_id=""):
     proxy_dict = proxies_list.get_random_proxy()
     try:
         r = requests.get("https://www.netflix.com/YourAccount", cookies=cookies, headers=headers, proxies=proxy_dict, timeout=8, allow_redirects=True)
+        url_lower = r.url.lower()
         html = r.text
+        text_lower = html.lower()
+        
+        # 1. Kiểm tra nếu bị chuyển hướng sang trang Login / Clear Cookies
+        if "netflix.com/login" in url_lower or "/clearcookies" in url_lower or "signup" in url_lower:
+            raise CookieError("Cookie session expired or invalid (Redirected to login)")
+            
+        # 2. Kiểm tra nếu bị chuyển hướng sang trang lỗi thanh toán (Update Payment / Billing Update)
+        if any(kw in url_lower for kw in ["paymentupdate", "payment-update", "billing-update", "simplemember"]):
+            raise CookieError("Account requires Payment Update (Payment Hold URL detected)")
+            
+        # 3. Kiểm tra nội dung trang có báo lỗi thanh toán / tạm hoãn không
+        payment_die_keywords = [
+            "paymentupdate", "payment-update", "your account is on hold",
+            "membership is on hold", "reactivar la suscripción", "reactivar tu suscripción",
+            "cập nhật thanh toán", "tài khoản bị tạm hoãn", "zaktualizuj metodę płatności"
+        ]
+        if any(kw in text_lower for kw in payment_die_keywords):
+            raise CookieError("Account requires Payment Update (Payment Hold text detected)")
         
         plan = None
         plan_m = re.search(r'(?:localizedPlanName|planName)"\s*:\s*\{"fieldType":"String","value":"([^"]+)"\}', html)
         if plan_m:
             plan = plan_m.group(1).replace(r'\x20', ' ').strip()
         else:
-            text_lower = html.lower()
             if "premium" in text_lower or "ultra" in text_lower:
                 plan = "Premium"
             elif "standard with ads" in text_lower or "standard_ads" in text_lower:
@@ -1786,6 +1804,11 @@ def fetch_realtime_account_info(netflix_id, secure_netflix_id=""):
             expire_date = date_m.group(1).replace(r'\x20', ' ').strip()
 
         return plan, expire_date
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.ProxyError) as e:
+        print(f"Realtime fetch proxy/network error: {e}")
+        return None, None
+    except CookieError:
+        raise
     except Exception as e:
         print(f"Realtime fetch error: {e}")
         return None, None
