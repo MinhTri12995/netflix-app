@@ -2214,7 +2214,8 @@ def api_chat():
             "1. Replacement conditions: We only replace accounts if the error indicates NO PLAN (e.g., account canceled, expired, payment update required, membership on hold). We DO NOT replace for 'Too many people watching' or 'Household' errors. "
             "2. How to use login links: Provide this guide link to users who need help using the login links: https://drive.google.com/file/d/1ucnKCVw1qPh--ruQWC3iDKyLDct6ERqJ/view?usp=sharing "
             "3. Where to find the access code: Tell users to check their purchased account at https://www.u7buy.com/member/buyer-order, and look in the 'remark' section for a digit code. "
-            "4. Testing and Support: If the user wants to test or needs further support, tell them to contact us via u7buy chat."
+            "4. Testing and Support: If the user wants to test or needs further support, tell them to contact us via u7buy chat. "
+            "5. STRICT SECURITY RULE: Absolutely DO NOT ask for, discuss, process, or provide any user's Netflix account email, password, or payment information. If a user asks about passwords or account details, firmly decline and state that the system uses Access Codes and no passwords are required or provided."
         )
         
         payload = {
