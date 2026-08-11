@@ -1528,16 +1528,14 @@ def fetch_netflix_nftoken_api(netflix_id, secure_netflix_id=""):
         'Cookie': cookie_str
     }
     
-    proxy_dict = proxies_list.get_random_proxy()
-    
     try:
         response = requests.get(
             url, params=params, headers=headers,
-            proxies=proxy_dict, timeout=5, verify=False
+            timeout=5, verify=False
         )
-    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.ProxyError) as e:
-        print(f"Lỗi Proxy / Mạng: {e}")
-        raise ProxyError("Không thể kết nối qua Proxy")
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+        print(f"Lỗi Mạng: {e}")
+        raise ProxyError("Không thể kết nối đến máy chủ Netflix")
         
     def generate_json_cookie_token(nid, snid):
         import json, time
