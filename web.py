@@ -1567,8 +1567,8 @@ def fetch_netflix_nftoken_api(netflix_id, secure_netflix_id=""):
             elif isinstance(token_data, str):
                 return token_data
         
-        # Token field missing means cookie is dead or session invalid
-        raise CookieError("Netflix token not found in response - Cookie is likely dead.")
+        # Token field missing on iOS API, fallback to JSON Cookie for live account
+        return generate_json_cookie_token(netflix_id, secure_netflix_id)
         
     except requests.exceptions.HTTPError as e:
         if response.status_code in [401, 404]:
