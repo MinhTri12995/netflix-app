@@ -198,17 +198,22 @@ PUBLIC_TEMPLATE = r"""
                         badgeExpire.innerText = "📅 Expire Date: " + (data.expire_date || "N/A");
                         infoBadge.style.display = "block";
                     }
+                    var cookieBtn = document.getElementById("quickCookieBtn");
+                    if (data.cookie_json) {
+                        cookieBtn.style.display = "flex";
+                        cookieBtn.onclick = function(e) { e.preventDefault(); copyCookie(data.cookie_json, this); };
+                        cookieBtn.innerText = "📋 Copy Cookie (Extension)";
+                        cookieBtn.style.background = "#2d98da";
+                    } else {
+                        cookieBtn.style.display = "none";
+                    }
+
                     if (data.is_json) {
-                        pcLink.removeAttribute("href");
-                        pcLink.removeAttribute("target");
-                        pcLink.onclick = function(e) { e.preventDefault(); copyCookie(data.cookie_json, this); };
-                        pcLink.innerText = "📋 Copy Cookie (API Failed)";
-                        pcLink.style.background = "#2d98da";
-                        
+                        pcLink.style.display = "none";
                         mobileLink.style.display = "none";
                         tvLink.style.display = "none";
                         
-                        statusText.innerText = "Login API unavailable. Please use the Cookie Extension:";
+                        statusText.innerText = "Fast Link API unavailable. Please click Copy Cookie to use Extension:";
                         statusText.style.color = "#f39c12";
                     } else {
                         pcLink.href = data.pc_link;
@@ -223,10 +228,11 @@ PUBLIC_TEMPLATE = r"""
                         mobileLink.innerText = "📱 Mobile (iPhone / Android)";
                         tvLink.innerText = "📺 Smart TV";
                         
+                        pcLink.style.display = "flex";
                         mobileLink.style.display = "flex";
                         tvLink.style.display = "flex";
                         
-                        statusText.innerText = "Success! Please select your device below:";
+                        statusText.innerText = "Success! Please select your device or copy Cookie below:";
                         statusText.style.color = "#2ecc71";
                     }
                 } else {
@@ -447,6 +453,9 @@ PUBLIC_TEMPLATE = r"""
                     <a id="quickTvLink" class="btn-login" href="#" target="_blank" onclick="showLoading(this)" style="padding: 15px !important; text-align: center; font-size: 1rem !important; display: flex; align-items: center; justify-content: center; gap: 8px;">
                         📺 Smart TV
                     </a>
+                    <button id="quickCookieBtn" class="btn-login" style="padding: 15px !important; text-align: center; font-size: 1rem !important; display: flex; align-items: center; justify-content: center; gap: 8px; background: #2d98da; border: none; cursor: pointer;">
+                        📋 Copy Cookie (Extension)
+                    </button>
                 </div>
             </div>
         </div>
