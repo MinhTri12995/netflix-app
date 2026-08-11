@@ -1157,7 +1157,8 @@ def admin():
     pending_requests = database.get_pending_requests()
     
     import proxies_list
-    current_proxy = proxies_list.SINGLE_ROTATING_PROXY.split('@')[-1] if '@' in proxies_list.SINGLE_ROTATING_PROXY else proxies_list.SINGLE_ROTATING_PROXY
+    current_proxy_url = proxies_list.PROXIES[0] if proxies_list.PROXIES else "None"
+    current_proxy = current_proxy_url.split('@')[-1] if '@' in current_proxy_url else current_proxy_url
     
     share_mode_enabled = database.get_config("SHARE_MODE_ENABLED", False)
 
