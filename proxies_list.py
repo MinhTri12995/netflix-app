@@ -1,13 +1,18 @@
 import os
+import random
 
-# Webshare Single Backbone Rotating Proxy Endpoint
-SINGLE_ROTATING_PROXY = "http://nodzxvcx:tton2hgnp5so@31.59.20.176:6754/"
+# Danh sách Proxy Mỹ (SOCKS5 hoặc HTTP)
+PROXIES = [
+    "socks5://nodzxvcx:tton2hgnp5so@67.227.14.235:6827/"
+]
+
 USE_DIRECT_RENDER = False
 
 def get_random_proxy():
-    if USE_DIRECT_RENDER:
+    if USE_DIRECT_RENDER or not PROXIES:
         return None
+    proxy_url = random.choice(PROXIES)
     return {
-        "http": SINGLE_ROTATING_PROXY,
-        "https": SINGLE_ROTATING_PROXY
+        "http": proxy_url,
+        "https": proxy_url
     }
