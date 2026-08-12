@@ -1903,9 +1903,15 @@ def fetch_realtime_account_info(netflix_id, secure_netflix_id=""):
             
         # 3. Kiểm tra nội dung trang có báo lỗi thanh toán / tạm hoãn không
         payment_die_keywords = [
-            "paymentupdate", "payment-update", "your account is on hold",
-            "membership is on hold", "reactivar la suscripción", "reactivar tu suscripción",
-            "cập nhật thanh toán", "tài khoản bị tạm hoãn", "zaktualizuj metodę płatności"
+            "paymentupdate", "payment-update", "your account is on hold", "membership is on hold", 
+            "reactivar la suscripción", "reactivar tu suscripción", "cập nhật thanh toán", "tài khoản bị tạm hoãn", 
+            "zaktualizuj metodę płatności", "restart your membership", "update your payment", "actualiza tu información de pago",
+            "atualize sua forma de pagamento", "renovar assinatura", "reiniciar membresía", "reiniciar membresia",
+            "aggiorna i dati di pagamento", "mise à jour de votre mode de paiement", "ödeme bilgilerinizi güncelleyin", 
+            "aktualisieren sie ihre zahlungsart", "reaktivera ditt medlemskap", "renouveler votre abonnement",
+            "suspension de votre compte", "cuenta suspendida", "payment is required", "thanh toán của bạn", 
+            "cập nhật phương thức thanh toán", "membershipstatus\":\"rejoin", "membershipstatus\":\"former_member",
+            "membershipstatus\":\"never_member", "ismembershipactive\":false", "finish sign-up", "hoàn tất đăng ký"
         ]
         if any(kw in text_lower for kw in payment_die_keywords):
             raise CookieError("Account requires Payment Update (Payment Hold text detected)")
