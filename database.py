@@ -207,15 +207,31 @@ def create_request(code, image_url, status="pending"):
     # created_at is automatically handled by Supabase
     get_supabase().table("requests").insert(data).execute()
 
-def has_recent_request(code):
+def has_recent_request(code, minutes=5):
     import datetime
     try:
-        one_hour_ago = (datetime.datetime.utcnow() - datetime.timedelta(hours=1)).isoformat()
-        response = get_supabase().table("requests").select("id").eq("code", code).gt("created_at", one_hour_ago).limit(1).execute()
+        time_ago = (datetime.datetime.utcnow() - datetime.timedelta(minutes=minutes)).isoformat()
+        response = get_supabase().table("requests").select("id").eq("code", code).gt("created_at", time_ago).limit(1).execute()
         return len(response.data) > 0
     except Exception as e:
         print(f"Lỗi check_rate_limit: {e}")
         return False
+
+def get_today_rotation_count(code):
+    import datetime
+    try:
+        twenty_four_hours_ago = (datetime.datetime.utcnow() - datetime.timedelta(hours=24)).isoformat()
+        response = get_supabase().table("requests") \
+            .select("id, status") \
+            .eq("code", code) \
+            .gt("created_at", twenty_four_hours_ago) \
+            .execute()
+        rows = response.data if response.data else []
+        accepted_count = sum(1 for r in rows if str(r.get("status", "")).startswith("accepted"))
+        return accepted_count
+    except Exception as e:
+        print(f"Lỗi get_today_rotation_count: {e}")
+        return 0
 
 def get_pending_requests():
     try:

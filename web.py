@@ -1603,9 +1603,20 @@ def api_submit_request():
     if not acc_key_row:
         return jsonify({"success": False, "error": "Invalid or non-existent access code."}), 400
         
-    # Anti-spam check removed as requested by user
-    # if database.has_recent_request(code):
-    #     return jsonify({"success": False, "error": "Please try again after 5 minutes."}), 429
+    # 1. Giới hạn đổi tối đa 5 lần / 24 giờ cho 1 mã
+    daily_rotations = database.get_today_rotation_count(code)
+    if daily_rotations >= 5:
+        return jsonify({
+            "success": False, 
+            "error": "You have reached the maximum auto-replacement limit (5 times/day) for this code. Please contact customer support for manual assistance!"
+        }), 429
+
+    # 2. Cooldown 5 phút giữa các lần gửi báo lỗi
+    if database.has_recent_request(code, minutes=5):
+        return jsonify({
+            "success": False, 
+            "error": "Please wait 5 minutes before submitting another report."
+        }), 429
         
     try:
         import uuid
