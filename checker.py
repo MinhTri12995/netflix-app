@@ -10,7 +10,7 @@ NETFLIX_API_URL = "https://ios.prod.ftl.netflix.com/nq/mobile/nqios/~15.48.0/use
 _api_is_dead = False
 
 PAYMENT_DIE_KEYWORDS = [
-    "paymentupdate", "payment-update", "billing-update", "simplemember",
+    "paymentupdate", "payment-update", "billing-update",
     "your account is on hold", "membership is on hold", "account is on hold",
     "reactivar la suscripción", "reactivar tu suscripción", "reactivar suscripción",
     "cập nhật thanh toán", "tài khoản bị tạm hoãn", "tài khoản bị tạm dừng",

@@ -3,7 +3,7 @@ import random
 
 # Danh sách Proxy Mỹ (SOCKS5 hoặc HTTP)
 PROXIES = [
-    "socks5://nodzxvcx:tton2hgnp5so@67.227.14.235:6827/"
+    "http://nodzxvcx:tton2hgnp5so@67.227.14.235:6827/"
 ]
 
 USE_DIRECT_RENDER = False
