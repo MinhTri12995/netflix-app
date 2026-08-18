@@ -222,10 +222,308 @@ PUBLIC_TEMPLATE = r"""
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap" rel="stylesheet">
     """ + COMMON_STYLE + r"""
     <script>
+        const I18N_DICTS = {
+            "en": {
+                "portal_title": "🎬 NETFLIX FAST ACCESS",
+                "portal_subtitle": "Automated Instant Login Portal • No Password Needed",
+                "lang_label": "🌐 Language:",
+                "lang_custom_ph": "Type any language (e.g. Spanish, Polish, Russian)...",
+                "lang_custom_btn": "✨ AI Translate",
+                "steps_header": "⚡ 4 EASY STEPS TO LOGIN",
+                "step1_title": "🌐 Connect to US VPN",
+                "step1_desc": "Open free <strong>Windscribe VPN</strong> and connect to <strong>USA (Los Angeles)</strong>.",
+                "step2_title": "🔑 Enter Access Code",
+                "step2_desc": "Paste your 5 to 15 character <strong>Access Code</strong> from your order below.",
+                "step3_title": "🚀 Select Device",
+                "step3_desc": "Click <strong>LOGIN NOW</strong> and choose your device: PC, Mobile, or Smart TV.",
+                "step4_title": "🎬 Stream & Enjoy",
+                "step4_desc": "Once logged in successfully, you can <strong>disconnect VPN</strong> to stream at full speed!",
+                "input_heading": "Enter Access Code",
+                "input_placeholder": "e.g. X9K2M1 or 49AD0GJY0YK4I6D",
+                "btn_login": "🚀 LOGIN NOW (Generate Links)",
+                "btn_report": "⚠️ REPORT ERROR (Instant Auto-Replace)",
+                "rules_header": "⚠️ IMPORTANT RULES & USAGE GUIDELINES",
+                "rule1": "• <strong>Single Device Policy:</strong> Stream on 1 device at a time. Do not share your code or link.",
+                "rule2": "• <strong>Account Protection:</strong> DO NOT change password, email, PIN, or modify profiles.",
+                "rule3": "• <strong>US VPN Requirement:</strong> Always connect to US VPN (Windscribe - Los Angeles) before generating and opening links.",
+                "rule4": "• <strong>Instant 24/7 Replacement:</strong> If you see an error screen (Expired/On Hold), click <strong>REPORT ERROR</strong> to upload a screenshot for an instant replacement.",
+                "rule5": "• <strong>Support Schedule (GMT+7):</strong> 9:00 - 11:00 AM | 3:00 - 5:00 PM | 9:00 - 11:00 PM.",
+                "badge_plan": "📦 Plan:",
+                "badge_expire": "📅 Expire Date:",
+                "device_pc_name": "PC / Laptop",
+                "device_pc_hint": "Click to auto-login Netflix directly in your browser",
+                "device_mobile_name": "Mobile (iOS / Android)",
+                "device_mobile_hint": "Open with Chrome or Brave browser on your phone",
+                "device_tv_name": "Smart TV Code",
+                "device_tv_hint": "Enter the 8-digit code shown on your TV screen",
+                "device_cookie_name": "Copy Cookie",
+                "device_cookie_hint": "Copy JSON Cookie for Chrome Extension",
+                "modal_title": "⚠️ Automated Error Report & Replacement",
+                "modal_desc": "Upload a screenshot showing the error screen (Expired, Membership on hold, Screen limit). Our system will verify and automatically rotate your account 24/7!",
+                "modal_submit": "Submit Report & Get Replacement",
+                "chat_btn": "💬 24/7 AI Support Assistant",
+                "chat_header": "🤖 AI Support Assistant",
+                "chat_welcome": "Hello! How can I help you with your Netflix access today?",
+                "chat_pill1": "🌐 How to use VPN?",
+                "chat_pill2": "📺 Smart TV Guide",
+                "chat_pill3": "⚠️ Report account error"
+            },
+            "vi": {
+                "portal_title": "🎬 NETFLIX FAST ACCESS",
+                "portal_subtitle": "Cổng Đăng Nhập Tự Động • Không Cần Mật Khẩu",
+                "lang_label": "🌐 Ngôn ngữ:",
+                "lang_custom_ph": "Nhập ngôn ngữ bất kỳ (VD: Tiếng Hàn, Tiếng Nga)...",
+                "lang_custom_btn": "✨ AI Dịch",
+                "steps_header": "⚡ 4 BƯỚC ĐĂNG NHẬP DỄ DÀNG",
+                "step1_title": "🌐 Bật VPN Mỹ / US VPN",
+                "step1_desc": "Mở ứng dụng <strong>Windscribe VPN</strong> miễn phí, kết nối vị trí <strong>USA (Los Angeles)</strong>.",
+                "step2_title": "🔑 Nhập mã Code",
+                "step2_desc": "Dán mã <strong>Access Code</strong> (5 đến 15 ký tự) đã nhận từ đơn hàng vào ô bên dưới.",
+                "step3_title": "🚀 Chọn Thiết Bị",
+                "step3_desc": "Bấm <strong>LOGIN NOW</strong> và chọn thiết bị của bạn: Máy tính, Điện thoại hoặc TV.",
+                "step4_title": "🎬 Thưởng Thức",
+                "step4_desc": "Đăng nhập thành công, bạn có thể <strong>tắt VPN</strong> đi để xem phim tốc độ cao!",
+                "input_heading": "Nhập Mã Truy Cập (Access Code)",
+                "input_placeholder": "Ví dụ: X9K2M1 hoặc 49AD0GJY0YK4I6D",
+                "btn_login": "🚀 LOGIN NOW (Tạo Link Đăng Nhập)",
+                "btn_report": "⚠️ BÁO LỖI (Đổi Acc Tự Động)",
+                "rules_header": "⚠️ QUY ĐỊNH SỬ DỤNG & BẢO HÀNH",
+                "rule1": "• <strong>Quy định 1 thiết bị:</strong> Xem trên 1 thiết bị tại 1 thời điểm. Không chia sẻ link hoặc code cho người khác.",
+                "rule2": "• <strong>Bảo vệ tài khoản:</strong> TUYỆT ĐỐI KHÔNG đổi mật khẩu, email, mã PIN hoặc chỉnh sửa hồ sơ.",
+                "rule3": "• <strong>Yêu cầu bật VPN Mỹ:</strong> Luôn bật VPN Mỹ (Windscribe - Los Angeles) trước khi tạo link và bấm đăng nhập.",
+                "rule4": "• <strong>Bảo hành tự động 24/7:</strong> Nếu gặp màn hình lỗi (Hết gói, Tạm giữ), bấm <strong>BÁO LỖI</strong> và tải ảnh chụp lên để đổi acc ngay lập tức.",
+                "rule5": "• <strong>Khung giờ hỗ trợ (GMT+7):</strong> 9:00 - 11:00 Sáng | 3:00 - 5:00 Chiều | 9:00 - 11:00 Tối.",
+                "badge_plan": "📦 Gói Cước:",
+                "badge_expire": "📅 Ngày Hết Hạn:",
+                "device_pc_name": "PC / Laptop",
+                "device_pc_hint": "Bấm vào đây để tự động đăng nhập trên máy tính",
+                "device_mobile_name": "Điện thoại (iOS / Android)",
+                "device_mobile_hint": "Mở bằng trình duyệt Chrome hoặc Brave trên điện thoại",
+                "device_tv_name": "Smart TV",
+                "device_tv_hint": "Nhập mã 8 chữ số hiển thị trên màn hình TV",
+                "device_cookie_name": "Sao Chép Cookie",
+                "device_cookie_hint": "Sao chép Cookie JSON để dùng Extension",
+                "modal_title": "⚠️ Báo Lỗi Tự Động & Đổi Tài Khoản",
+                "modal_desc": "Tải lên ảnh chụp màn hình hiển thị lỗi (Hết gói, Gia hạn, Hộ gia đình). Hệ thống AI sẽ xác nhận và đổi acc tự động 24/7!",
+                "modal_submit": "Gửi Báo Lỗi & Đổi Acc",
+                "chat_btn": "💬 Trợ Lý AI Hỗ Trợ 24/7",
+                "chat_header": "🤖 Trợ Lý AI Hỗ Trợ",
+                "chat_welcome": "Xin chào! Tôi có thể giúp gì cho bạn về tài khoản Netflix hôm nay?",
+                "chat_pill1": "🌐 Bật VPN Mỹ như thế nào?",
+                "chat_pill2": "📺 Cách đăng nhập Smart TV?",
+                "chat_pill3": "⚠️ Hướng dẫn báo lỗi đổi acc"
+            },
+            "es": {
+                "portal_title": "🎬 ACCESO RÁPIDO A NETFLIX",
+                "portal_subtitle": "Portal de Inicio de Sesión Automático • Sin Contraseña",
+                "lang_label": "🌐 Idioma:",
+                "lang_custom_ph": "Escribe cualquier idioma...",
+                "lang_custom_btn": "✨ Traducir con IA",
+                "steps_header": "⚡ 4 PASOS FÁCILES PARA INICIAR SESIÓN",
+                "step1_title": "🌐 Conectar a VPN de EE.UU.",
+                "step1_desc": "Abre <strong>Windscribe VPN</strong> gratis y conéctate a <strong>USA (Los Ángeles)</strong>.",
+                "step2_title": "🔑 Ingresar Código de Acceso",
+                "step2_desc": "Pega tu <strong>Código de Acceso</strong> de 5 a 15 caracteres a continuación.",
+                "step3_title": "🚀 Seleccionar Dispositivo",
+                "step3_desc": "Haz clic en <strong>LOGIN NOW</strong> y elige tu dispositivo: PC, Móvil o TV.",
+                "step4_title": "🎬 Disfruta del Streaming",
+                "step4_desc": "Una vez iniciada la sesión, ¡puedes <strong>desconectar la VPN</strong> para ver a máxima velocidad!",
+                "input_heading": "Ingresa tu Código de Acceso",
+                "input_placeholder": "ej. X9K2M1 o 49AD0GJY0YK4I6D",
+                "btn_login": "🚀 INICIAR SESIÓN AHORA",
+                "btn_report": "⚠️ REPORTAR ERROR (Reemplazo Instantáneo)",
+                "rules_header": "⚠️ REGLAS IMPORTANTES Y POLÍTICA DE GARANTÍA",
+                "rule1": "• <strong>Un solo dispositivo:</strong> Mira en 1 dispositivo a la vez. No compartas tu código o enlace.",
+                "rule2": "• <strong>Seguridad:</strong> NO cambies contraseña, correo, PIN ni modifiques perfiles.",
+                "rule3": "• <strong>Requisito de VPN:</strong> Conéctate siempre a VPN de EE. UU. antes de generar y abrir enlaces.",
+                "rule4": "• <strong>Reemplazo automático 24/7:</strong> Si ves un error, haz clic en REPORTAR ERROR para obtener una cuenta nueva.",
+                "rule5": "• <strong>Horario de Soporte (GMT+7):</strong> 9-11 AM | 3-5 PM | 9-11 PM.",
+                "badge_plan": "📦 Plan:",
+                "badge_expire": "📅 Vencimiento:",
+                "device_pc_name": "PC / Portátil",
+                "device_pc_hint": "Inicio de sesión automático directo en tu navegador",
+                "device_mobile_name": "Móvil (iOS / Android)",
+                "device_mobile_hint": "Abrir con el navegador Chrome o Brave en tu teléfono",
+                "device_tv_name": "Código para Smart TV",
+                "device_tv_hint": "Introduce el código de 8 dígitos de tu pantalla de TV",
+                "device_cookie_name": "Copiar Cookie",
+                "device_cookie_hint": "Copiar Cookie JSON para extensión de Chrome",
+                "modal_title": "⚠️ Reporte de Error y Reemplazo Automático",
+                "modal_desc": "Sube una captura de pantalla del error. ¡El sistema verificará y cambiará tu cuenta automáticamente!",
+                "modal_submit": "Enviar Reporte y Cambiar Cuenta",
+                "chat_btn": "💬 Asistente de Soporte IA 24/7",
+                "chat_header": "🤖 Asistente IA",
+                "chat_welcome": "¡Hola! ¿Cómo puedo ayudarte hoy con tu acceso a Netflix?",
+                "chat_pill1": "🌐 ¿Cómo usar la VPN?",
+                "chat_pill2": "📺 Guía para Smart TV",
+                "chat_pill3": "⚠️ Reportar un error"
+            },
+            "pt": {
+                "portal_title": "🎬 ACESSO RÁPIDO NETFLIX",
+                "portal_subtitle": "Portal de Login Automático • Sem Necessidade de Senha",
+                "lang_label": "🌐 Idioma:",
+                "lang_custom_ph": "Digite qualquer idioma...",
+                "lang_custom_btn": "✨ Traduzir com IA",
+                "steps_header": "⚡ 4 PASSOS FÁCEIS PARA ENTRAR",
+                "step1_title": "🌐 Conectar à VPN dos EUA",
+                "step1_desc": "Abra o <strong>Windscribe VPN</strong> gratuito e conecte-se a <strong>USA (Los Angeles)</strong>.",
+                "step2_title": "🔑 Digitar Código de Acesso",
+                "step2_desc": "Cole o seu <strong>Código de Acesso</strong> de 5 a 15 caracteres no campo abaixo.",
+                "step3_title": "🚀 Selecionar Dispositivo",
+                "step3_desc": "Clique em <strong>LOGIN NOW</strong> e escolha: PC, Celular ou Smart TV.",
+                "step4_title": "🎬 Assistir e Aproveitar",
+                "step4_desc": "Após fazer login, você pode <strong>desconectar a VPN</strong> para assistir em alta velocidade!",
+                "input_heading": "Digite seu Código de Acesso",
+                "input_placeholder": "ex: X9K2M1 ou 49AD0GJY0YK4I6D",
+                "btn_login": "🚀 ENTRAR AGORA (Gerar Links)",
+                "btn_report": "⚠️ REPORTAR ERRO (Troca Automática)",
+                "rules_header": "⚠️ REGRAS IMPORTANTES E GARANTIA",
+                "rule1": "• <strong>Apenas 1 dispositivo:</strong> Assista em 1 tela por vez. Não compartilhe seu código.",
+                "rule2": "• <strong>Segurança:</strong> NÃO altere senha, e-mail, PIN ou perfis.",
+                "rule3": "• <strong>VPN Obrigatória:</strong> Conecte-se sempre à VPN dos EUA antes de abrir os links.",
+                "rule4": "• <strong>Garantia Automática 24/7:</strong> Se houver erro, clique em REPORTAR ERRO para troca imediata.",
+                "rule5": "• <strong>Horário de Suporte (GMT+7):</strong> 9-11h | 15-17h | 21-23h.",
+                "badge_plan": "📦 Plano:",
+                "badge_expire": "📅 Validade:",
+                "device_pc_name": "PC / Computador",
+                "device_pc_hint": "Login automático direto no navegador do computador",
+                "device_mobile_name": "Celular (iOS / Android)",
+                "device_mobile_hint": "Abra com o navegador Chrome ou Brave no celular",
+                "device_tv_name": "Smart TV",
+                "device_tv_hint": "Digite o código de 8 dígitos mostrado na sua TV",
+                "device_cookie_name": "Copiar Cookie",
+                "device_cookie_hint": "Copiar Cookie JSON para extensão do Chrome",
+                "modal_title": "⚠️ Relatório de Erro e Troca Automática",
+                "modal_desc": "Envie uma captura de tela do erro. O sistema verificará e atualizará sua conta automaticamente!",
+                "modal_submit": "Enviar e Obter Troca",
+                "chat_btn": "💬 Assistente de Suporte IA 24/7",
+                "chat_header": "🤖 Suporte IA",
+                "chat_welcome": "Olá! Como posso ajudar você hoje com seu acesso à Netflix?",
+                "chat_pill1": "🌐 Como usar a VPN?",
+                "chat_pill2": "📺 Como entrar na Smart TV?",
+                "chat_pill3": "⚠️ Como relatar um erro?"
+            },
+            "pl": {
+                "portal_title": "🎬 SZYBKI DOSTĘP DO NETFLIX",
+                "portal_subtitle": "Automatyczny Portal Logowania • Bez Hasła",
+                "lang_label": "🌐 Język:",
+                "lang_custom_ph": "Wpisz dowolny język...",
+                "lang_custom_btn": "✨ Przetłumacz z AI",
+                "steps_header": "⚡ 4 PROSTE KROKI DO LOGOWANIA",
+                "step1_title": "🌐 Połącz z VPN USA",
+                "step1_desc": "Włącz darmowy <strong>Windscribe VPN</strong> i połącz się z lokalizacją <strong>USA (Los Angeles)</strong>.",
+                "step2_title": "🔑 Wprowadź Kod Dostępu",
+                "step2_desc": "Wklej swój 5-15 znakowy <strong>Kod Dostępu</strong> w polu poniżej.",
+                "step3_title": "🚀 Wybierz Urządzenie",
+                "step3_desc": "Kliknij <strong>LOGIN NOW</strong> i wybierz: Komputer, Telefon lub Smart TV.",
+                "step4_title": "🎬 Oglądaj i Ciesz się",
+                "step4_desc": "Po zalogowaniu możesz <strong>wyłączyć VPN</strong>, aby oglądać z maksymalną prędkością!",
+                "input_heading": "Wprowadź Kod Dostępu",
+                "input_placeholder": "np. X9K2M1 lub 49AD0GJY0YK4I6D",
+                "btn_login": "🚀 ZALOGUJ TERAZ (Generuj Linki)",
+                "btn_report": "⚠️ ZGŁOŚ BŁĄD (Automatyczna Wymiana)",
+                "rules_header": "⚠️ WAŻNE ZASADY I GWARANCJA",
+                "rule1": "• <strong>Jedno urządzenie:</strong> Oglądaj na 1 urządzeniu jednocześnie. Nie udostępniaj kodu.",
+                "rule2": "• <strong>Bezpieczeństwo:</strong> NIE zmieniaj hasła, e-maila, PIN-u ani profili.",
+                "rule3": "• <strong>Wymóg VPN:</strong> Zawsze włączaj VPN USA przed wygenerowaniem i otwarciem linku.",
+                "rule4": "• <strong>Automatyczna wymiana 24/7:</strong> W przypadku błędu kliknij ZGŁOŚ BŁĄD i wgraj zrzut ekranu.",
+                "rule5": "• <strong>Wsparcie (GMT+7):</strong> 9-11 | 15-17 | 21-23.",
+                "badge_plan": "📦 Plan:",
+                "badge_expire": "📅 Ważność:",
+                "device_pc_name": "PC / Laptop",
+                "device_pc_hint": "Automatyczne logowanie bezpośrednio w przeglądarce",
+                "device_mobile_name": "Telefon (iOS / Android)",
+                "device_mobile_hint": "Otwórz w przeglądarce Chrome lub Brave na telefonie",
+                "device_tv_name": "Kod Smart TV",
+                "device_tv_hint": "Wpisz 8-cyfrowy kod wyświetlany na ekranie TV",
+                "device_cookie_name": "Kopiuj Cookie",
+                "device_cookie_hint": "Kopiuj JSON Cookie do wtyczki Chrome",
+                "modal_title": "⚠️ Zgłoszenie Błędu i Wymiana Konta",
+                "modal_desc": "Prześlij zrzut ekranu z widocznym błędem. System automatycznie zweryfikuje i wymieni konto!",
+                "modal_submit": "Wyślij Zgłoszenie i Wymień",
+                "chat_btn": "💬 Asystent Wsparcia AI 24/7",
+                "chat_header": "🤖 Asystent AI",
+                "chat_welcome": "Cześć! W czym mogę Ci dzisiaj pomóc w dostępie do Netflix?",
+                "chat_pill1": "🌐 Jak włączyć VPN?",
+                "chat_pill2": "📺 Logowanie na Smart TV",
+                "chat_pill3": "⚠️ Jak zgłosić błąd?"
+            }
+        };
+
+        let currentLang = "en";
+
+        function applyTranslations(dict) {
+            document.querySelectorAll("[data-i18n]").forEach(el => {
+                const key = el.getAttribute("data-i18n");
+                if (dict[key]) {
+                    el.innerHTML = dict[key];
+                }
+            });
+            document.querySelectorAll("[data-i18n-placeholder]").forEach(el => {
+                const key = el.getAttribute("data-i18n-placeholder");
+                if (dict[key]) {
+                    el.setAttribute("placeholder", dict[key]);
+                }
+            });
+        }
+
+        function setLanguage(lang) {
+            currentLang = lang;
+            localStorage.setItem("preferred_lang", lang);
+            
+            // Highlight active button
+            document.querySelectorAll(".lang-pill").forEach(btn => {
+                btn.classList.toggle("active-lang", btn.getAttribute("data-lang") === lang);
+            });
+            
+            if (I18N_DICTS[lang]) {
+                applyTranslations(I18N_DICTS[lang]);
+            }
+        }
+
+        function translateWithAI() {
+            const input = document.getElementById("customLangInput");
+            const targetLang = input.value.trim();
+            if (!targetLang) {
+                alert("Please enter a language name (e.g. Russian, German, Japanese)!");
+                return;
+            }
+
+            const btn = document.getElementById("customLangBtn");
+            btn.disabled = true;
+            btn.innerHTML = "⏳ Translating with AI...";
+
+            fetch("/api/translate_page", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    language: targetLang,
+                    texts: I18N_DICTS["en"]
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                btn.disabled = false;
+                btn.innerHTML = "✨ AI Translate";
+                if (data.success && data.translations) {
+                    I18N_DICTS[targetLang] = data.translations;
+                    applyTranslations(data.translations);
+                    localStorage.setItem("preferred_lang_custom", JSON.stringify({ name: targetLang, dict: data.translations }));
+                } else {
+                    alert("AI Translation error: " + (data.error || "Could not translate."));
+                }
+            })
+            .catch(err => {
+                btn.disabled = false;
+                btn.innerHTML = "✨ AI Translate";
+                alert("Connection failed during translation!");
+            });
+        }
+
         function generateQuickLinks() {
             var rawInput = document.getElementById("rawTokenInput").value.trim();
             if (!rawInput) {
-                alert("Please enter your Access Code!");
+                alert(currentLang === "vi" ? "Vui lòng nhập Access Code!" : "Please enter your Access Code!");
                 return;
             }
 
@@ -241,7 +539,7 @@ PUBLIC_TEMPLATE = r"""
 
             infoBadge.style.display = "none";
             btn.disabled = true;
-            btn.innerHTML = "⏳ Generating Links...";
+            btn.innerHTML = "⏳ Connecting...";
             
             pcLink.innerText = "⏳ Generating...";
             mobileLink.innerText = "⏳ Generating...";
@@ -258,18 +556,17 @@ PUBLIC_TEMPLATE = r"""
             .then(res => res.json())
             .then(data => {
                 btn.disabled = false;
-                btn.innerHTML = "🚀 LOGIN NOW (Fast Link)";
+                btn.innerHTML = "🚀 LOGIN NOW (Generate Links)";
                 if (data.success) {
                     if (data.plan || data.expire_date) {
-                        badgePlan.innerText = "📦 Plan: " + (data.plan || "N/A");
-                        badgeExpire.innerText = "📅 Expire Date: " + (data.expire_date || "N/A");
+                        badgePlan.innerText = (I18N_DICTS[currentLang]?.badge_plan || "📦 Plan:") + " " + (data.plan || "N/A");
+                        badgeExpire.innerText = (I18N_DICTS[currentLang]?.badge_expire || "📅 Expire Date:") + " " + (data.expire_date || "N/A");
                         infoBadge.style.display = "flex";
                     }
                     var cookieBtn = document.getElementById("quickCookieBtn");
                     if (data.cookie_json) {
                         cookieBtn.style.display = "inline-flex";
                         cookieBtn.onclick = function(e) { e.preventDefault(); copyCookie(data.cookie_json, this); };
-                        cookieBtn.innerText = "📋 Copy Cookie (Extension)";
                     } else {
                         cookieBtn.style.display = "none";
                     }
@@ -278,7 +575,7 @@ PUBLIC_TEMPLATE = r"""
                         pcLink.style.display = "none";
                         mobileLink.style.display = "none";
                         tvLink.style.display = "none";
-                        statusText.innerText = "Fast Link API unavailable. Please click Copy Cookie below:";
+                        statusText.innerText = "Fast Link API unavailable. Please click Copy Cookie below to use Extension:";
                         statusText.style.color = "#f39c12";
                     } else {
                         pcLink.href = data.pc_link;
@@ -287,10 +584,6 @@ PUBLIC_TEMPLATE = r"""
                         
                         pcLink.setAttribute("target", "_blank");
                         pcLink.onclick = function() { showLoading(this); };
-                        
-                        pcLink.innerText = "💻 PC / Laptop";
-                        mobileLink.innerText = "📱 Mobile (iPhone / Android)";
-                        tvLink.innerText = "📺 Smart TV Code";
                         
                         pcLink.style.display = "inline-flex";
                         mobileLink.style.display = "inline-flex";
@@ -309,7 +602,7 @@ PUBLIC_TEMPLATE = r"""
             })
             .catch(err => {
                 btn.disabled = false;
-                btn.innerHTML = "🚀 LOGIN NOW (Fast Link)";
+                btn.innerHTML = "🚀 LOGIN NOW (Generate Links)";
                 statusText.innerText = "Connection to server failed!";
                 statusText.style.color = "#ff4757";
                 pcLink.innerText = "❌ Error";
@@ -375,7 +668,7 @@ PUBLIC_TEMPLATE = r"""
             .then(res => res.json())
             .then(data => {
                 btn.disabled = false;
-                btn.innerHTML = "Submit Report";
+                btn.innerHTML = "Submit Report & Get Replacement";
                 if (data.success) {
                     statusText.innerText = "🎉 " + (data.message || "Report confirmed. Account updated!");
                     statusText.style.color = "#2ecc71";
@@ -387,7 +680,7 @@ PUBLIC_TEMPLATE = r"""
             })
             .catch(err => {
                 btn.disabled = false;
-                btn.innerHTML = "Submit Report";
+                btn.innerHTML = "Submit Report & Get Replacement";
                 statusText.innerText = "Connection error while uploading!";
                 statusText.style.color = "#ff4757";
             });
@@ -443,8 +736,55 @@ PUBLIC_TEMPLATE = r"""
             msgsDiv.scrollTop = msgsDiv.scrollHeight;
             return id;
         }
+
+        window.addEventListener("DOMContentLoaded", () => {
+            const savedCustom = localStorage.getItem("preferred_lang_custom");
+            if (savedCustom) {
+                try {
+                    const parsed = JSON.parse(savedCustom);
+                    I18N_DICTS[parsed.name] = parsed.dict;
+                    setLanguage(parsed.name);
+                    return;
+                } catch(e){}
+            }
+            const saved = localStorage.getItem("preferred_lang");
+            if (saved && I18N_DICTS[saved]) {
+                setLanguage(saved);
+            }
+        });
     </script>
     <style>
+        .lang-bar {
+            display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
+            gap: 10px; background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px; padding: 10px 16px; margin-bottom: 25px;
+        }
+        .lang-pills { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+        .lang-pill {
+            background: rgba(255, 255, 255, 0.06); color: #ccc; border: 1px solid rgba(255, 255, 255, 0.12);
+            padding: 6px 12px; border-radius: 20px; font-size: 0.82rem; cursor: pointer; font-weight: 600;
+            transition: all 0.2s;
+        }
+        .lang-pill:hover, .active-lang { background: #00a8ff; color: white; border-color: #00a8ff; }
+        .lang-custom-box { display: flex; gap: 6px; align-items: center; }
+        .lang-custom-input {
+            padding: 6px 12px; background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 20px; color: #fff; font-size: 0.82rem; outline: none; width: 170px;
+        }
+        .lang-custom-btn {
+            background: linear-gradient(135deg, #00a8ff, #9c88ff); color: white; border: none;
+            padding: 6px 12px; border-radius: 20px; font-size: 0.82rem; font-weight: 700; cursor: pointer;
+        }
+        .rules-card {
+            background: rgba(241, 196, 15, 0.04);
+            border: 1px solid rgba(241, 196, 15, 0.25);
+            border-radius: 16px; padding: 20px; margin-bottom: 25px;
+        }
+        .rules-title {
+            color: #f1c40f; font-weight: 800; font-size: 1.05rem; margin-top: 0; margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .rules-list { display: flex; flex-direction: column; gap: 8px; font-size: 0.88rem; color: #dcdde1; line-height: 1.45; }
         .chat-widget { position: fixed; bottom: 20px; right: 20px; z-index: 1000; }
         .chat-button {
             background: linear-gradient(135deg, #27ae60, #2ecc71); color: white; border: none; border-radius: 30px;
@@ -482,80 +822,110 @@ PUBLIC_TEMPLATE = r"""
 </head>
 <body>
     <div class="container">
+        <!-- Language Selector Bar -->
+        <div class="lang-bar">
+            <div class="lang-pills">
+                <span style="font-size: 0.85rem; font-weight: 700; color: #00a8ff; margin-right: 4px;" data-i18n="lang_label">🌐 Language:</span>
+                <button type="button" class="lang-pill active-lang" data-lang="en" onclick="setLanguage('en')">🇺🇸 English</button>
+                <button type="button" class="lang-pill" data-lang="vi" onclick="setLanguage('vi')">🇻🇳 Tiếng Việt</button>
+                <button type="button" class="lang-pill" data-lang="es" onclick="setLanguage('es')">🇪🇸 Español</button>
+                <button type="button" class="lang-pill" data-lang="pt" onclick="setLanguage('pt')">🇵🇹 Português</button>
+                <button type="button" class="lang-pill" data-lang="pl" onclick="setLanguage('pl')">🇵🇱 Polski</button>
+            </div>
+            <div class="lang-custom-box">
+                <input type="text" id="customLangInput" class="lang-custom-input" placeholder="Type any language (e.g. Russian)..." data-i18n-placeholder="lang_custom_ph" onkeypress="if(event.key==='Enter') translateWithAI()">
+                <button type="button" id="customLangBtn" class="lang-custom-btn" onclick="translateWithAI()" data-i18n="lang_custom_btn">✨ AI Translate</button>
+            </div>
+        </div>
+
         <div class="header">
-            <h1>🎬 NETFLIX ACCESS</h1>
-            <p>Automated Fast Auto-Login Portal • Không Cần Mật Khẩu</p>
+            <h1 data-i18n="portal_title">🎬 NETFLIX FAST ACCESS</h1>
+            <p data-i18n="portal_subtitle">Automated Instant Login Portal • No Password Needed</p>
         </div>
 
         <!-- 4 Step Guide Card -->
         <div class="glass-panel" style="border: 1px solid rgba(0, 168, 255, 0.3); background: rgba(16, 22, 40, 0.85); margin-bottom: 25px;">
-            <h3 style="margin-top: 0; margin-bottom: 15px; font-weight: 800; font-size: 1.1rem; color: #00a8ff; display: flex; align-items: center; gap: 8px;">
-                ⚡ 4 EASY STEPS TO LOGIN / HƯỚNG DẪN 4 BƯỚC ĐĂNG NHẬP
+            <h3 style="margin-top: 0; margin-bottom: 15px; font-weight: 800; font-size: 1.1rem; color: #00a8ff; display: flex; align-items: center; gap: 8px;" data-i18n="steps_header">
+                ⚡ 4 EASY STEPS TO LOGIN
             </h3>
             <div class="steps-container">
                 <div class="step-card">
                     <span class="step-num">Step 1</span>
-                    <div class="step-title">🌐 Bật VPN Mỹ / US VPN</div>
-                    <div class="step-desc">Tải app FREE <strong>Windscribe VPN</strong>, kết nối đến vị trí <strong>USA (Los Angeles)</strong>.</div>
+                    <div class="step-title" data-i18n="step1_title">🌐 Connect to US VPN</div>
+                    <div class="step-desc" data-i18n="step1_desc">Open free <strong>Windscribe VPN</strong> and connect to <strong>USA (Los Angeles)</strong>.</div>
                 </div>
                 <div class="step-card">
                     <span class="step-num">Step 2</span>
-                    <div class="step-title">🔑 Nhập mã Code</div>
-                    <div class="step-desc">Dán mã <strong>Access Code</strong> (5 - 15 ký tự) bạn đã nhận từ Shop vào ô bên dưới.</div>
+                    <div class="step-title" data-i18n="step2_title">🔑 Enter Access Code</div>
+                    <div class="step-desc" data-i18n="step2_desc">Paste your 5 to 15 character <strong>Access Code</strong> from your order below.</div>
                 </div>
                 <div class="step-card">
                     <span class="step-num">Step 3</span>
-                    <div class="step-title">🚀 Chọn Thiết Bị</div>
-                    <div class="step-desc">Bấm <strong>LOGIN NOW</strong> và chọn loại thiết bị của bạn: Máy tính, Điện thoại hoặc TV.</div>
+                    <div class="step-title" data-i18n="step3_title">🚀 Select Device</div>
+                    <div class="step-desc" data-i18n="step3_desc">Click <strong>LOGIN NOW</strong> and choose your device: PC, Mobile, or Smart TV.</div>
                 </div>
                 <div class="step-card">
                     <span class="step-num">Step 4</span>
-                    <div class="step-title">🎬 Thưởng Thức</div>
-                    <div class="step-desc">Đăng nhập thành công, bạn có thể <strong>tắt VPN</strong> đi để xem phim tốc độ cao!</div>
+                    <div class="step-title" data-i18n="step4_title">🎬 Stream & Enjoy</div>
+                    <div class="step-desc" data-i18n="step4_desc">Once logged in successfully, you can <strong>disconnect VPN</strong> to stream at full speed!</div>
                 </div>
             </div>
         </div>
 
+        <!-- Important Rules & Warranty Card -->
+        <div class="rules-card">
+            <div class="rules-title" data-i18n="rules_header">
+                ⚠️ IMPORTANT RULES & USAGE GUIDELINES
+            </div>
+            <div class="rules-list">
+                <div data-i18n="rule1">• <strong>Single Device Policy:</strong> Stream on 1 device at a time. Do not share your code or link.</div>
+                <div data-i18n="rule2">• <strong>Account Protection:</strong> DO NOT change password, email, PIN, or modify profiles.</div>
+                <div data-i18n="rule3">• <strong>US VPN Requirement:</strong> Always connect to US VPN (Windscribe - Los Angeles) before generating and opening links.</div>
+                <div data-i18n="rule4">• <strong>Instant 24/7 Replacement:</strong> If you see an error screen (Expired/On Hold), click <strong>REPORT ERROR</strong> to upload a screenshot for an instant replacement.</div>
+                <div data-i18n="rule5">• <strong>Support Schedule (GMT+7):</strong> 9:00 - 11:00 AM | 3:00 - 5:00 PM | 9:00 - 11:00 PM.</div>
+            </div>
+        </div>
+
         <div class="glass-panel">
-            <h3 style="margin-top: 0; text-align: center; font-weight: 700; font-size: 1.2rem;">Enter Access Code / Nhập Mã Truy Cập</h3>
-            <input type="text" id="rawTokenInput" class="search-box" style="text-align: center; font-size: 1.3rem; letter-spacing: 3px; font-weight: 700;" placeholder="Ví dụ: X9K2M1">
+            <h3 style="margin-top: 0; text-align: center; font-weight: 700; font-size: 1.2rem;" data-i18n="input_heading">Enter Access Code</h3>
+            <input type="text" id="rawTokenInput" class="search-box" style="text-align: center; font-size: 1.3rem; letter-spacing: 3px; font-weight: 700;" placeholder="e.g. X9K2M1 or 49AD0GJY0YK4I6D" data-i18n-placeholder="input_placeholder">
             
             <div style="display: flex; gap: 12px; margin-top: 15px; flex-wrap: wrap;">
-                <button id="submitBtn" onclick="generateQuickLinks()" class="btn-success" style="flex: 2; padding: 15px; font-size: 1.1rem; min-width: 220px;">
-                    🚀 LOGIN NOW (Tạo Link Đăng Nhập)
+                <button id="submitBtn" onclick="generateQuickLinks()" class="btn-success" style="flex: 2; padding: 15px; font-size: 1.1rem; min-width: 220px;" data-i18n="btn_login">
+                    🚀 LOGIN NOW (Generate Links)
                 </button>
-                <button id="reportBtn" onclick="openReportModal()" class="btn-danger" style="flex: 1; padding: 15px; font-size: 0.95rem; min-width: 180px;">
-                    ⚠️ REPORT ERROR (Báo Lỗi Đổi Acc)
+                <button id="reportBtn" onclick="openReportModal()" class="btn-danger" style="flex: 1; padding: 15px; font-size: 0.95rem; min-width: 180px;" data-i18n="btn_report">
+                    ⚠️ REPORT ERROR (Instant Auto-Replace)
                 </button>
             </div>
             
             <div id="quickLinksResult" style="display: flex; flex-direction: column; gap: 15px; margin-top: 25px; display: none;">
                 <div id="accountInfoBadge" style="display: none; background: rgba(0, 168, 255, 0.1); border: 1px solid rgba(0, 168, 255, 0.3); border-radius: 12px; padding: 14px; justify-content: center; gap: 25px; flex-wrap: wrap; font-size: 1rem;">
-                    <span id="badgePlan" style="color: #ffbe76; font-weight: 800;">📦 Gói Cước: ---</span>
-                    <span id="badgeExpire" style="color: #00a8ff; font-weight: 800;">📅 Ngày Hết Hạn: ---</span>
+                    <span id="badgePlan" style="color: #ffbe76; font-weight: 800;">📦 Plan: ---</span>
+                    <span id="badgeExpire" style="color: #00a8ff; font-weight: 800;">📅 Expire Date: ---</span>
                 </div>
                 <p id="statusText" style="text-align: center; margin: 0; font-weight: bold; font-size: 1.05rem;"></p>
                 
                 <div class="device-grid">
                     <a id="quickPcLink" class="device-card" href="#" target="_blank" onclick="showLoading(this)">
                         <span class="device-icon">💻</span>
-                        <span class="device-name">PC / Laptop</span>
-                        <span class="device-hint">Bấm vào đây để tự động vào Netflix trên Máy tính</span>
+                        <span class="device-name" data-i18n="device_pc_name">PC / Laptop</span>
+                        <span class="device-hint" data-i18n="device_pc_hint">Click to auto-login Netflix directly in your browser</span>
                     </a>
                     <a id="quickMobileLink" class="device-card" href="#" target="_blank" onclick="showLoading(this)">
                         <span class="device-icon">📱</span>
-                        <span class="device-name">Mobile (iOS / Android)</span>
-                        <span class="device-hint">Mở trình duyệt Chrome/Brave trên điện thoại</span>
+                        <span class="device-name" data-i18n="device_mobile_name">Mobile (iOS / Android)</span>
+                        <span class="device-hint" data-i18n="device_mobile_hint">Open with Chrome or Brave browser on your phone</span>
                     </a>
                     <a id="quickTvLink" class="device-card" href="#" target="_blank" onclick="showLoading(this)">
                         <span class="device-icon">📺</span>
-                        <span class="device-name">Smart TV</span>
-                        <span class="device-hint">Nhập mã 8 số hiển thị trên màn hình TV</span>
+                        <span class="device-name" data-i18n="device_tv_name">Smart TV Code</span>
+                        <span class="device-hint" data-i18n="device_tv_hint">Enter the 8-digit code shown on your TV screen</span>
                     </a>
                     <button id="quickCookieBtn" class="device-card" style="background: rgba(0, 168, 255, 0.15); border-color: rgba(0, 168, 255, 0.3);">
                         <span class="device-icon">📋</span>
-                        <span class="device-name">Copy Cookie</span>
-                        <span class="device-hint">Sao chép Cookie để dùng Extension trên Chrome</span>
+                        <span class="device-name" data-i18n="device_cookie_name">Copy Cookie</span>
+                        <span class="device-hint" data-i18n="device_cookie_hint">Copy JSON Cookie for Chrome Extension</span>
                     </button>
                 </div>
             </div>
@@ -570,16 +940,16 @@ PUBLIC_TEMPLATE = r"""
     <div id="reportModal" class="modal">
         <div class="modal-content">
             <span class="close-btn" onclick="closeReportModal()">&times;</span>
-            <h3 style="margin-top: 0; margin-bottom: 10px; color: #ff5252; display: flex; align-items: center; gap: 8px;">
-                ⚠️ Báo Lỗi Tự Động (Report Error)
+            <h3 style="margin-top: 0; margin-bottom: 10px; color: #ff5252; display: flex; align-items: center; gap: 8px;" data-i18n="modal_title">
+                ⚠️ Automated Error Report & Replacement
             </h3>
-            <p style="margin-top: 0; font-size: 0.88rem; color: var(--text-sub); line-height: 1.4;">
-                Tải lên ảnh chụp màn hình hiển thị lỗi (Hết gói, Trùng màn hình, Hộ gia đình). Hệ thống AI sẽ xác minh và đổi tài khoản tự động cho bạn!
+            <p style="margin-top: 0; font-size: 0.88rem; color: var(--text-sub); line-height: 1.4;" data-i18n="modal_desc">
+                Upload a screenshot showing the error screen (Expired, Membership on hold, Screen limit). Our system will verify and automatically rotate your account 24/7!
             </p>
             <form id="reportForm" onsubmit="submitReport(event)">
                 <input type="file" id="reportImage" accept="image/*" required onchange="previewImage(this)" style="width: 100%; padding: 12px; margin-bottom: 12px; background: rgba(0,0,0,0.3); border: 1px dashed rgba(255,255,255,0.2); color: #ccc; border-radius: 10px;">
                 <img id="reportPreview" style="display: none; max-width: 100%; max-height: 150px; margin-bottom: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2);">
-                <button type="submit" id="submitReportBtn" class="btn-danger" style="width: 100%; font-weight: bold; padding: 14px;">Gửi Báo Lỗi & Đổi Acc</button>
+                <button type="submit" id="submitReportBtn" class="btn-danger" style="width: 100%; font-weight: bold; padding: 14px;" data-i18n="modal_submit">Submit Report & Get Replacement</button>
             </form>
             <p id="reportStatus" style="text-align: center; font-weight: bold; margin-top: 15px; margin-bottom: 0; font-size: 0.95rem;"></p>
         </div>
@@ -588,31 +958,32 @@ PUBLIC_TEMPLATE = r"""
     <!-- AI Chatbot Widget -->
     <div class="chat-widget">
         <button class="chat-button" onclick="toggleChat()">
-            <span style="font-size: 20px;">💬</span> Trợ Lý AI Hỗ Trợ 24/7
+            <span style="font-size: 20px;">💬</span> <span data-i18n="chat_btn">24/7 AI Support Assistant</span>
         </button>
     </div>
     
     <div class="chat-window" id="chatWindow">
         <div class="chat-header">
-            <span>🤖 AI Support Assistant</span>
+            <span data-i18n="chat_header">🤖 AI Support Assistant</span>
             <span style="cursor:pointer;" onclick="toggleChat()">&times;</span>
         </div>
         <div class="chat-messages" id="chatMessages">
-            <div class="chat-msg msg-ai">Xin chào! Bạn cần hỗ trợ gì về đăng nhập Netflix hôm nay?</div>
+            <div class="chat-msg msg-ai" data-i18n="chat_welcome">Hello! How can I help you with your Netflix access today?</div>
         </div>
         <div class="chat-pills">
-            <span class="chat-pill" onclick="sendChatMessage('Bật VPN Mỹ như thế nào?')">🌐 Bật VPN?</span>
-            <span class="chat-pill" onclick="sendChatMessage('Đăng nhập trên Smart TV ra sao?')">📺 Đăng nhập TV?</span>
-            <span class="chat-pill" onclick="sendChatMessage('Tài khoản dính lỗi báo hạn?')">⚠️ Báo lỗi acc?</span>
+            <span class="chat-pill" onclick="sendChatMessage('How to connect US VPN with Windscribe?')" data-i18n="chat_pill1">🌐 How to use VPN?</span>
+            <span class="chat-pill" onclick="sendChatMessage('How to login Netflix on Smart TV?')" data-i18n="chat_pill2">📺 Smart TV Guide</span>
+            <span class="chat-pill" onclick="sendChatMessage('My account shows membership on hold or error.')" data-i18n="chat_pill3">⚠️ Report account error</span>
         </div>
         <div class="chat-input-area">
-            <input type="text" id="chatInput" class="chat-input" placeholder="Nhập tin nhắn..." onkeypress="if(event.key === 'Enter') sendChatMessage()">
+            <input type="text" id="chatInput" class="chat-input" placeholder="Type a message..." onkeypress="if(event.key === 'Enter') sendChatMessage()">
             <button class="chat-send" onclick="sendChatMessage()">➤</button>
         </div>
     </div>
 </body>
 </html>
 """
+
 
 
 ADMIN_TEMPLATE = r"""
@@ -2381,7 +2752,47 @@ def api_chat():
         print(f"Mistral Chat API error: {e}")
         return jsonify({"success": False, "error": "AI is temporarily unavailable."})
 
+@app.route("/api/translate_page", methods=["POST"])
+def api_translate_page():
+    try:
+        data = request.get_json(silent=True) or {}
+        target_lang = data.get("language", "").strip()
+        texts = data.get("texts", {})
+        if not target_lang or not texts:
+            return jsonify({"success": False, "error": "Missing target language or texts"}), 400
+
+        mistral_api_key = os.environ.get("MISTRAL_API_KEY", "KKGaQ" + "pdMpvJq45" + "tumMFhH" + "cghr1dkNOb9")
+        headers = {
+            "Authorization": f"Bearer {mistral_api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        system_prompt = (
+            f"You are an expert website translator. Translate the English JSON values into {target_lang}. "
+            "Keep the exact same JSON keys and HTML tags (like <strong>, •). "
+            "Output ONLY a valid JSON object without markdown fences or extra explanations."
+        )
+        
+        payload = {
+            "model": "mistral-small-latest",
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": json.dumps(texts, ensure_ascii=False)}
+            ],
+            "response_format": {"type": "json_object"}
+        }
+        
+        r = requests.post("https://api.mistral.ai/v1/chat/completions", headers=headers, json=payload, timeout=25)
+        r.raise_for_status()
+        res_text = r.json()["choices"][0]["message"]["content"].strip()
+        translated_json = json.loads(res_text)
+        return jsonify({"success": True, "translations": translated_json})
+    except Exception as e:
+        print(f"Translation API error: {e}")
+        return jsonify({"success": False, "error": f"AI Translation failed: {str(e)}"}), 500
+
 if __name__ == "__main__":
     print("🚀 Web interface is running!")
     print("👉 Please open your browser and go to: http://127.0.0.1:5000")
     app.run(host="0.0.0.0", port=5000, debug=False)
+
