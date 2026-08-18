@@ -46,6 +46,7 @@ COMMON_STYLE = r"""
         --success-hover: #27ae60;
         --accent-blue: #00a8ff;
         --accent-gold: #f1c40f;
+        --accent-purple: #a55eea;
         --danger: #e74c3c;
         --text-main: #ffffff;
         --text-sub: #a0a5b8;
@@ -69,7 +70,7 @@ COMMON_STYLE = r"""
     ::-webkit-scrollbar-thumb:hover { background: #3d4463; }
     
     .container {
-        position: relative; width: 95%; max-width: 950px;
+        position: relative; width: 95%; max-width: 980px;
         margin-top: 40px; margin-bottom: 60px; z-index: 1;
     }
     
@@ -143,12 +144,86 @@ COMMON_STYLE = r"""
     .btn-blue { background: var(--accent-blue); color: #fff; }
     .btn-blue:hover { background: #0097e6; box-shadow: 0 6px 20px rgba(0, 168, 255, 0.4); }
     
-    .btn-copy { background: var(--accent-blue); padding: 8px 14px; font-size: 0.85rem; border-radius: 6px; border: none; color: white; cursor: pointer; font-weight: bold; }
-    .btn-login {
-        background: #27ae60 !important; color: white !important; border: none !important;
-        padding: 12px 18px !important; font-size: 0.95rem !important; font-weight: bold !important;
-        border-radius: 10px !important; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    /* 4 Device Cards Grid */
+    .device-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+        gap: 16px;
+        margin-top: 15px;
+        width: 100%;
     }
+    
+    .device-card {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 18px;
+        padding: 22px 16px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        text-decoration: none !important;
+        color: #fff !important;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+        cursor: pointer;
+        backdrop-filter: blur(10px);
+    }
+    
+    .device-card:hover {
+        transform: translateY(-5px);
+        background: rgba(255, 255, 255, 0.08);
+    }
+    
+    .card-pc:hover { border-color: #00a8ff; box-shadow: 0 12px 30px rgba(0, 168, 255, 0.25); }
+    .card-mobile:hover { border-color: #2ecc71; box-shadow: 0 12px 30px rgba(46, 204, 113, 0.25); }
+    .card-tv:hover { border-color: #a55eea; box-shadow: 0 12px 30px rgba(165, 94, 234, 0.25); }
+    .card-general:hover { border-color: #f1c40f; box-shadow: 0 12px 30px rgba(241, 196, 15, 0.25); }
+    
+    .device-icon-box {
+        width: 56px;
+        height: 56px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        margin-bottom: 12px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    
+    .device-name {
+        font-size: 1.05rem;
+        font-weight: 800;
+        margin-bottom: 6px;
+        color: #fff;
+    }
+    
+    .device-hint {
+        font-size: 0.82rem;
+        color: var(--text-sub);
+        line-height: 1.4;
+        margin-bottom: 16px;
+        flex-grow: 1;
+    }
+    
+    .device-btn-action {
+        width: 100%;
+        padding: 11px 14px;
+        border-radius: 10px;
+        font-size: 0.9rem;
+        font-weight: 800;
+        border: none;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        transition: opacity 0.2s;
+    }
+    .device-btn-action:hover { opacity: 0.92; }
     
     /* Flash messages */
     .flash-message {
@@ -183,9 +258,9 @@ COMMON_STYLE = r"""
 <script>
     function copyCookie(text, btn) {
         let originalText = btn.innerHTML;
-        btn.innerHTML = '✔ Copied';
+        btn.innerHTML = '✔ Copied Cookie';
         btn.style.background = '#20bf6b';
-        setTimeout(() => { btn.innerHTML = originalText; btn.style.background = '#00a8ff'; }, 2000);
+        setTimeout(() => { btn.innerHTML = originalText; btn.style.background = 'rgba(255,255,255,0.08)'; }, 2000);
         if (navigator.clipboard && window.isSecureContext) {
             navigator.clipboard.writeText(text).catch(err => {
                 fallbackCopy(text);
@@ -206,9 +281,15 @@ COMMON_STYLE = r"""
         textArea.remove();
     }
     function showLoading(btn) {
+        let originalText = btn.innerHTML;
         btn.innerHTML = '⏳ Connecting...';
         btn.style.pointerEvents = 'none';
         btn.style.opacity = '0.7';
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.style.pointerEvents = 'auto';
+            btn.style.opacity = '1';
+        }, 4000);
     }
 </script>
 """
@@ -236,7 +317,7 @@ PUBLIC_TEMPLATE = r"""
                 "step2_title": "🔑 Enter Access Code",
                 "step2_desc": "Paste your 5 to 15 character <strong>Access Code</strong> from your order below.",
                 "step3_title": "🚀 Select Device",
-                "step3_desc": "Click <strong>LOGIN NOW</strong> and choose your device: PC, Mobile, or Smart TV.",
+                "step3_desc": "Click <strong>LOGIN NOW</strong> and choose your device: PC, Mobile, Smart TV, or General.",
                 "step4_title": "🎬 Stream & Enjoy",
                 "step4_desc": "Once logged in successfully, you can <strong>disconnect VPN</strong> to stream at full speed!",
                 "input_heading": "Enter Access Code",
@@ -251,14 +332,19 @@ PUBLIC_TEMPLATE = r"""
                 "rule5": "• <strong>Support Schedule (GMT+7):</strong> 9:00 - 11:00 AM | 3:00 - 5:00 PM | 9:00 - 11:00 PM.",
                 "badge_plan": "📦 Plan:",
                 "badge_expire": "📅 Expire Date:",
-                "device_pc_name": "PC / Laptop",
-                "device_pc_hint": "Click to auto-login Netflix directly in your browser",
-                "device_mobile_name": "Mobile (iOS / Android)",
-                "device_mobile_hint": "Open with Chrome or Brave browser on your phone",
-                "device_tv_name": "Smart TV Code",
-                "device_tv_hint": "Enter the 8-digit code shown on your TV screen",
-                "device_cookie_name": "Copy Cookie",
-                "device_cookie_hint": "Copy JSON Cookie for Chrome Extension",
+                "card_pc_name": "PC / Laptop",
+                "card_pc_hint": "Auto-login to Netflix Profile Selector (\"Who's watching?\") on Computer",
+                "card_pc_btn": "💻 Launch on PC",
+                "card_mobile_name": "Mobile / Tablet",
+                "card_mobile_hint": "Open with Chrome or Brave browser on iPhone or Android",
+                "card_mobile_btn": "📱 Open on Mobile",
+                "card_tv_name": "Smart TV Code",
+                "card_tv_hint": "Enter the 8-digit activation code displayed on your TV screen",
+                "card_tv_btn": "📺 Enter TV Code",
+                "card_general_name": "Account Info / General",
+                "card_general_hint": "Direct access to Account settings, Membership plan & expiration details",
+                "card_general_btn": "⚙️ View Account",
+                "copy_cookie_btn": "📋 Copy JSON Cookie (For Chrome Extension)",
                 "modal_title": "⚠️ Automated Error Report & Replacement",
                 "modal_desc": "Upload a screenshot showing the error screen (Expired, Membership on hold, Screen limit). Our system will verify and automatically rotate your account 24/7!",
                 "modal_submit": "Submit Report & Get Replacement",
@@ -281,7 +367,7 @@ PUBLIC_TEMPLATE = r"""
                 "step2_title": "🔑 Nhập mã Code",
                 "step2_desc": "Dán mã <strong>Access Code</strong> (5 đến 15 ký tự) đã nhận từ đơn hàng vào ô bên dưới.",
                 "step3_title": "🚀 Chọn Thiết Bị",
-                "step3_desc": "Bấm <strong>LOGIN NOW</strong> và chọn thiết bị của bạn: Máy tính, Điện thoại hoặc TV.",
+                "step3_desc": "Bấm <strong>LOGIN NOW</strong> và chọn: Máy tính (Chọn Profile), Điện thoại, TV hoặc Xem Acc.",
                 "step4_title": "🎬 Thưởng Thức",
                 "step4_desc": "Đăng nhập thành công, bạn có thể <strong>tắt VPN</strong> đi để xem phim tốc độ cao!",
                 "input_heading": "Nhập Mã Truy Cập (Access Code)",
@@ -296,14 +382,19 @@ PUBLIC_TEMPLATE = r"""
                 "rule5": "• <strong>Khung giờ hỗ trợ (GMT+7):</strong> 9:00 - 11:00 Sáng | 3:00 - 5:00 Chiều | 9:00 - 11:00 Tối.",
                 "badge_plan": "📦 Gói Cước:",
                 "badge_expire": "📅 Ngày Hết Hạn:",
-                "device_pc_name": "PC / Laptop",
-                "device_pc_hint": "Bấm vào đây để tự động đăng nhập trên máy tính",
-                "device_mobile_name": "Điện thoại (iOS / Android)",
-                "device_mobile_hint": "Mở bằng trình duyệt Chrome hoặc Brave trên điện thoại",
-                "device_tv_name": "Smart TV",
-                "device_tv_hint": "Nhập mã 8 chữ số hiển thị trên màn hình TV",
-                "device_cookie_name": "Sao Chép Cookie",
-                "device_cookie_hint": "Sao chép Cookie JSON để dùng Extension",
+                "card_pc_name": "Máy Tính / Laptop",
+                "card_pc_hint": "Tự động đăng nhập vào màn hình Chọn Profile (\"Ai đang xem?\") trên Máy tính",
+                "card_pc_btn": "💻 Vào trên Máy Tính",
+                "card_mobile_name": "Điện Thoại / Tablet",
+                "card_mobile_hint": "Mở bằng trình duyệt Chrome hoặc Brave trên Điện thoại",
+                "card_mobile_btn": "📱 Mở trên Điện Thoại",
+                "card_tv_name": "Smart TV",
+                "card_tv_hint": "Nhập mã 8 chữ số hiển thị trên màn hình TV của bạn",
+                "card_tv_btn": "📺 Nhập Mã TV",
+                "card_general_name": "Thông Tin Tài Khoản",
+                "card_general_hint": "Chuyển thẳng vào xem thông tin gói cước, hạn dùng và cài đặt acc",
+                "card_general_btn": "⚙️ Xem Thông Tin Acc",
+                "copy_cookie_btn": "📋 Sao Chép Cookie JSON (Cho Extension Chrome)",
                 "modal_title": "⚠️ Báo Lỗi Tự Động & Đổi Tài Khoản",
                 "modal_desc": "Tải lên ảnh chụp màn hình hiển thị lỗi (Hết gói, Gia hạn, Hộ gia đình). Hệ thống AI sẽ xác nhận và đổi acc tự động 24/7!",
                 "modal_submit": "Gửi Báo Lỗi & Đổi Acc",
@@ -326,7 +417,7 @@ PUBLIC_TEMPLATE = r"""
                 "step2_title": "🔑 Ingresar Código de Acceso",
                 "step2_desc": "Pega tu <strong>Código de Acceso</strong> de 5 a 15 caracteres a continuación.",
                 "step3_title": "🚀 Seleccionar Dispositivo",
-                "step3_desc": "Haz clic en <strong>LOGIN NOW</strong> y elige tu dispositivo: PC, Móvil o TV.",
+                "step3_desc": "Haz clic en <strong>LOGIN NOW</strong> y elige tu dispositivo: PC, Móvil, Smart TV o Cuenta.",
                 "step4_title": "🎬 Disfruta del Streaming",
                 "step4_desc": "Una vez iniciada la sesión, ¡puedes <strong>desconectar la VPN</strong> para ver a máxima velocidad!",
                 "input_heading": "Ingresa tu Código de Acceso",
@@ -341,14 +432,19 @@ PUBLIC_TEMPLATE = r"""
                 "rule5": "• <strong>Horario de Soporte (GMT+7):</strong> 9-11 AM | 3-5 PM | 9-11 PM.",
                 "badge_plan": "📦 Plan:",
                 "badge_expire": "📅 Vencimiento:",
-                "device_pc_name": "PC / Portátil",
-                "device_pc_hint": "Inicio de sesión automático directo en tu navegador",
-                "device_mobile_name": "Móvil (iOS / Android)",
-                "device_mobile_hint": "Abrir con el navegador Chrome o Brave en tu teléfono",
-                "device_tv_name": "Código para Smart TV",
-                "device_tv_hint": "Introduce el código de 8 dígitos de tu pantalla de TV",
-                "device_cookie_name": "Copiar Cookie",
-                "device_cookie_hint": "Copiar Cookie JSON para extensión de Chrome",
+                "card_pc_name": "PC / Portátil",
+                "card_pc_hint": "Inicio de sesión automático con selector de perfil en el ordenador",
+                "card_pc_btn": "💻 Abrir en PC",
+                "card_mobile_name": "Móvil / Tablet",
+                "card_mobile_hint": "Abrir con Chrome o Brave en tu teléfono o tableta",
+                "card_mobile_btn": "📱 Abrir en Móvil",
+                "card_tv_name": "Código Smart TV",
+                "card_tv_hint": "Introduce el código de 8 dígitos de tu pantalla de TV",
+                "card_tv_btn": "📺 Ingresar Código TV",
+                "card_general_name": "Información de Cuenta",
+                "card_general_hint": "Acceso directo a la suscripción, plan y configuración",
+                "card_general_btn": "⚙️ Ver Cuenta",
+                "copy_cookie_btn": "📋 Copiar Cookie JSON para Extensión",
                 "modal_title": "⚠️ Reporte de Error y Reemplazo Automático",
                 "modal_desc": "Sube una captura de pantalla del error. ¡El sistema verificará y cambiará tu cuenta automáticamente!",
                 "modal_submit": "Enviar Reporte y Cambiar Cuenta",
@@ -371,7 +467,7 @@ PUBLIC_TEMPLATE = r"""
                 "step2_title": "🔑 Digitar Código de Acesso",
                 "step2_desc": "Cole o seu <strong>Código de Acesso</strong> de 5 a 15 caracteres no campo abaixo.",
                 "step3_title": "🚀 Selecionar Dispositivo",
-                "step3_desc": "Clique em <strong>LOGIN NOW</strong> e escolha: PC, Celular ou Smart TV.",
+                "step3_desc": "Clique em <strong>LOGIN NOW</strong> e escolha: PC, Celular, Smart TV ou Conta.",
                 "step4_title": "🎬 Assistir e Aproveitar",
                 "step4_desc": "Após fazer login, você pode <strong>desconectar a VPN</strong> para assistir em alta velocidade!",
                 "input_heading": "Digite seu Código de Acesso",
@@ -386,14 +482,19 @@ PUBLIC_TEMPLATE = r"""
                 "rule5": "• <strong>Horário de Suporte (GMT+7):</strong> 9-11h | 15-17h | 21-23h.",
                 "badge_plan": "📦 Plano:",
                 "badge_expire": "📅 Validade:",
-                "device_pc_name": "PC / Computador",
-                "device_pc_hint": "Login automático direto no navegador do computador",
-                "device_mobile_name": "Celular (iOS / Android)",
-                "device_mobile_hint": "Abra com o navegador Chrome ou Brave no celular",
-                "device_tv_name": "Smart TV",
-                "device_tv_hint": "Digite o código de 8 dígitos mostrado na sua TV",
-                "device_cookie_name": "Copiar Cookie",
-                "device_cookie_hint": "Copiar Cookie JSON para extensão do Chrome",
+                "card_pc_name": "PC / Computador",
+                "card_pc_hint": "Login direto com seletor de perfil no navegador do PC",
+                "card_pc_btn": "💻 Abrir no PC",
+                "card_mobile_name": "Celular / Tablet",
+                "card_mobile_hint": "Abra com o navegador Chrome ou Brave no celular",
+                "card_mobile_btn": "📱 Abrir no Celular",
+                "card_tv_name": "Smart TV",
+                "card_tv_hint": "Digite o código de 8 dígitos mostrado na sua TV",
+                "card_tv_btn": "📺 Digitar Código TV",
+                "card_general_name": "Informações da Conta",
+                "card_general_hint": "Acesso direto às configurações e plano da conta",
+                "card_general_btn": "⚙️ Ver Conta",
+                "copy_cookie_btn": "📋 Copiar Cookie JSON para Extensão",
                 "modal_title": "⚠️ Relatório de Erro e Troca Automática",
                 "modal_desc": "Envie uma captura de tela do erro. O sistema verificará e atualizará sua conta automaticamente!",
                 "modal_submit": "Enviar e Obter Troca",
@@ -416,7 +517,7 @@ PUBLIC_TEMPLATE = r"""
                 "step2_title": "🔑 Wprowadź Kod Dostępu",
                 "step2_desc": "Wklej swój 5-15 znakowy <strong>Kod Dostępu</strong> w polu poniżej.",
                 "step3_title": "🚀 Wybierz Urządzenie",
-                "step3_desc": "Kliknij <strong>LOGIN NOW</strong> i wybierz: Komputer, Telefon lub Smart TV.",
+                "step3_desc": "Kliknij <strong>LOGIN NOW</strong> i wybierz: Komputer, Telefon, Smart TV lub Konto.",
                 "step4_title": "🎬 Oglądaj i Ciesz się",
                 "step4_desc": "Po zalogowaniu możesz <strong>wyłączyć VPN</strong>, aby oglądać z maksymalną prędkością!",
                 "input_heading": "Wprowadź Kod Dostępu",
@@ -431,14 +532,19 @@ PUBLIC_TEMPLATE = r"""
                 "rule5": "• <strong>Wsparcie (GMT+7):</strong> 9-11 | 15-17 | 21-23.",
                 "badge_plan": "📦 Plan:",
                 "badge_expire": "📅 Ważność:",
-                "device_pc_name": "PC / Laptop",
-                "device_pc_hint": "Automatyczne logowanie bezpośrednio w przeglądarce",
-                "device_mobile_name": "Telefon (iOS / Android)",
-                "device_mobile_hint": "Otwórz w przeglądarce Chrome lub Brave na telefonie",
-                "device_tv_name": "Kod Smart TV",
-                "device_tv_hint": "Wpisz 8-cyfrowy kod wyświetlany na ekranie TV",
-                "device_cookie_name": "Kopiuj Cookie",
-                "device_cookie_hint": "Kopiuj JSON Cookie do wtyczki Chrome",
+                "card_pc_name": "PC / Laptop",
+                "card_pc_hint": "Logowanie na komputerze z wyborem profilu (\"Kto ogląda?\")",
+                "card_pc_btn": "💻 Otwórz na PC",
+                "card_mobile_name": "Telefon / Tablet",
+                "card_mobile_hint": "Otwórz w przeglądarce Chrome lub Brave na telefonie",
+                "card_mobile_btn": "📱 Otwórz na Telefonie",
+                "card_tv_name": "Kod Smart TV",
+                "card_tv_hint": "Wpisz 8-cyfrowy kod wyświetlany na ekranie TV",
+                "card_tv_btn": "📺 Wpisz Kod TV",
+                "card_general_name": "Informacje o Koncie",
+                "card_general_hint": "Bezpośredni dostęp do ustawień konta i ważności subskrypcji",
+                "card_general_btn": "⚙️ Zobacz Konto",
+                "copy_cookie_btn": "📋 Kopiuj JSON Cookie do wtyczki Chrome",
                 "modal_title": "⚠️ Zgłoszenie Błędu i Wymiana Konta",
                 "modal_desc": "Prześlij zrzut ekranu z widocznym błędem. System automatycznie zweryfikuje i wymieni konto!",
                 "modal_submit": "Wyślij Zgłoszenie i Wymień",
@@ -472,7 +578,6 @@ PUBLIC_TEMPLATE = r"""
             currentLang = lang;
             localStorage.setItem("preferred_lang", lang);
             
-            // Highlight active button
             document.querySelectorAll(".lang-pill").forEach(btn => {
                 btn.classList.toggle("active-lang", btn.getAttribute("data-lang") === lang);
             });
@@ -532,22 +637,19 @@ PUBLIC_TEMPLATE = r"""
             var pcLink = document.getElementById("quickPcLink");
             var mobileLink = document.getElementById("quickMobileLink");
             var tvLink = document.getElementById("quickTvLink");
+            var generalLink = document.getElementById("quickGeneralLink");
             var statusText = document.getElementById("statusText");
             var btn = document.getElementById("submitBtn");
             var infoBadge = document.getElementById("accountInfoBadge");
             var badgePlan = document.getElementById("badgePlan");
             var badgeExpire = document.getElementById("badgeExpire");
+            var cookieBoxWrapper = document.getElementById("cookieBoxWrapper");
+            var cookieBtn = document.getElementById("quickCookieBtn");
 
             infoBadge.style.display = "none";
             btn.disabled = true;
-            btn.innerHTML = "⏳ Connecting...";
-            
-            pcLink.innerText = "⏳ Generating...";
-            mobileLink.innerText = "⏳ Generating...";
-            tvLink.innerText = "⏳ Generating...";
-            statusText.innerText = "Connecting to high-speed server...";
-            
-            resultDiv.style.display = "flex";
+            btn.innerHTML = "⏳ Connecting & Generating Links...";
+            statusText.innerText = "";
             
             fetch("/api/generate_nftoken", {
                 method: "POST",
@@ -557,58 +659,59 @@ PUBLIC_TEMPLATE = r"""
             .then(res => res.json())
             .then(data => {
                 btn.disabled = false;
-                btn.innerHTML = "🚀 LOGIN NOW (Generate Links)";
+                btn.innerHTML = (I18N_DICTS[currentLang]?.btn_login || "🚀 LOGIN NOW (Generate Links)");
                 if (data.success) {
                     if (data.plan || data.expire_date) {
                         badgePlan.innerText = (I18N_DICTS[currentLang]?.badge_plan || "📦 Plan:") + " " + (data.plan || "N/A");
                         badgeExpire.innerText = (I18N_DICTS[currentLang]?.badge_expire || "📅 Expire Date:") + " " + (data.expire_date || "N/A");
                         infoBadge.style.display = "flex";
                     }
-                    var cookieBtn = document.getElementById("quickCookieBtn");
+
                     if (data.cookie_json) {
-                        cookieBtn.style.display = "inline-flex";
+                        cookieBoxWrapper.style.display = "block";
                         cookieBtn.onclick = function(e) { e.preventDefault(); copyCookie(data.cookie_json, this); };
                     } else {
-                        cookieBtn.style.display = "none";
+                        cookieBoxWrapper.style.display = "none";
                     }
 
                     if (data.is_json) {
                         pcLink.style.display = "none";
                         mobileLink.style.display = "none";
                         tvLink.style.display = "none";
+                        generalLink.style.display = "none";
                         statusText.innerText = "Fast Link API unavailable. Please click Copy Cookie below to use Extension:";
                         statusText.style.color = "#f39c12";
                     } else {
                         pcLink.href = data.pc_link;
                         mobileLink.href = data.mobile_link;
                         tvLink.href = data.tv_link;
+                        generalLink.href = data.general_link || data.pc_link;
                         
-                        pcLink.setAttribute("target", "_blank");
-                        pcLink.onclick = function() { showLoading(this); };
+                        pcLink.style.display = "flex";
+                        mobileLink.style.display = "flex";
+                        tvLink.style.display = "flex";
+                        generalLink.style.display = "flex";
                         
-                        pcLink.style.display = "inline-flex";
-                        mobileLink.style.display = "inline-flex";
-                        tvLink.style.display = "inline-flex";
-                        
-                        statusText.innerText = "✅ Success! Select your device below to auto-login:";
+                        statusText.innerText = "✅ Success! Select your device or open account settings below:";
                         statusText.style.color = "#2ecc71";
                     }
+                    resultDiv.style.display = "flex";
                 } else {
-                    statusText.innerText = "Error: " + (data.error || "Failed to generate link.");
+                    resultDiv.style.display = "flex";
+                    statusText.innerText = "❌ Error: " + (data.error || "Failed to generate link.");
                     statusText.style.color = "#ff4757";
-                    pcLink.innerText = "❌ Error";
-                    mobileLink.innerText = "❌ Error";
-                    tvLink.innerText = "❌ Error";
+                    pcLink.style.display = "none";
+                    mobileLink.style.display = "none";
+                    tvLink.style.display = "none";
+                    generalLink.style.display = "none";
                 }
             })
             .catch(err => {
                 btn.disabled = false;
-                btn.innerHTML = "🚀 LOGIN NOW (Generate Links)";
+                btn.innerHTML = (I18N_DICTS[currentLang]?.btn_login || "🚀 LOGIN NOW (Generate Links)");
+                resultDiv.style.display = "flex";
                 statusText.innerText = "Connection to server failed!";
                 statusText.style.color = "#ff4757";
-                pcLink.innerText = "❌ Error";
-                mobileLink.innerText = "❌ Error";
-                tvLink.innerText = "❌ Error";
             });
         }
         
@@ -863,7 +966,7 @@ PUBLIC_TEMPLATE = r"""
                 <div class="step-card">
                     <span class="step-num">Step 3</span>
                     <div class="step-title" data-i18n="step3_title">🚀 Select Device</div>
-                    <div class="step-desc" data-i18n="step3_desc">Click <strong>LOGIN NOW</strong> and choose your device: PC, Mobile, or Smart TV.</div>
+                    <div class="step-desc" data-i18n="step3_desc">Click <strong>LOGIN NOW</strong> and choose your device: PC, Mobile, Smart TV, or General.</div>
                 </div>
                 <div class="step-card">
                     <span class="step-num">Step 4</span>
@@ -908,25 +1011,43 @@ PUBLIC_TEMPLATE = r"""
                 <p id="statusText" style="text-align: center; margin: 0; font-weight: bold; font-size: 1.05rem;"></p>
                 
                 <div class="device-grid">
-                    <a id="quickPcLink" class="device-card" href="#" target="_blank" onclick="showLoading(this)">
-                        <span class="device-icon">💻</span>
-                        <span class="device-name" data-i18n="device_pc_name">PC / Laptop</span>
-                        <span class="device-hint" data-i18n="device_pc_hint">Click to auto-login Netflix directly in your browser</span>
+                    <!-- Card 1: PC / Laptop (Profile Picker) -->
+                    <a id="quickPcLink" class="device-card card-pc" href="#" target="_blank" onclick="showLoading(this)">
+                        <div class="device-icon-box" style="background: rgba(0, 168, 255, 0.15); color: #00a8ff;">💻</div>
+                        <div class="device-name" data-i18n="card_pc_name">PC / Laptop</div>
+                        <div class="device-hint" data-i18n="card_pc_hint">Auto-login to Netflix Profile Selector ("Who's watching?") on Computer</div>
+                        <div class="device-btn-action" style="background: #00a8ff;" data-i18n="card_pc_btn">💻 Launch on PC</div>
                     </a>
-                    <a id="quickMobileLink" class="device-card" href="#" target="_blank" onclick="showLoading(this)">
-                        <span class="device-icon">📱</span>
-                        <span class="device-name" data-i18n="device_mobile_name">Mobile (iOS / Android)</span>
-                        <span class="device-hint" data-i18n="device_mobile_hint">Open with Chrome or Brave browser on your phone</span>
+                    
+                    <!-- Card 2: Mobile -->
+                    <a id="quickMobileLink" class="device-card card-mobile" href="#" target="_blank" onclick="showLoading(this)">
+                        <div class="device-icon-box" style="background: rgba(46, 204, 113, 0.15); color: #2ecc71;">📱</div>
+                        <div class="device-name" data-i18n="card_mobile_name">Mobile / Tablet</div>
+                        <div class="device-hint" data-i18n="card_mobile_hint">Open with Chrome or Brave browser on iPhone or Android</div>
+                        <div class="device-btn-action" style="background: #2ecc71;" data-i18n="card_mobile_btn">📱 Open on Mobile</div>
                     </a>
-                    <a id="quickTvLink" class="device-card" href="#" target="_blank" onclick="showLoading(this)">
-                        <span class="device-icon">📺</span>
-                        <span class="device-name" data-i18n="device_tv_name">Smart TV Code</span>
-                        <span class="device-hint" data-i18n="device_tv_hint">Enter the 8-digit code shown on your TV screen</span>
+                    
+                    <!-- Card 3: Smart TV -->
+                    <a id="quickTvLink" class="device-card card-tv" href="#" target="_blank" onclick="showLoading(this)">
+                        <div class="device-icon-box" style="background: rgba(165, 94, 234, 0.15); color: #a55eea;">📺</div>
+                        <div class="device-name" data-i18n="card_tv_name">Smart TV Code</div>
+                        <div class="device-hint" data-i18n="card_tv_hint">Enter the 8-digit activation code displayed on your TV screen</div>
+                        <div class="device-btn-action" style="background: #8854d0;" data-i18n="card_tv_btn">📺 Enter TV Code</div>
                     </a>
-                    <button id="quickCookieBtn" class="device-card" style="background: rgba(0, 168, 255, 0.15); border-color: rgba(0, 168, 255, 0.3);">
-                        <span class="device-icon">📋</span>
-                        <span class="device-name" data-i18n="device_cookie_name">Copy Cookie</span>
-                        <span class="device-hint" data-i18n="device_cookie_hint">Copy JSON Cookie for Chrome Extension</span>
+                    
+                    <!-- Card 4: General / Account Info -->
+                    <a id="quickGeneralLink" class="device-card card-general" href="#" target="_blank" onclick="showLoading(this)">
+                        <div class="device-icon-box" style="background: rgba(241, 196, 15, 0.15); color: #f1c40f;">⚙️</div>
+                        <div class="device-name" data-i18n="card_general_name">Account Info / General</div>
+                        <div class="device-hint" data-i18n="card_general_hint">Direct access to Account settings, Membership plan & expiration details</div>
+                        <div class="device-btn-action" style="background: #f39c12;" data-i18n="card_general_btn">⚙️ View Account</div>
+                    </a>
+                </div>
+
+                <!-- Compact Copy Cookie Utility -->
+                <div id="cookieBoxWrapper" style="display: none; margin-top: 15px; text-align: center;">
+                    <button id="quickCookieBtn" type="button" class="btn" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); color: #ccc; font-size: 0.85rem; padding: 10px 18px; border-radius: 10px; cursor: pointer;" data-i18n="copy_cookie_btn">
+                        📋 Copy JSON Cookie (For Chrome Extension)
                     </button>
                 </div>
             </div>
@@ -2464,8 +2585,13 @@ def api_generate_nftoken():
         import checker
         from datetime import datetime
         
-        # 1. Lookup as access key (6 characters)
-        acc_key_row = database.get_access_key(cookie_value)
+        # 1. Lookup as access key
+        acc_key_row = None
+        if not cookie_value.startswith("B") and not cookie_value.startswith("FALLBACK:") and not cookie_value.startswith("[") and "NetflixId" not in cookie_value:
+            try:
+                acc_key_row = database.get_access_key(cookie_value)
+            except Exception as e:
+                print(f"Error querying access key: {e}")
     
         if acc_key_row:
             code = acc_key_row[0]
@@ -2557,15 +2683,17 @@ def api_generate_nftoken():
                     is_json = token.startswith("FALLBACK:")
                     cookie_json = urllib.parse.unquote(token[9:]) if is_json else ""
                     
-                    pc_link = f"https://www.netflix.com/account?nftoken={token}"
+                    pc_link = f"https://www.netflix.com/browse?nftoken={token}"
                     mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"
                     tv_link = f"https://www.netflix.com/tv8?nftoken={token}"
+                    general_link = f"https://www.netflix.com/YourAccount?nftoken={token}"
 
                     return jsonify({
                         "success": True,
                         "pc_link": pc_link,
                         "mobile_link": mobile_link,
                         "tv_link": tv_link,
+                        "general_link": general_link,
                         "is_json": is_json,
                         "cookie_json": cookie_json,
                         "plan": acc_plan,
@@ -2605,14 +2733,16 @@ def api_generate_nftoken():
         
         if is_already_token:
             token = cookie_value 
-            pc_link = f"https://www.netflix.com/account?nftoken={token}"
+            pc_link = f"https://www.netflix.com/browse?nftoken={token}"
             mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"
             tv_link = f"https://www.netflix.com/tv8?nftoken={token}"
+            general_link = f"https://www.netflix.com/YourAccount?nftoken={token}"
             return jsonify({
                 "success": True, 
                 "pc_link": pc_link, 
                 "mobile_link": mobile_link, 
                 "tv_link": tv_link,
+                "general_link": general_link,
                 "is_json": unquoted_cookie.startswith("FALLBACK:"),
                 "cookie_json": urllib.parse.unquote(token[9:]) if unquoted_cookie.startswith("FALLBACK:") else ""
             })
@@ -2678,15 +2808,17 @@ def api_generate_nftoken():
             final_plan = rt_plan if rt_plan else (parsed_plan if parsed_plan else "Premium")
             final_expire = rt_expire if rt_expire else (parsed_expire if parsed_expire else "N/A")
 
-            pc_link = f"https://www.netflix.com/account?nftoken={token}"
+            pc_link = f"https://www.netflix.com/browse?nftoken={token}"
             mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"
             tv_link = f"https://www.netflix.com/tv8?nftoken={token}"
+            general_link = f"https://www.netflix.com/YourAccount?nftoken={token}"
             
             return jsonify({
                 "success": True,
                 "pc_link": pc_link,
                 "mobile_link": mobile_link,
                 "tv_link": tv_link,
+                "general_link": general_link,
                 "is_json": is_json,
                 "cookie_json": cookie_json,
                 "plan": final_plan,
@@ -2694,8 +2826,6 @@ def api_generate_nftoken():
             })
         except Exception as e:
             return jsonify({"success": False, "error": f"Token generation error: {str(e)}"}), 500
-        except Exception as e:
-            return register_fail(f"Invalid token: {str(e)}", 500)
             
     except Exception as api_e:
         import traceback
