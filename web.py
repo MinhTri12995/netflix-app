@@ -36,74 +36,155 @@ def login_required(f):
 COMMON_STYLE = r"""
 <style>
     :root {
-        --bg-color: #0f111a;
-        --surface-color: rgba(255, 255, 255, 0.05);
-        --primary-color: #E50914;
-        --text-color: #f1f1f1;
-        --border-color: rgba(255, 255, 255, 0.1);
+        --bg-color: #08090f;
+        --card-bg: rgba(22, 26, 42, 0.85);
+        --card-border: rgba(255, 255, 255, 0.1);
+        --primary: #E50914;
+        --primary-hover: #f40612;
+        --success: #2ecc71;
+        --success-hover: #27ae60;
+        --accent-blue: #00a8ff;
+        --accent-gold: #f1c40f;
+        --danger: #e74c3c;
+        --text-main: #ffffff;
+        --text-sub: #a0a5b8;
     }
+    
+    * { box-sizing: border-box; }
+    
     body {
-        font-family: 'Inter', sans-serif;
-        background: linear-gradient(135deg, #0f111a 0%, #1a1c29 100%);
-        color: var(--text-color);
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        background: radial-gradient(circle at 50% 0%, #1a1f36 0%, #08090f 70%);
+        color: var(--text-main);
         margin: 0; padding: 0; min-height: 100vh;
         display: flex; flex-direction: column; align-items: center;
+        line-height: 1.5;
     }
-    .container { position: relative; width: 95%; max-width: 1200px; margin-top: 50px; z-index: 1; }
-    .header { text-align: center; margin-bottom: 40px; }
-    h1 {
-        font-size: 2.5rem; font-weight: 700; margin-bottom: 10px;
-        background: linear-gradient(90deg, #fff, #aaa);
+    
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #08090f; }
+    ::-webkit-scrollbar-thumb { background: #2a2f45; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #3d4463; }
+    
+    .container {
+        position: relative; width: 95%; max-width: 950px;
+        margin-top: 40px; margin-bottom: 60px; z-index: 1;
+    }
+    
+    .header { text-align: center; margin-bottom: 30px; }
+    .header h1 {
+        font-size: 2.6rem; font-weight: 900; margin: 0 0 8px 0;
+        background: linear-gradient(135deg, #ffffff 0%, #d1d5db 100%);
         -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        letter-spacing: -0.5px;
     }
+    .header p { color: var(--text-sub); font-size: 1.05rem; margin: 0; }
+    
     .glass-panel {
-        background: rgba(30, 32, 45, 0.95);
-        border: 1px solid var(--border-color);
-        border-radius: 16px; padding: 30px; margin-bottom: 30px;
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        background: var(--card-bg);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid var(--card-border);
+        border-radius: 20px; padding: 28px; margin-bottom: 25px;
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
     }
+    
+    /* Steps Box */
+    .steps-container {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        gap: 12px; margin-bottom: 25px;
+    }
+    .step-card {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 14px; padding: 16px; text-align: left;
+    }
+    .step-num {
+        display: inline-block; font-size: 0.75rem; font-weight: 800;
+        padding: 3px 8px; border-radius: 6px; background: rgba(229, 9, 20, 0.25);
+        color: #ff5252; margin-bottom: 8px; text-transform: uppercase;
+    }
+    .step-title { font-weight: 700; font-size: 0.95rem; margin-bottom: 4px; color: #fff; }
+    .step-desc { font-size: 0.82rem; color: var(--text-sub); line-height: 1.4; }
+    
+    /* Inputs & Forms */
     .search-box {
-        width: 100%; padding: 12px 15px; border-radius: 8px;
-        border: 1px solid var(--border-color); background: rgba(0,0,0,0.3);
-        color: white; font-family: 'Inter', sans-serif; font-size: 1rem;
-        box-sizing: border-box;
+        width: 100%; padding: 14px 18px; border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.15); background: rgba(0, 0, 0, 0.4);
+        color: #fff; font-family: inherit; font-size: 1.1rem;
+        transition: all 0.2s ease; box-sizing: border-box;
     }
     .search-box:focus {
-        outline: none; border-color: var(--primary-color);
-        box-shadow: 0 0 10px rgba(229, 9, 20, 0.2);
+        outline: none; border-color: var(--primary);
+        background: rgba(0, 0, 0, 0.6);
+        box-shadow: 0 0 15px rgba(229, 9, 20, 0.3);
     }
-    button {
-        background: var(--primary-color); color: white; border: none;
-        padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer;
+    
+    /* Buttons */
+    button, .btn {
+        font-family: inherit; font-weight: 700; border: none; border-radius: 12px;
+        padding: 14px 24px; cursor: pointer; transition: all 0.2s ease;
+        display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+        text-decoration: none; font-size: 1rem;
     }
-    button:hover { background: #f40612; }
-    .btn-copy { background: #2d98da; padding: 6px 12px; font-size: 0.8rem; border-radius: 4px; border: none; color: white; cursor: pointer; }
+    button:active, .btn:active { transform: scale(0.98); }
+    
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); box-shadow: 0 6px 20px rgba(229, 9, 20, 0.4); }
+    
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-success:hover { background: var(--success-hover); box-shadow: 0 6px 20px rgba(46, 204, 113, 0.4); }
+    
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-danger:hover { background: #c0392b; box-shadow: 0 6px 20px rgba(231, 76, 60, 0.4); }
+    
+    .btn-blue { background: var(--accent-blue); color: #fff; }
+    .btn-blue:hover { background: #0097e6; box-shadow: 0 6px 20px rgba(0, 168, 255, 0.4); }
+    
+    .btn-copy { background: var(--accent-blue); padding: 8px 14px; font-size: 0.85rem; border-radius: 6px; border: none; color: white; cursor: pointer; font-weight: bold; }
     .btn-login {
         background: #27ae60 !important; color: white !important; border: none !important;
-        padding: 8px 12px !important; font-size: 0.85rem !important; font-weight: bold !important;
-        border-radius: 6px !important; cursor: pointer; text-decoration: none; display: inline-block;
+        padding: 12px 18px !important; font-size: 0.95rem !important; font-weight: bold !important;
+        border-radius: 10px !important; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
     }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { padding: 15px; text-align: left; border-bottom: 1px solid var(--border-color); }
-    th { color: #aaa; text-transform: uppercase; font-size: 0.85rem; }
-    tr:hover td { background: rgba(255, 255, 255, 0.03); }
+    
+    /* Flash messages */
     .flash-message {
-        background: rgba(46, 213, 115, 0.1); border: 1px solid rgba(46, 213, 115, 0.3);
-        color: #2ed573; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center;
+        background: rgba(46, 213, 115, 0.15); border: 1px solid rgba(46, 213, 115, 0.4);
+        color: #2ed573; padding: 14px; border-radius: 12px; margin-bottom: 20px; text-align: center;
+        font-weight: 600; font-size: 0.95rem;
     }
-    .flash-error {
-        background: rgba(255, 71, 87, 0.1); border: 1px solid rgba(255, 71, 87, 0.3); color: #ff4757;
+    .flash-error { background: rgba(255, 71, 87, 0.15); border-color: rgba(255, 71, 87, 0.4); color: #ff4757; }
+    .flash-warning { background: rgba(255, 159, 67, 0.15); border-color: rgba(255, 159, 67, 0.4); color: #ff9f43; }
+    
+    /* Table Styling */
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.95rem; }
+    th, td { padding: 14px 16px; text-align: left; border-bottom: 1px solid var(--card-border); }
+    th { color: var(--text-sub); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+    tr:hover td { background: rgba(255, 255, 255, 0.03); }
+    
+    /* Modals & Popups */
+    .modal {
+        display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%;
+        background-color: rgba(0,0,0,0.85); backdrop-filter: blur(8px);
+        justify-content: center; align-items: center; padding: 20px;
     }
-    .flash-warning {
-        background: rgba(255, 159, 67, 0.1); border: 1px solid rgba(255, 159, 67, 0.3); color: #ff9f43;
+    .modal-content {
+        background: #161a2b; padding: 28px; border-radius: 20px; width: 100%; max-width: 440px;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.7); border: 1px solid rgba(255, 255, 255, 0.15);
+        position: relative; animation: modalFade 0.3s ease;
     }
+    @keyframes modalFade { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+    .close-btn { position: absolute; right: 20px; top: 18px; color: #888; font-size: 24px; cursor: pointer; }
+    .close-btn:hover { color: #fff; }
 </style>
 <script>
     function copyCookie(text, btn) {
         let originalText = btn.innerHTML;
         btn.innerHTML = '✔ Copied';
         btn.style.background = '#20bf6b';
-        setTimeout(() => { btn.innerHTML = originalText; btn.style.background = '#2d98da'; }, 2000);
+        setTimeout(() => { btn.innerHTML = originalText; btn.style.background = '#00a8ff'; }, 2000);
         if (navigator.clipboard && window.isSecureContext) {
             navigator.clipboard.writeText(text).catch(err => {
                 fallbackCopy(text);
@@ -124,7 +205,7 @@ COMMON_STYLE = r"""
         textArea.remove();
     }
     function showLoading(btn) {
-        btn.innerHTML = '⏳ Processing...';
+        btn.innerHTML = '⏳ Connecting...';
         btn.style.pointerEvents = 'none';
         btn.style.opacity = '0.7';
     }
@@ -137,27 +218,14 @@ PUBLIC_TEMPLATE = r"""
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Netflix Access</title>
+    <title>Netflix Access • Fast Auto-Login Portal</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap" rel="stylesheet">
     """ + COMMON_STYLE + r"""
     <script>
-        function copyCookie(text, btnElement) {
-            navigator.clipboard.writeText(text).then(function() {
-                let originalText = btnElement.innerText;
-                btnElement.innerText = "Copied!";
-                btnElement.style.background = "#27ae60";
-                setTimeout(function() {
-                    btnElement.innerText = originalText;
-                    btnElement.style.background = "rgba(255, 255, 255, 0.2)";
-                }, 2000);
-            });
-        }
-
         function generateQuickLinks() {
-
             var rawInput = document.getElementById("rawTokenInput").value.trim();
             if (!rawInput) {
-                alert("Please enter a Cookie or Access Code!");
+                alert("Please enter your Access Code!");
                 return;
             }
 
@@ -173,16 +241,15 @@ PUBLIC_TEMPLATE = r"""
 
             infoBadge.style.display = "none";
             btn.disabled = true;
-            btn.innerHTML = "⏳ Connecting...";
+            btn.innerHTML = "⏳ Generating Links...";
             
-            pcLink.innerText = "⏳ Generating link...";
-            mobileLink.innerText = "⏳ Generating link...";
-            tvLink.innerText = "⏳ Generating link...";
-            statusText.innerText = "Generating high-speed link...";
+            pcLink.innerText = "⏳ Generating...";
+            mobileLink.innerText = "⏳ Generating...";
+            tvLink.innerText = "⏳ Generating...";
+            statusText.innerText = "Connecting to high-speed server...";
             
             resultDiv.style.display = "flex";
             
-            // If user enters code or raw cookie, call API to generate links
             fetch("/api/generate_nftoken", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -196,14 +263,13 @@ PUBLIC_TEMPLATE = r"""
                     if (data.plan || data.expire_date) {
                         badgePlan.innerText = "📦 Plan: " + (data.plan || "N/A");
                         badgeExpire.innerText = "📅 Expire Date: " + (data.expire_date || "N/A");
-                        infoBadge.style.display = "block";
+                        infoBadge.style.display = "flex";
                     }
                     var cookieBtn = document.getElementById("quickCookieBtn");
                     if (data.cookie_json) {
-                        cookieBtn.style.display = "flex";
+                        cookieBtn.style.display = "inline-flex";
                         cookieBtn.onclick = function(e) { e.preventDefault(); copyCookie(data.cookie_json, this); };
                         cookieBtn.innerText = "📋 Copy Cookie (Extension)";
-                        cookieBtn.style.background = "#2d98da";
                     } else {
                         cookieBtn.style.display = "none";
                     }
@@ -212,8 +278,7 @@ PUBLIC_TEMPLATE = r"""
                         pcLink.style.display = "none";
                         mobileLink.style.display = "none";
                         tvLink.style.display = "none";
-                        
-                        statusText.innerText = "Fast Link API unavailable. Please click Copy Cookie to use Extension:";
+                        statusText.innerText = "Fast Link API unavailable. Please click Copy Cookie below:";
                         statusText.style.color = "#f39c12";
                     } else {
                         pcLink.href = data.pc_link;
@@ -222,22 +287,21 @@ PUBLIC_TEMPLATE = r"""
                         
                         pcLink.setAttribute("target", "_blank");
                         pcLink.onclick = function() { showLoading(this); };
-                        pcLink.style.background = "";
                         
                         pcLink.innerText = "💻 PC / Laptop";
                         mobileLink.innerText = "📱 Mobile (iPhone / Android)";
-                        tvLink.innerText = "📺 Smart TV";
+                        tvLink.innerText = "📺 Smart TV Code";
                         
-                        pcLink.style.display = "flex";
-                        mobileLink.style.display = "flex";
-                        tvLink.style.display = "flex";
+                        pcLink.style.display = "inline-flex";
+                        mobileLink.style.display = "inline-flex";
+                        tvLink.style.display = "inline-flex";
                         
-                        statusText.innerText = "Success! Please select your device or copy Cookie below:";
+                        statusText.innerText = "✅ Success! Select your device below to auto-login:";
                         statusText.style.color = "#2ecc71";
                     }
                 } else {
                     statusText.innerText = "Error: " + (data.error || "Failed to generate link.");
-                    statusText.style.color = "#e74c3c";
+                    statusText.style.color = "#ff4757";
                     pcLink.innerText = "❌ Error";
                     mobileLink.innerText = "❌ Error";
                     tvLink.innerText = "❌ Error";
@@ -247,7 +311,7 @@ PUBLIC_TEMPLATE = r"""
                 btn.disabled = false;
                 btn.innerHTML = "🚀 LOGIN NOW (Fast Link)";
                 statusText.innerText = "Connection to server failed!";
-                statusText.style.color = "#e74c3c";
+                statusText.style.color = "#ff4757";
                 pcLink.innerText = "❌ Error";
                 mobileLink.innerText = "❌ Error";
                 tvLink.innerText = "❌ Error";
@@ -257,7 +321,7 @@ PUBLIC_TEMPLATE = r"""
         function openReportModal() {
             let rawInput = document.getElementById("rawTokenInput").value.trim();
             if (!rawInput) {
-                alert("Please enter your access code first!");
+                alert("Please enter your Access Code first!");
                 return;
             }
             document.getElementById("reportModal").style.display = "flex";
@@ -267,11 +331,23 @@ PUBLIC_TEMPLATE = r"""
             document.getElementById("reportModal").style.display = "none";
             document.getElementById("reportForm").reset();
             document.getElementById("reportStatus").innerText = "";
+            document.getElementById("reportPreview").style.display = "none";
+        }
+
+        function previewImage(input) {
+            if (input.files && input.files[0]) {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    var img = document.getElementById("reportPreview");
+                    img.src = e.target.result;
+                    img.style.display = "block";
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
         }
         
         function submitReport(event) {
             event.preventDefault();
-            
             let rawInput = document.getElementById("rawTokenInput").value.trim();
             let fileInput = document.getElementById("reportImage");
             let file = fileInput.files[0];
@@ -301,19 +377,19 @@ PUBLIC_TEMPLATE = r"""
                 btn.disabled = false;
                 btn.innerHTML = "Submit Report";
                 if (data.success) {
-                    statusText.innerText = data.message || "Report submitted successfully! The account has been updated.";
+                    statusText.innerText = "🎉 " + (data.message || "Report confirmed. Account updated!");
                     statusText.style.color = "#2ecc71";
-                    setTimeout(closeReportModal, 4000);
+                    setTimeout(closeReportModal, 3500);
                 } else {
-                    statusText.innerText = "Error: " + data.error;
-                    statusText.style.color = "#e74c3c";
+                    statusText.innerText = "❌ " + data.error;
+                    statusText.style.color = "#ff4757";
                 }
             })
             .catch(err => {
                 btn.disabled = false;
                 btn.innerHTML = "Submit Report";
                 statusText.innerText = "Connection error while uploading!";
-                statusText.style.color = "#e74c3c";
+                statusText.style.color = "#ff4757";
             });
         }
         
@@ -322,13 +398,13 @@ PUBLIC_TEMPLATE = r"""
             chat.style.display = chat.style.display === 'flex' ? 'none' : 'flex';
         }
         
-        function sendChatMessage() {
+        function sendChatMessage(presetMsg) {
             const input = document.getElementById('chatInput');
-            const msg = input.value.trim();
+            const msg = presetMsg || input.value.trim();
             if(!msg) return;
             
             appendMessage(msg, 'user');
-            input.value = '';
+            if (!presetMsg) input.value = '';
             
             const typingId = appendMessage('...', 'ai');
             
@@ -344,7 +420,7 @@ PUBLIC_TEMPLATE = r"""
                     typingEl.innerText = data.reply;
                 } else {
                     typingEl.innerText = "Error: " + data.error;
-                    typingEl.style.color = "#e74c3c";
+                    typingEl.style.color = "#ff4757";
                 }
                 const msgsDiv = document.getElementById('chatMessages');
                 msgsDiv.scrollTop = msgsDiv.scrollHeight;
@@ -352,7 +428,7 @@ PUBLIC_TEMPLATE = r"""
             .catch(err => {
                 const typingEl = document.getElementById(typingId);
                 typingEl.innerText = "Connection failed.";
-                typingEl.style.color = "#e74c3c";
+                typingEl.style.color = "#ff4757";
             });
         }
         
@@ -369,137 +445,175 @@ PUBLIC_TEMPLATE = r"""
         }
     </script>
     <style>
-        .modal {
-            display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%;
-            background-color: rgba(0,0,0,0.7); justify-content: center; align-items: center;
-        }
-        .modal-content {
-            background: #222; padding: 20px; border-radius: 8px; width: 90%; max-width: 400px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.5); border: 1px solid #444;
-        }
-        .close-btn { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
-        .close-btn:hover { color: white; }
-        
         .chat-widget { position: fixed; bottom: 20px; right: 20px; z-index: 1000; }
         .chat-button {
-            background: #27ae60; color: white; border: none; border-radius: 30px;
-            padding: 12px 20px; font-size: 16px; cursor: pointer; font-family: 'Inter', sans-serif; font-weight: bold;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; gap: 10px;
-            transition: transform 0.2s, background 0.2s;
+            background: linear-gradient(135deg, #27ae60, #2ecc71); color: white; border: none; border-radius: 30px;
+            padding: 12px 22px; font-size: 15px; cursor: pointer; font-family: inherit; font-weight: bold;
+            box-shadow: 0 6px 20px rgba(46, 204, 113, 0.4); display: flex; align-items: center; gap: 8px;
+            transition: transform 0.2s;
         }
-        .chat-button:hover { transform: scale(1.05); background: #2ecc71; }
+        .chat-button:hover { transform: scale(1.05); }
         .chat-window {
-            display: none; position: fixed; bottom: 90px; right: 20px; width: 320px;
-            background: #222; border-radius: 12px; border: 1px solid #444; box-shadow: 0 5px 15px rgba(0,0,0,0.6);
+            display: none; position: fixed; bottom: 85px; right: 20px; width: 340px;
+            background: #161a2b; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.15); box-shadow: 0 10px 30px rgba(0,0,0,0.6);
             flex-direction: column; overflow: hidden; z-index: 1000;
         }
         .chat-header {
-            background: #27ae60; color: white; padding: 12px 15px; font-weight: bold;
-            display: flex; justify-content: space-between; align-items: center;
+            background: linear-gradient(135deg, #27ae60, #2ecc71); color: white; padding: 14px 18px; font-weight: bold;
+            display: flex; justify-content: space-between; align-items: center; font-size: 1.05rem;
         }
         .chat-messages {
-            height: 300px; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;
+            height: 320px; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;
+            background: rgba(0,0,0,0.2);
         }
-        .chat-msg { max-width: 85%; padding: 10px 12px; border-radius: 8px; font-size: 0.9rem; word-wrap: break-word; white-space: pre-wrap; }
-        .msg-user { background: #3498db; color: white; align-self: flex-end; border-bottom-right-radius: 2px; }
-        .msg-ai { background: #444; color: #eee; align-self: flex-start; border-bottom-left-radius: 2px; }
-        .chat-input-area {
-            display: flex; padding: 10px; background: #1a1a1a; border-top: 1px solid #333;
-        }
+        .chat-msg { max-width: 85%; padding: 10px 14px; border-radius: 12px; font-size: 0.9rem; word-wrap: break-word; white-space: pre-wrap; }
+        .msg-user { background: #00a8ff; color: white; align-self: flex-end; border-bottom-right-radius: 2px; }
+        .msg-ai { background: rgba(255,255,255,0.08); color: #eee; align-self: flex-start; border-bottom-left-radius: 2px; border: 1px solid rgba(255,255,255,0.1); }
+        .chat-pills { display: flex; gap: 6px; padding: 8px 12px; background: rgba(0,0,0,0.4); overflow-x: auto; white-space: nowrap; }
+        .chat-pill { background: rgba(255,255,255,0.1); color: #ddd; font-size: 0.75rem; padding: 5px 10px; border-radius: 15px; cursor: pointer; border: 1px solid rgba(255,255,255,0.15); }
+        .chat-pill:hover { background: #00a8ff; color: white; }
+        .chat-input-area { display: flex; padding: 12px; background: #0e111d; border-top: 1px solid rgba(255,255,255,0.1); }
         .chat-input {
-            flex: 1; padding: 10px; background: #333; color: white; border: 1px solid #555;
-            border-radius: 20px; outline: none; font-family: 'Inter', sans-serif;
+            flex: 1; padding: 10px 15px; background: rgba(255,255,255,0.05); color: white; border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 20px; outline: none; font-family: inherit; font-size: 0.9rem;
         }
-        .chat-send {
-            background: transparent; color: #27ae60; border: none; font-size: 20px;
-            cursor: pointer; padding: 0 10px; margin-left: 5px;
-        }
-        
-        @media (max-width: 480px) {
-            .chat-window {
-                width: 90%; right: 5%; bottom: 80px;
-            }
-            .chat-button {
-                font-size: 14px; padding: 10px 15px;
-            }
-        }
+        .chat-send { background: transparent; color: #2ecc71; border: none; font-size: 20px; cursor: pointer; padding: 0 8px; margin-left: 5px; }
     </style>
 </head>
 <body>
-    <div class="container" style="max-width: 600px; margin-top: 10vh;">
+    <div class="container">
         <div class="header">
-            <h1>Netflix Access</h1>
-            <p>Automated Fast Login System</p>
+            <h1>🎬 NETFLIX ACCESS</h1>
+            <p>Automated Fast Auto-Login Portal • Không Cần Mật Khẩu</p>
         </div>
+
+        <!-- 4 Step Guide Card -->
+        <div class="glass-panel" style="border: 1px solid rgba(0, 168, 255, 0.3); background: rgba(16, 22, 40, 0.85); margin-bottom: 25px;">
+            <h3 style="margin-top: 0; margin-bottom: 15px; font-weight: 800; font-size: 1.1rem; color: #00a8ff; display: flex; align-items: center; gap: 8px;">
+                ⚡ 4 EASY STEPS TO LOGIN / HƯỚNG DẪN 4 BƯỚC ĐĂNG NHẬP
+            </h3>
+            <div class="steps-container">
+                <div class="step-card">
+                    <span class="step-num">Step 1</span>
+                    <div class="step-title">🌐 Bật VPN Mỹ / US VPN</div>
+                    <div class="step-desc">Tải app FREE <strong>Windscribe VPN</strong>, kết nối đến vị trí <strong>USA (Los Angeles)</strong>.</div>
+                </div>
+                <div class="step-card">
+                    <span class="step-num">Step 2</span>
+                    <div class="step-title">🔑 Nhập mã Code</div>
+                    <div class="step-desc">Dán mã <strong>Access Code</strong> (5 - 15 ký tự) bạn đã nhận từ Shop vào ô bên dưới.</div>
+                </div>
+                <div class="step-card">
+                    <span class="step-num">Step 3</span>
+                    <div class="step-title">🚀 Chọn Thiết Bị</div>
+                    <div class="step-desc">Bấm <strong>LOGIN NOW</strong> và chọn loại thiết bị của bạn: Máy tính, Điện thoại hoặc TV.</div>
+                </div>
+                <div class="step-card">
+                    <span class="step-num">Step 4</span>
+                    <div class="step-title">🎬 Thưởng Thức</div>
+                    <div class="step-desc">Đăng nhập thành công, bạn có thể <strong>tắt VPN</strong> đi để xem phim tốc độ cao!</div>
+                </div>
+            </div>
+        </div>
+
         <div class="glass-panel">
-            <h3 style="margin-top: 0; text-align: center; font-weight: 400;">Enter Access Code</h3>
-            <input type="text" id="rawTokenInput" class="search-box" style="text-align: center; font-size: 1.2rem; letter-spacing: 2px;" placeholder="Example: X9K2M1">
-            <button id="submitBtn" onclick="generateQuickLinks()" style="width: 100%; margin-top: 10px; padding: 15px; font-size: 1.1rem; background: #27ae60; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">🚀 LOGIN NOW (Fast Link)</button>
-            <button id="reportBtn" onclick="openReportModal()" style="width: 100%; margin-top: 10px; padding: 12px; font-size: 0.9rem; background: #c0392b; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">⚠️ REPORT ERROR</button>
+            <h3 style="margin-top: 0; text-align: center; font-weight: 700; font-size: 1.2rem;">Enter Access Code / Nhập Mã Truy Cập</h3>
+            <input type="text" id="rawTokenInput" class="search-box" style="text-align: center; font-size: 1.3rem; letter-spacing: 3px; font-weight: 700;" placeholder="Ví dụ: X9K2M1">
+            
+            <div style="display: flex; gap: 12px; margin-top: 15px; flex-wrap: wrap;">
+                <button id="submitBtn" onclick="generateQuickLinks()" class="btn-success" style="flex: 2; padding: 15px; font-size: 1.1rem; min-width: 220px;">
+                    🚀 LOGIN NOW (Tạo Link Đăng Nhập)
+                </button>
+                <button id="reportBtn" onclick="openReportModal()" class="btn-danger" style="flex: 1; padding: 15px; font-size: 0.95rem; min-width: 180px;">
+                    ⚠️ REPORT ERROR (Báo Lỗi Đổi Acc)
+                </button>
+            </div>
             
             <div id="quickLinksResult" style="display: flex; flex-direction: column; gap: 15px; margin-top: 25px; display: none;">
-                <div id="accountInfoBadge" style="display: none; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 8px; padding: 12px 15px; text-align: center; font-size: 0.95rem;">
-                    <span id="badgePlan" style="color: #f1c40f; font-weight: bold; margin-right: 20px;">📦 Plan: ---</span>
-                    <span id="badgeExpire" style="color: #3498db; font-weight: bold;">📅 Expire Date: ---</span>
+                <div id="accountInfoBadge" style="display: none; background: rgba(0, 168, 255, 0.1); border: 1px solid rgba(0, 168, 255, 0.3); border-radius: 12px; padding: 14px; justify-content: center; gap: 25px; flex-wrap: wrap; font-size: 1rem;">
+                    <span id="badgePlan" style="color: #ffbe76; font-weight: 800;">📦 Gói Cước: ---</span>
+                    <span id="badgeExpire" style="color: #00a8ff; font-weight: 800;">📅 Ngày Hết Hạn: ---</span>
                 </div>
-                <p id="statusText" style="text-align: center; margin: 0; font-weight: bold;"></p>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-                    <a id="quickPcLink" class="btn-login" href="#" target="_blank" onclick="showLoading(this)" style="padding: 15px !important; text-align: center; font-size: 1rem !important; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                        💻 PC / Laptop
+                <p id="statusText" style="text-align: center; margin: 0; font-weight: bold; font-size: 1.05rem;"></p>
+                
+                <div class="device-grid">
+                    <a id="quickPcLink" class="device-card" href="#" target="_blank" onclick="showLoading(this)">
+                        <span class="device-icon">💻</span>
+                        <span class="device-name">PC / Laptop</span>
+                        <span class="device-hint">Bấm vào đây để tự động vào Netflix trên Máy tính</span>
                     </a>
-                    <a id="quickMobileLink" class="btn-login" href="#" target="_blank" onclick="showLoading(this)" style="padding: 15px !important; text-align: center; font-size: 1rem !important; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                        📱 Mobile (iPhone / Android)
+                    <a id="quickMobileLink" class="device-card" href="#" target="_blank" onclick="showLoading(this)">
+                        <span class="device-icon">📱</span>
+                        <span class="device-name">Mobile (iOS / Android)</span>
+                        <span class="device-hint">Mở trình duyệt Chrome/Brave trên điện thoại</span>
                     </a>
-                    <a id="quickTvLink" class="btn-login" href="#" target="_blank" onclick="showLoading(this)" style="padding: 15px !important; text-align: center; font-size: 1rem !important; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                        📺 Smart TV
+                    <a id="quickTvLink" class="device-card" href="#" target="_blank" onclick="showLoading(this)">
+                        <span class="device-icon">📺</span>
+                        <span class="device-name">Smart TV</span>
+                        <span class="device-hint">Nhập mã 8 số hiển thị trên màn hình TV</span>
                     </a>
-                    <button id="quickCookieBtn" class="btn-login" style="padding: 15px !important; text-align: center; font-size: 1rem !important; display: flex; align-items: center; justify-content: center; gap: 8px; background: #2d98da; border: none; cursor: pointer;">
-                        📋 Copy Cookie (Extension)
+                    <button id="quickCookieBtn" class="device-card" style="background: rgba(0, 168, 255, 0.15); border-color: rgba(0, 168, 255, 0.3);">
+                        <span class="device-icon">📋</span>
+                        <span class="device-name">Copy Cookie</span>
+                        <span class="device-hint">Sao chép Cookie để dùng Extension trên Chrome</span>
                     </button>
                 </div>
             </div>
         </div>
-        <div style="text-align: center; margin-top: 20px;">
-            <a href="/admin" style="color: #666; font-size: 0.8rem; text-decoration: none;">Admin Dashboard</a>
+        
+        <div style="text-align: center; margin-top: 25px;">
+            <a href="/admin" style="color: var(--text-sub); font-size: 0.85rem; text-decoration: none; opacity: 0.7;">🔒 Admin Dashboard</a>
         </div>
     </div>
     
+    <!-- Report Modal -->
     <div id="reportModal" class="modal">
         <div class="modal-content">
             <span class="close-btn" onclick="closeReportModal()">&times;</span>
-            <h3 style="margin-top: 0; margin-bottom: 20px;">Report Dead Account</h3>
+            <h3 style="margin-top: 0; margin-bottom: 10px; color: #ff5252; display: flex; align-items: center; gap: 8px;">
+                ⚠️ Báo Lỗi Tự Động (Report Error)
+            </h3>
+            <p style="margin-top: 0; font-size: 0.88rem; color: var(--text-sub); line-height: 1.4;">
+                Tải lên ảnh chụp màn hình hiển thị lỗi (Hết gói, Trùng màn hình, Hộ gia đình). Hệ thống AI sẽ xác minh và đổi tài khoản tự động cho bạn!
+            </p>
             <form id="reportForm" onsubmit="submitReport(event)">
-                <p style="margin-top: 0; font-size: 0.9rem; color: #ddd;">Please upload a screenshot of the error. The admin will review it and change your account.</p>
-                <input type="file" id="reportImage" accept="image/*" required style="width: 100%; padding: 10px; margin-bottom: 15px; background: rgba(0,0,0,0.2); border: 1px dashed #555; color: #ccc;">
-                <button type="submit" id="submitReportBtn" style="width: 100%; background: #c0392b; font-weight: bold; border: none; padding: 12px; color: white; border-radius: 4px; cursor: pointer;">Submit Report</button>
+                <input type="file" id="reportImage" accept="image/*" required onchange="previewImage(this)" style="width: 100%; padding: 12px; margin-bottom: 12px; background: rgba(0,0,0,0.3); border: 1px dashed rgba(255,255,255,0.2); color: #ccc; border-radius: 10px;">
+                <img id="reportPreview" style="display: none; max-width: 100%; max-height: 150px; margin-bottom: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2);">
+                <button type="submit" id="submitReportBtn" class="btn-danger" style="width: 100%; font-weight: bold; padding: 14px;">Gửi Báo Lỗi & Đổi Acc</button>
             </form>
-            <p id="reportStatus" style="text-align: center; font-weight: bold; margin-top: 15px; margin-bottom: 0;"></p>
+            <p id="reportStatus" style="text-align: center; font-weight: bold; margin-top: 15px; margin-bottom: 0; font-size: 0.95rem;"></p>
         </div>
     </div>
     
-    <!-- AI Chat Widget -->
+    <!-- AI Chatbot Widget -->
     <div class="chat-widget">
         <button class="chat-button" onclick="toggleChat()">
-            <span style="font-size: 20px;">💬</span> AI Chatbot for Help
+            <span style="font-size: 20px;">💬</span> Trợ Lý AI Hỗ Trợ 24/7
         </button>
     </div>
     
     <div class="chat-window" id="chatWindow">
         <div class="chat-header">
-            <span>Support AI</span>
+            <span>🤖 AI Support Assistant</span>
             <span style="cursor:pointer;" onclick="toggleChat()">&times;</span>
         </div>
         <div class="chat-messages" id="chatMessages">
-            <div class="chat-msg msg-ai">Hello! How can I help you with Netflix Access today?</div>
+            <div class="chat-msg msg-ai">Xin chào! Bạn cần hỗ trợ gì về đăng nhập Netflix hôm nay?</div>
+        </div>
+        <div class="chat-pills">
+            <span class="chat-pill" onclick="sendChatMessage('Bật VPN Mỹ như thế nào?')">🌐 Bật VPN?</span>
+            <span class="chat-pill" onclick="sendChatMessage('Đăng nhập trên Smart TV ra sao?')">📺 Đăng nhập TV?</span>
+            <span class="chat-pill" onclick="sendChatMessage('Tài khoản dính lỗi báo hạn?')">⚠️ Báo lỗi acc?</span>
         </div>
         <div class="chat-input-area">
-            <input type="text" id="chatInput" class="chat-input" placeholder="Type a message..." onkeypress="if(event.key === 'Enter') sendChatMessage()">
+            <input type="text" id="chatInput" class="chat-input" placeholder="Nhập tin nhắn..." onkeypress="if(event.key === 'Enter') sendChatMessage()">
             <button class="chat-send" onclick="sendChatMessage()">➤</button>
         </div>
     </div>
 </body>
 </html>
 """
+
 
 ADMIN_TEMPLATE = r"""
 <!DOCTYPE html>
