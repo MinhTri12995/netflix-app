@@ -27,6 +27,36 @@ PAYMENT_DIE_KEYWORDS = [
     "warnuserofpaymentfailure", "ispaymentfailure", "payment_failure", "payment_hold", "paymenthold"
 ]
 
+def normalize_plan_name(raw_plan_name, fallback_text=""):
+    import unicodedata
+    
+    # 1. Nếu đã trích xuất được plan_name cụ thể từ JSON (e.g. "Premium", "Standard", "Standard with Ads")
+    if raw_plan_name and str(raw_plan_name).strip():
+        p_clean = unicodedata.normalize('NFKD', str(raw_plan_name).lower()).encode('ASCII', 'ignore').decode('utf-8')
+        if any(kw in p_clean for kw in ['ads', 'adverts', 'anuncios', 'pub', 'werbung', 'quang cao', 'reklam', 'reklama']):
+            return "Standard with Ads"
+        elif any(kw in p_clean for kw in ['premium', 'ultra', '4k', '4-screen']):
+            return "Premium"
+        elif any(kw in p_clean for kw in ['standard', 'estandar', 'standardowy', 'padrao', 'hd']):
+            return "Standard"
+        elif any(kw in p_clean for kw in ['basic', 'basico', 'podstawowy']):
+            return "Basic"
+        return str(raw_plan_name).strip()
+        
+    # 2. Fallback: Chỉ tìm trong các cụm từ gói cước chính xác
+    if fallback_text:
+        text = unicodedata.normalize('NFKD', str(fallback_text).lower()).encode('ASCII', 'ignore').decode('utf-8')
+        if any(kw in text for kw in ['"standard with ads"', '"standard_ads"', 'standard with ads', 'standard con anuncios', 'standard z reklamami']):
+            return "Standard with Ads"
+        elif any(kw in text for kw in ['"premium"', 'plan: premium', 'premium plan', 'ultra hd', '4k uhd']):
+            return "Premium"
+        elif any(kw in text for kw in ['"standard"', 'plan: standard', 'standard plan', 'standardowy']):
+            return "Standard"
+        elif any(kw in text for kw in ['"basic"', 'plan: basic', 'podstawowy']):
+            return "Basic"
+            
+    return "Premium"
+
 def check_web_account_status_and_plan(cookies, proxy_dict):
     """
     Returns (status, plan) where status is 'LIVE', 'DIE', or 'ERROR'.
@@ -63,26 +93,18 @@ def check_web_account_status_and_plan(cookies, proxy_dict):
             return "DIE", None
             
         # 4. Kiểm tra gói cước nếu còn sống (LIVE)
-        plan = None
+        plan_raw = None
         plan_m = re.search(r'(?:localizedPlanName|planName)"\s*:\s*\{"fieldType":"String","value":"([^"]+)"\}', html)
         if plan_m:
             plan_raw = plan_m.group(1).replace(r'\x20', ' ').strip()
             try:
                 import codecs
-                plan = codecs.decode(plan_raw, 'unicode_escape')
+                plan_raw = codecs.decode(plan_raw, 'unicode_escape')
             except Exception:
-                plan = plan_raw
-        else:
-            if "premium" in text_lower or "ultra" in text_lower:
-                plan = "Premium"
-            elif "standard with ads" in text_lower or "standard_ads" in text_lower:
-                plan = "Standard_Ads"
-            elif "standard" in text_lower:
-                plan = "Standard"
-            elif "basic" in text_lower:
-                plan = "Basic"
+                pass
                 
-        return "LIVE", plan
+        final_plan = normalize_plan_name(plan_raw, text_lower)
+        return "LIVE", final_plan
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.ProxyError):
         return "ERROR", None
     except Exception as e:
@@ -109,7 +131,7 @@ def check_account_live(netflix_id, secure_netflix_id="", check_payment=False):
     
     if not _api_is_dead:
         try:
-            plan = _get_token_and_plan_api(netflix_id, proxy_dict)
+            plan = _get_token_and_plan_api(netflix_id, secure_netflix_id, proxy_dict)
             if plan == "API_DEAD":
                 _api_is_dead = True
             elif plan is None:
@@ -122,9 +144,9 @@ def check_account_live(netflix_id, secure_netflix_id="", check_payment=False):
                     if web_status == "DIE":
                         return "DIE", None
                     elif web_status == "LIVE":
-                        return "LIVE", web_plan if web_plan else (plan if plan != "VALID" else None)
+                        return "LIVE", web_plan if web_plan else (plan if plan != "VALID" else "Premium")
                     return "ERROR", None
-                return "LIVE", plan if plan != "VALID" else None
+                return "LIVE", plan if plan != "VALID" else "Premium"
         except Exception as e:
             print(f"API Check Error: {e}")
             return "ERROR", None
@@ -132,7 +154,7 @@ def check_account_live(netflix_id, secure_netflix_id="", check_payment=False):
     return check_web_account_status_and_plan(cookies, proxy_dict)
 
 
-def _get_token_and_plan_api(netflix_id, proxy_dict):
+def _get_token_and_plan_api(netflix_id, secure_netflix_id="", proxy_dict=None):
     params = {
         "falcor_server": "0.1.0",
         "withSize": "true",
@@ -140,9 +162,13 @@ def _get_token_and_plan_api(netflix_id, proxy_dict):
         "path": '["account","token","default"]',
         "original_path": "/nq/mobile/nqios/~15.48.0/user"
     }
+    cookie_str = f"NetflixId={netflix_id}"
+    if secure_netflix_id:
+        cookie_str += f"; SecureNetflixId={secure_netflix_id}"
+
     headers = {
         "User-Agent": "Argo/15.48.1 (iPhone; iOS 15.8.5; Scale/2.00)",
-        "Cookie": f"NetflixId={netflix_id}",
+        "Cookie": cookie_str,
         "x-netflix.client.type": "argo",
         "x-netflix.client.appversion": "15.48.1",
         "x-netflix.context.app-version": "15.48.1",
@@ -189,15 +215,8 @@ def _get_token_and_plan_api(netflix_id, proxy_dict):
             
         if not token:
             return None
-        if "\"premium\"" in data_str or "\"ultra\"" in data_str:
-            return "Premium"
-        elif "\"standard with ads\"" in data_str or "\"standard_ads\"" in data_str:
-            return "Standard_Ads"
-        elif "\"standard\"" in data_str:
-            return "Standard"
-        elif "\"basic\"" in data_str:
-            return "Basic"
-        return "VALID"
+            
+        return normalize_plan_name("", data_str)
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.ProxyError):
         return "ERROR"
     except Exception as e:

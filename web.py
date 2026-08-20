@@ -1433,14 +1433,55 @@ ADMIN_TEMPLATE = r"""
             
             let allCookies = [];
             
+            // Helper giải mã an toàn tránh lỗi URIError
+            const safeDecode = (str) => {
+                if (!str) return "";
+                try {
+                    return decodeURIComponent(str);
+                } catch(e) {
+                    try {
+                        return unescape(str);
+                    } catch(err) {
+                        return str;
+                    }
+                }
+            };
+
             // 1. Lọc và Đọc File Cục Bộ (Client-side)
             for (let i = 0; i < fileInput.files.length; i++) {
                 const file = fileInput.files[i];
-                if (file.name.endsWith('.txt')) {
+                const fname = file.name.toLowerCase();
+                
+                // Hỗ trợ .txt, .json, .log, .cookie, .cookies hoặc file không có đuôi
+                if (fname.endsWith('.txt') || fname.endsWith('.json') || fname.endsWith('.log') || fname.endsWith('.cookie') || fname.endsWith('.cookies') || !fname.includes('.')) {
                     try {
                         const text = await file.text();
+                        const trimmedText = text.trim();
+                        if (!trimmedText) continue;
+
+                        // Xử lý trực tiếp nếu là định dạng JSON Array Cookie
+                        if (trimmedText.startsWith('[')) {
+                            try {
+                                const jsonArr = JSON.parse(trimmedText);
+                                let j_nid = null, j_snid = "";
+                                for (let c of jsonArr) {
+                                    if (c.name === 'NetflixId') j_nid = c.value;
+                                    if (c.name === 'SecureNetflixId') j_snid = c.value;
+                                }
+                                if (j_nid) {
+                                    allCookies.push({
+                                        email: file.name.replace(/\.[^/.]+$/, "") + "@cookie.com",
+                                        expire: 'N/A',
+                                        plan: 'Premium',
+                                        netflix_id: j_nid,
+                                        secure_netflix_id: j_snid
+                                    });
+                                    continue;
+                                }
+                            } catch(jsonErr) {}
+                        }
+
                         const lines = text.split('\n');
-                        
                         let current_email = null;
                         let current_expire = null;
                         let current_plan = null;
@@ -1486,8 +1527,8 @@ ADMIN_TEMPLATE = r"""
                                     let c_str = cookie_match[1].trim();
                                     let n_id = c_str.match(/(?<!Secure)NetflixId=([^;\s]+)/i);
                                     let s_n_id = c_str.match(/SecureNetflixId=([^;\s]+)/i);
-                                    if (n_id) current_netflix_id = decodeURIComponent(n_id[1].trim());
-                                    if (s_n_id) current_secure_netflix_id = decodeURIComponent(s_n_id[1].trim());
+                                    if (n_id) current_netflix_id = safeDecode(n_id[1].trim());
+                                    if (s_n_id) current_secure_netflix_id = safeDecode(s_n_id[1].trim());
                                     if (current_netflix_id) push_account();
                                 }
                                 continue;
@@ -1505,10 +1546,10 @@ ADMIN_TEMPLATE = r"""
                             if (p_match) { current_plan = p_match[1].trim(); continue; }
                             
                             let id_match = line.match(/^(?:–|-|#)?\s*NetflixId:\s*(.+)/i);
-                            if (id_match) { current_netflix_id = id_match[1].trim(); continue; }
+                            if (id_match) { current_netflix_id = safeDecode(id_match[1].trim()); continue; }
                             
                             let sid_match = line.match(/^(?:–|-|#)?\s*SecureNetflixId:\s*(.+)/i);
-                            if (sid_match) { current_secure_netflix_id = sid_match[1].trim(); continue; }
+                            if (sid_match) { current_secure_netflix_id = safeDecode(sid_match[1].trim()); continue; }
                             
                             if (line.startsWith("# ===")) {
                                 push_account();
@@ -1519,7 +1560,7 @@ ADMIN_TEMPLATE = r"""
                                 let parts = line.trim().split(/\s+/);
                                 if (parts.length >= 3) {
                                     let c_name = parts[parts.length - 2];
-                                    let c_val = decodeURIComponent(parts[parts.length - 1]);
+                                    let c_val = safeDecode(parts[parts.length - 1]);
                                     if (c_name === 'NetflixId') current_netflix_id = c_val;
                                     if (c_name === 'SecureNetflixId') current_secure_netflix_id = c_val;
                                 }
