@@ -656,7 +656,15 @@ PUBLIC_TEMPLATE = r"""
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ cookie: rawInput })
             })
-            .then(res => res.json())
+            .then(async (res) => {
+                let data;
+                try {
+                    data = await res.json();
+                } catch(e) {
+                    data = { success: false, error: "Server Error (" + res.status + "). Please try again." };
+                }
+                return data;
+            })
             .then(data => {
                 btn.disabled = false;
                 btn.innerHTML = (I18N_DICTS[currentLang]?.btn_login || "🚀 LOGIN NOW (Generate Links)");
@@ -2182,7 +2190,7 @@ def fetch_netflix_nftoken_api(netflix_id, secure_netflix_id=""):
     try:
         response = requests.get(
             url, params=params, headers=headers,
-            proxies=proxy_dict, timeout=5, verify=False
+            proxies=proxy_dict, timeout=8, verify=False
         )
     except requests.exceptions.RequestException as e:
         print(f"Lỗi Proxy / Mạng: {e}")
@@ -2662,7 +2670,7 @@ def api_generate_nftoken():
             else:
                 expected_plan = "Premium"
             # Auto-rotation loop
-            max_attempts = 15
+            max_attempts = 4
             last_error_msg = ""
             for attempt in range(max_attempts):
                 acc = database.get_account_by_email(assigned_email)
