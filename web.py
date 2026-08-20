@@ -1709,8 +1709,8 @@ def check_and_import():
     expire = data.get("expire", "")
     plan = data.get("plan", "")
     
-    if not netflix_id:
-        return jsonify({"success": False, "error": "Missing NetflixId"})
+    if expire and is_date_expired(expire):
+        return jsonify({"success": False, "status": "DIE", "error": f"Account billing date ({expire}) has expired."})
         
     status, updated_plan = checker.check_account_live(netflix_id, secure_netflix_id, check_payment=True)
     
@@ -2492,10 +2492,10 @@ def api_force_rotate_code():
     return jsonify({"success": True, "message": "Successfully changed to a new account! Please Check & Fix again."})
 
 def is_date_expired(date_str):
-    if not date_str or date_str in ['N/A', 'None']:
+    if not date_str or str(date_str).strip() in ['N/A', 'None', '', 'null']:
         return False
     
-    clean_str = date_str.strip()
+    clean_str = str(date_str).strip()
     
     # 1. ISO format YYYY-MM-DD
     iso_match = re.search(r'(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})', clean_str)
@@ -2506,23 +2506,32 @@ def is_date_expired(date_str):
         except Exception:
             pass
 
-    # 2. Month name parsing (English, Polish, Spanish, etc.)
+    # 2. DMY format DD-MM-YYYY
+    dmy_match = re.search(r'(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})', clean_str)
+    if dmy_match:
+        try:
+            dt = datetime(int(dmy_match.group(3)), int(dmy_match.group(2)), int(dmy_match.group(1)))
+            return dt.date() < datetime.now().date()
+        except Exception:
+            pass
+
+    # 3. Multi-language month names
     months = {
-        'january': 1, 'styczeń': 1, 'stycznia': 1, 'jan': 1, 'enero': 1,
-        'february': 2, 'luty': 2, 'lutego': 2, 'feb': 2, 'febrero': 2,
-        'march': 3, 'marzec': 3, 'marca': 3, 'mar': 3, 'marzo': 3,
+        'january': 1, 'styczeń': 1, 'stycznia': 1, 'jan': 1, 'enero': 1, 'janeiro': 1, 'januar': 1,
+        'february': 2, 'luty': 2, 'lutego': 2, 'feb': 2, 'febrero': 2, 'fevereiro': 2, 'februar': 2,
+        'march': 3, 'marzec': 3, 'marca': 3, 'mar': 3, 'marzo': 3, 'março': 3, 'märz': 3,
         'april': 4, 'kwiecień': 4, 'kwietnia': 4, 'apr': 4, 'abril': 4,
-        'may': 5, 'maj': 5, 'maja': 5, 'mayo': 5,
-        'june': 6, 'czerwiec': 6, 'czerwca': 6, 'jun': 6, 'junio': 6,
-        'july': 7, 'lipiec': 7, 'lipca': 7, 'jul': 7, 'julio': 7,
+        'may': 5, 'maj': 5, 'maja': 5, 'mayo': 5, 'maio': 5, 'mai': 5,
+        'june': 6, 'czerwiec': 6, 'czerwca': 6, 'jun': 6, 'junio': 6, 'junho': 6, 'juni': 6,
+        'july': 7, 'lipiec': 7, 'lipca': 7, 'jul': 7, 'julio': 7, 'julho': 7, 'juli': 7,
         'august': 8, 'sierpień': 8, 'sierpnia': 8, 'agustus': 8, 'aug': 8, 'agosto': 8,
-        'september': 9, 'wrzesień': 9, 'września': 9, 'sep': 9, 'septiembre': 9, 'setiembre': 9,
-        'october': 10, 'październik': 10, 'października': 10, 'oct': 10, 'octubre': 10,
-        'november': 11, 'listopad': 11, 'listopada': 11, 'nov': 11, 'noviembre': 11,
-        'december': 12, 'grudzień': 12, 'grudnia': 12, 'dec': 12, 'diciembre': 12
+        'september': 9, 'wrzesień': 9, 'września': 9, 'sep': 9, 'septiembre': 9, 'setiembre': 9, 'setembro': 9,
+        'october': 10, 'październik': 10, 'października': 10, 'oct': 10, 'octubre': 10, 'outubro': 10, 'oktober': 10,
+        'november': 11, 'listopad': 11, 'listopada': 11, 'nov': 11, 'noviembre': 11, 'novembro': 11,
+        'december': 12, 'grudzień': 12, 'grudnia': 12, 'dec': 12, 'diciembre': 12, 'dezembro': 12, 'dezember': 12
     }
 
-    words = re.findall(r'[a-zA-Záéíóúñąćęłńóśźż]+|\d+', clean_str.lower())
+    words = re.findall(r'[a-zA-Záéíóúñąćęłńóśźżäöü]+|\d+', clean_str.lower())
     year, month, day = None, None, None
 
     for w in words:
@@ -2535,7 +2544,10 @@ def is_date_expired(date_str):
         elif w in months and month is None:
             month = months[w]
 
-    if year and month and day:
+    if not year:
+        year = datetime.now().year
+
+    if month and day:
         try:
             dt = datetime(year, month, day)
             return dt.date() < datetime.now().date()
@@ -2701,6 +2713,10 @@ def api_generate_nftoken():
                             database.update_plan(assigned_email, rt_plan)
                         if rt_expire:
                             acc_expire = rt_expire
+                            if is_date_expired(rt_expire):
+                                raise CookieError(f"Account next billing date ({rt_expire}) has expired.")
+                    except CookieError:
+                        raise
                     except Exception as meta_err:
                         print(f"Non-critical realtime metadata fetch error: {meta_err}")
                     
