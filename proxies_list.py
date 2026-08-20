@@ -10,7 +10,7 @@ WEBSHARE_PASSWORD = os.environ.get("WEBSHARE_PASSWORD", "bnfu8ype49yu")
 # Webshare Rotating Backbone Gateway (Auto rotates IP on each request)
 ROTATING_GATEWAY = f"http://{WEBSHARE_USERNAME}-rotate:{WEBSHARE_PASSWORD}@p.webshare.io:80"
 
-# Danh sách 30 Proxy Webshare Active mới
+# Danh sách 20 Proxy Webshare US Active mới (Chỉ lấy IP Mỹ)
 STATIC_PROXIES = [
     f"http://{WEBSHARE_USERNAME}:{WEBSHARE_PASSWORD}@104.233.12.92:6643/",
     f"http://{WEBSHARE_USERNAME}:{WEBSHARE_PASSWORD}@142.111.44.190:5902/",
@@ -31,17 +31,7 @@ STATIC_PROXIES = [
     f"http://{WEBSHARE_USERNAME}:{WEBSHARE_PASSWORD}@152.232.15.194:8362/",
     f"http://{WEBSHARE_USERNAME}:{WEBSHARE_PASSWORD}@82.108.66.185:5824/",
     f"http://{WEBSHARE_USERNAME}:{WEBSHARE_PASSWORD}@23.95.150.140:6109/",
-    f"http://{WEBSHARE_USERNAME}:{WEBSHARE_PASSWORD}@38.154.205.35:5303/",
-    f"http://{WEBSHARE_USERNAME}:{WEBSHARE_PASSWORD}@140.99.207.108:5485/",
-    f"http://{WEBSHARE_USERNAME}:{WEBSHARE_PASSWORD}@64.137.60.147:5211/",
-    f"http://{WEBSHARE_USERNAME}:{WEBSHARE_PASSWORD}@92.113.232.4:7588/",
-    f"http://{WEBSHARE_USERNAME}:{WEBSHARE_PASSWORD}@104.253.91.109:6542/",
-    f"http://{WEBSHARE_USERNAME}:{WEBSHARE_PASSWORD}@138.128.153.14:5048/",
-    f"http://{WEBSHARE_USERNAME}:{WEBSHARE_PASSWORD}@31.59.33.182:6758/",
-    f"http://{WEBSHARE_USERNAME}:{WEBSHARE_PASSWORD}@82.29.244.176:5999/",
-    f"http://{WEBSHARE_USERNAME}:{WEBSHARE_PASSWORD}@82.21.244.133:5456/",
-    f"http://{WEBSHARE_USERNAME}:{WEBSHARE_PASSWORD}@92.112.235.38:6561/",
-    f"http://{WEBSHARE_USERNAME}:{WEBSHARE_PASSWORD}@82.23.239.204:6541/"
+    f"http://{WEBSHARE_USERNAME}:{WEBSHARE_PASSWORD}@38.154.205.35:5303/"
 ]
 
 PROXIES = list(STATIC_PROXIES)
@@ -57,13 +47,14 @@ def fetch_latest_webshare_proxies(api_key=None):
 
     try:
         headers = {"Authorization": f"Token {token}"}
-        url = "https://proxy.webshare.io/api/v2/proxy/list/?mode=direct&page=1&page_size=100"
+        url = "https://proxy.webshare.io/api/v2/proxy/list/?mode=direct&page=1&page_size=100&countries=US"
         resp = requests.get(url, headers=headers, timeout=10)
         if resp.status_code == 200:
             data = resp.json()
             new_list = []
             for p in data.get("results", []):
-                if p.get("valid", True):
+                # Chỉ lấy proxy có country_code là US và còn valid
+                if p.get("country_code") == "US" and p.get("valid", True):
                     u = p.get("username", WEBSHARE_USERNAME)
                     pw = p.get("password", WEBSHARE_PASSWORD)
                     ip = p.get("proxy_address")
@@ -73,10 +64,10 @@ def fetch_latest_webshare_proxies(api_key=None):
                 PROXIES = new_list
                 ROTATING_PROXIES = [ROTATING_GATEWAY] + new_list
                 _last_fetch_time = time.time()
-                print(f"[Webshare] Successfully synchronized {len(new_list)} active proxies!")
+                print(f"[Webshare] Successfully synchronized {len(new_list)} active US proxies!")
                 return PROXIES
     except Exception as e:
-        print(f"[Webshare] Auto-fetch error: {e}, using static backup proxies.")
+        print(f"[Webshare] Auto-fetch error: {e}, using static backup US proxies.")
     return PROXIES
 
 USE_DIRECT_RENDER = False
