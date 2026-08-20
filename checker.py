@@ -111,47 +111,36 @@ def check_web_account_status_and_plan(cookies, proxy_dict):
         print(f"Web Check Error: {e}")
         return "ERROR", None
 
-def check_account_live(netflix_id, secure_netflix_id="", check_payment=False):
-    global _api_is_dead
-    
+def check_account_live(netflix_id, secure_netflix_id="", check_payment=True):
+    """
+    Kiem tra toan dien ca Token API va Web HTML.
+    Chi tra ve LIVE khi tai khoan thuc su tao duoc Token VA khong bi loi thanh toan.
+    """
     cookies = {"NetflixId": netflix_id}
     if secure_netflix_id:
         cookies["SecureNetflixId"] = secure_netflix_id
     
     proxy_dict = proxies_list.get_random_proxy()
     
-    # Nếu check_payment=True, luôn ưu tiên check sâu Web HTML để phát hiện triệt để lỗi Update Payment
+    # 1. Kiem tra kha nang tao Token dang nhap truc tiep
+    plan_api = _get_token_and_plan_api(netflix_id, secure_netflix_id, proxy_dict)
+    if plan_api is None:
+        return "DIE", None
+    elif plan_api == "ERROR":
+        # Thu kiem tra qua Web neu API bi loi mang/proxy
+        web_status, web_plan = check_web_account_status_and_plan(cookies, proxy_dict)
+        return web_status, web_plan
+        
+    # 2. Kiem tra trang Web YourAccount de tranh loi Payment Hold
     if check_payment:
         web_status, web_plan = check_web_account_status_and_plan(cookies, proxy_dict)
         if web_status == "DIE":
             return "DIE", None
         elif web_status == "LIVE":
-            return "LIVE", web_plan
-        # Nếu web bị timeout / proxy error, thử kiểm tra qua API
-    
-    if not _api_is_dead:
-        try:
-            plan = _get_token_and_plan_api(netflix_id, secure_netflix_id, proxy_dict)
-            if plan == "API_DEAD":
-                _api_is_dead = True
-            elif plan is None:
-                return "DIE", None
-            elif plan == "ERROR":
-                return "ERROR", None
-            else:
-                if check_payment:
-                    web_status, web_plan = check_web_account_status_and_plan(cookies, proxy_dict)
-                    if web_status == "DIE":
-                        return "DIE", None
-                    elif web_status == "LIVE":
-                        return "LIVE", web_plan if web_plan else (plan if plan != "VALID" else "Premium")
-                    return "ERROR", None
-                return "LIVE", plan if plan != "VALID" else "Premium"
-        except Exception as e:
-            print(f"API Check Error: {e}")
-            return "ERROR", None
-
-    return check_web_account_status_and_plan(cookies, proxy_dict)
+            final_plan = web_plan if web_plan else (plan_api if plan_api != "VALID" else "Premium")
+            return "LIVE", final_plan
+            
+    return "LIVE", plan_api if plan_api != "VALID" else "Premium"
 
 
 def _get_token_and_plan_api(netflix_id, secure_netflix_id="", proxy_dict=None):
