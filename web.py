@@ -2678,59 +2678,31 @@ def api_generate_nftoken():
                 if not acc:
                     rotated = database.rotate_access_key(code)
                     if not rotated:
-                        return jsonify({"success": False, "error": f"System ran out of backup Cookies for {expected_plan} plan!"}), 500
+                        return jsonify({"success": False, "error": f"System ran out of backup accounts for {expected_plan} plan!"}), 500
                     assigned_email = database.get_access_key(code)[1]
                     continue
                     
                 netflix_id = acc[2]
                 secure_netflix_id = acc[3] if acc[3] else ""
+                acc_plan = acc[5] if (acc and len(acc) > 5 and acc[5]) else "Premium"
+                acc_expire = acc[1] if (acc and len(acc) > 1 and acc[1]) else (expire_at_str if expire_at_str else "N/A")
                 
                 try:
-                    # BƯỚC 1: Kiểm tra Realtime trạng thái tài khoản TRƯỚC (Loại bỏ ngay acc DIE / Lỗi thanh toán / Hết hạn)
-                    rt_plan, rt_expire = fetch_realtime_account_info(netflix_id, secure_netflix_id)
-                    
-                    # Nếu hạn cước nằm trong quá khứ -> Tự động xóa acc hết hạn & xoay acc mới
-                    acc_expire_check = rt_expire if rt_expire else acc[1]
-                    if is_date_expired(acc_expire_check):
-                        raise CookieError(f"Account next billing date ({acc_expire_check}) is in the past (Expired).")
-
-                    if rt_plan:
-                        database.update_plan(assigned_email, rt_plan)
-                        acc_plan = rt_plan
-                    else:
-                        acc_plan = acc[5] if (acc and len(acc) > 5 and acc[5]) else "Premium"
-                        
-                    acc_expire = rt_expire if rt_expire else (acc[1] if (acc and len(acc) > 1 and acc[1]) else (expire_at_str if expire_at_str else "N/A"))
-
-                    # BƯỚC 2: Kiểm tra Chuẩn Gói (Strict Plan Verification)
-                    import unicodedata
-                    plan_check_str = str(acc_plan).lower()
-                    plan_check_str = unicodedata.normalize('NFKD', plan_check_str).encode('ASCII', 'ignore').decode('utf-8')
-                    is_ads = any(kw in plan_check_str for kw in ['ads', 'adverts', 'anuncios', 'pub', 'werbung', 'quảng cáo', 'โฆษณา', '広告', '광고', 'рекламо', 'reklam', 'rek'])
-                    
-                    should_rotate_mismatch = False
-                    if expected_plan == "Premium":
-                        if (is_ads or "standard" in plan_check_str or "basic" in plan_check_str) and not ("premium" in plan_check_str or "ultra" in plan_check_str):
-                            should_rotate_mismatch = True
-                    elif expected_plan == "Standard":
-                        if is_ads or "basic" in plan_check_str:
-                            should_rotate_mismatch = True
-                    elif expected_plan == "Standard_Ads":
-                        if not is_ads:
-                            should_rotate_mismatch = True
-
-                    if should_rotate_mismatch:
-                        print(f"Plan mismatch for code {code}: account {assigned_email} has real plan '{acc_plan}', expected '{expected_plan}'. Auto-rotating to matching account...")
-                        rotated = database.rotate_access_key(code)
-                        if rotated:
-                            assigned_email = database.get_access_key(code)[1]
-                            last_error_msg = f"Account {assigned_email} has wrong plan ({acc_plan} vs {expected_plan}), rotating..."
-                            continue # Retry loop to fetch link for newly assigned matching account!
-
-                    # BƯỚC 3: Tạo Token Đăng Nhập (CHỈ thực hiện khi tài khoản ĐÃ ĐẢM BẢO SỐNG + ĐÚNG GÓI)
+                    # BƯỚC 1: Tạo Token Đăng Nhập trực tiếp qua API
                     token = fetch_netflix_nftoken_api(netflix_id, secure_netflix_id)
                     is_json = token.startswith("FALLBACK:")
                     cookie_json = urllib.parse.unquote(token[9:]) if is_json else ""
+                    
+                    # BƯỚC 2: Cập nhật thông tin gói & hạn nếu có thể (Non-blocking fallback)
+                    try:
+                        rt_plan, rt_expire = fetch_realtime_account_info(netflix_id, secure_netflix_id)
+                        if rt_plan:
+                            acc_plan = rt_plan
+                            database.update_plan(assigned_email, rt_plan)
+                        if rt_expire:
+                            acc_expire = rt_expire
+                    except Exception as meta_err:
+                        print(f"Non-critical realtime metadata fetch error: {meta_err}")
                     
                     pc_link = f"https://www.netflix.com/browse?nftoken={token}"
                     mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"
@@ -2750,21 +2722,20 @@ def api_generate_nftoken():
                     })
                 except ProxyError as e:
                     last_error_msg = f"Proxy error: {str(e)}"
-                    print(f"Proxy error ({e}), retrying...")
+                    print(f"Proxy error ({e}), retrying with another proxy...")
                     continue
                 except CookieError as e:
                     last_error_msg = f"Cookie died: {str(e)}"
-                    print(f"Cookie {assigned_email} DIE, attempting rotation... (Error: {e})")
+                    print(f"Cookie {assigned_email} DIE, rotating to a new account... (Error: {e})")
                     database.delete_account(assigned_email)
                     rotated = database.rotate_access_key(code)
                     if not rotated:
-                        return jsonify({"success": False, "error": f"Cookie is broken and system ran out of backup Cookies! Last error: {str(e)}"}), 500
+                        return jsonify({"success": False, "error": "Cookie is broken and system ran out of backup accounts!"}), 500
                     assigned_email = database.get_access_key(code)[1]
                     continue
                 except Exception as e:
                     last_error_msg = f"Unknown error: {str(e)}"
                     print(f"Lỗi không xác định với tài khoản {assigned_email}: {e}")
-                    # Không xóa tài khoản nếu gặp lỗi không xác định (vd: JSONDecodeError do proxy trả HTML)
                     continue
                     
             return jsonify({"success": False, "error": f"Failed to generate link after {max_attempts} attempts. Last error: {last_error_msg}"}), 500
@@ -2853,9 +2824,14 @@ def api_generate_nftoken():
             cookie_json = urllib.parse.unquote(token[9:]) if is_json else ""
             
             # Fetch realtime plan and next billing date
-            rt_plan, rt_expire = fetch_realtime_account_info(netflix_id, secure_netflix_id)
-            final_plan = rt_plan if rt_plan else (parsed_plan if parsed_plan else "Premium")
-            final_expire = rt_expire if rt_expire else (parsed_expire if parsed_expire else "N/A")
+            final_plan = parsed_plan if parsed_plan else "Premium"
+            final_expire = parsed_expire if parsed_expire else "N/A"
+            try:
+                rt_plan, rt_expire = fetch_realtime_account_info(netflix_id, secure_netflix_id)
+                if rt_plan: final_plan = rt_plan
+                if rt_expire: final_expire = rt_expire
+            except Exception:
+                pass
 
             pc_link = f"https://www.netflix.com/browse?nftoken={token}"
             mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"

@@ -163,6 +163,10 @@ def get_random_available_account(plan_type=None):
                     
             if is_match or plan_type.lower() == plan_str:
                 all_emails.append(r["email"])
+                
+        # Nếu không tìm thấy acc khớp gói chính xác, dùng toàn bộ acc trong kho làm fallback
+        if not all_emails:
+            all_emails = [r["email"] for r in acc_data]
     else:
         all_emails = [r["email"] for r in acc_data]
     
@@ -191,10 +195,17 @@ def get_random_available_account(plan_type=None):
     if available_emails_0:
         return random.choice(available_emails_0)
         
-    # 2. CHỈ KHI HẾT tài khoản mới (count == 0) VÀ Share Mode BẬT: mới bắt đầu gán chung tài khoản (tối đa 2 code / 1 acc)
-    share_mode = get_config("SHARE_MODE_ENABLED", False)
-    if share_mode and available_emails_1:
+    # 2. Khi hết tài khoản mới, gán vào tài khoản có 1 code
+    if available_emails_1:
         return random.choice(available_emails_1)
+        
+    # 3. Fallback cuối: Chọn tài khoản có số lượng code gán ít nhất
+    if all_emails:
+        return min(all_emails, key=lambda e: email_counts.get(e, 0))
+        
+    all_all = [r["email"] for r in acc_data]
+    if all_all:
+        return min(all_all, key=lambda e: email_counts.get(e, 0))
         
     return None
 
