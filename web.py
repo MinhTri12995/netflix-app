@@ -2648,7 +2648,8 @@ def api_generate_nftoken():
         
         # 1. Lookup as access key
         acc_key_row = None
-        if not cookie_value.startswith("B") and not cookie_value.startswith("FALLBACK:") and not cookie_value.startswith("[") and "NetflixId" not in cookie_value:
+        is_access_code = len(cookie_value) in [5, 8, 10, 15] and not cookie_value.startswith("FALLBACK:") and "NetflixId" not in cookie_value
+        if is_access_code:
             try:
                 acc_key_row = database.get_access_key(cookie_value)
             except Exception as e:
@@ -2756,8 +2757,8 @@ def api_generate_nftoken():
                     
             return jsonify({"success": False, "error": f"Failed to generate link after {max_attempts} attempts. Last error: {last_error_msg}"}), 500
 
-        # If not an access key and length <= 20
-        if len(cookie_value) <= 20 and not cookie_value.startswith("B") and not cookie_value.startswith("FALLBACK:"):
+        # If it was an access code but we didn't find it in the DB
+        if is_access_code and not acc_key_row:
             return register_fail("Mã truy cập không hợp lệ hoặc không tồn tại.")
 
         # 2. Fallback: Parse raw tokens
@@ -2765,7 +2766,7 @@ def api_generate_nftoken():
         secure_netflix_id = ""
         
         unquoted_cookie = urllib.parse.unquote(cookie_value)
-        is_already_token = unquoted_cookie.startswith("B") or unquoted_cookie.startswith("FALLBACK:")
+        is_already_token = (unquoted_cookie.startswith("B") and len(unquoted_cookie) > 50) or unquoted_cookie.startswith("FALLBACK:")
         
         if is_already_token:
             token = cookie_value 
