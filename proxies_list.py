@@ -3,9 +3,9 @@ import random
 import requests
 import time
 
-# Cấu hình Webshare Proxy (Đã sửa đúng mật khẩu số 8: qov98az2o10z)
-WEBSHARE_USERNAME = "cgiwagsj"
-WEBSHARE_PASSWORD = "qov98az2o10z"
+# Cấu hình Webshare Rotating Proxy chuẩn từ Dashboard
+WEBSHARE_USERNAME = "cgiwagsj-rotate"
+WEBSHARE_PASSWORD = "qov93az2o10z"
 WEBSHARE_HOST = "p.webshare.io"
 WEBSHARE_PORT = "80"
 
