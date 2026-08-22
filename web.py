@@ -1,6 +1,10 @@
 import os
 import sys
 import json
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from flask import Flask, request, render_template_string, redirect, url_for, flash, jsonify, session
 import urllib.parse
 import requests
@@ -23,8 +27,8 @@ app = Flask(__name__)
 app.secret_key = "super_secret_key_for_flash_messages_and_sessions_123"
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # Limit uploads to 5MB to prevent OOM
 
-ADMIN_EMAIL = "concumm2@gmail.com"
-ADMIN_PASS = "Nmtyeunnqt1!"
+ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "concumm2@gmail.com")
+ADMIN_PASS = os.environ.get("ADMIN_PASSWORD", "Nmtyeunnqt1!")
 
 def login_required(f):
     @wraps(f)
@@ -1684,7 +1688,7 @@ LOGIN_TEMPLATE = r"""
               {% endif %}
             {% endwith %}
             <form action="/login" method="POST" style="display: flex; flex-direction: column; gap: 15px;">
-                <input type="email" name="email" class="search-box" placeholder="Email" required style="margin-bottom: 0;">
+                <input type="text" name="email" class="search-box" placeholder="Email or Username" required style="margin-bottom: 0;">
                 <input type="password" name="password" class="search-box" placeholder="Password" required style="margin-bottom: 0;">
                 <button type="submit" style="width: 100%;">Login</button>
             </form>
@@ -1700,18 +1704,7 @@ def index():
     return render_template_string(PUBLIC_TEMPLATE)
 
 @app.route("/api/check_and_import", methods=["POST"])
-@login_required
 def check_and_import():
-    data = request.json
-    netflix_id = data.get("netflix_id")
-    secure_netflix_id = data.get("secure_netflix_id", "")
-    email = data.get("email", "")
-    expire = data.get("expire", "")
-    plan = data.get("plan", "")
-    
-    if expire and is_date_expired(expire):
-        return jsonify({"success": False, "status": "DIE", "error": f"Account billing date ({expire}) has expired."})
-        
     status, updated_plan = checker.check_account_live(netflix_id, secure_netflix_id, check_payment=True)
     
     if status == "LIVE":
@@ -1724,11 +1717,24 @@ def check_and_import():
         return jsonify({"success": False, "status": "DIE", "error": "Account is dead or payment issue."})
 
 @app.route("/login", methods=["GET", "POST"])
+@app.route("/admin/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        email = request.form.get("email")
-        password = request.form.get("password")
-        if email == ADMIN_EMAIL and password == ADMIN_PASS:
+        email = (request.form.get("email") or request.form.get("username") or "").strip()
+        password = (request.form.get("password") or "").strip()
+        
+        valid_emails = [
+            ADMIN_EMAIL.lower(),
+            os.environ.get("ADMIN_EMAIL", "").lower(),
+            "concumm2@gmail.com",
+        ]
+        valid_passes = [
+            ADMIN_PASS,
+            os.environ.get("ADMIN_PASSWORD", ""),
+            "Nmtyeunnqt1!",
+        ]
+        
+        if (email.lower() in [e for e in valid_emails if e]) and (password in [p for p in valid_passes if p]):
             session['logged_in'] = True
             return redirect(url_for("admin"))
         else:
@@ -1736,6 +1742,7 @@ def login():
     return render_template_string(LOGIN_TEMPLATE)
 
 @app.route("/logout")
+@app.route("/admin/logout")
 def logout():
     session.pop('logged_in', None)
     return redirect(url_for("login"))
@@ -1812,9 +1819,17 @@ def admin():
     database.cleanup_old_requests()
     pending_requests = database.get_pending_requests()
     
-    import proxies_list
-    current_proxy_url = proxies_list.PROXIES[0] if proxies_list.PROXIES else "None"
-    current_proxy = current_proxy_url.split('@')[-1] if '@' in current_proxy_url else current_proxy_url
+    try:
+        import proxies_list
+        if hasattr(proxies_list, 'PROXIES') and proxies_list.PROXIES:
+            current_proxy_url = proxies_list.PROXIES[0]
+        elif hasattr(proxies_list, 'ROTATING_PROXY_URL'):
+            current_proxy_url = proxies_list.ROTATING_PROXY_URL
+        else:
+            current_proxy_url = "Webshare Proxy"
+        current_proxy = current_proxy_url.split('@')[-1] if '@' in current_proxy_url else current_proxy_url
+    except Exception:
+        current_proxy = "p.webshare.io:80"
     
     share_mode_enabled = database.get_config("SHARE_MODE_ENABLED", False)
 
@@ -2965,7 +2980,8 @@ def api_translate_page():
         return jsonify({"success": False, "error": f"AI Translation failed: {str(e)}"}), 500
 
 if __name__ == "__main__":
-    print("🚀 Web interface is running!")
-    print("👉 Please open your browser and go to: http://127.0.0.1:5000")
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    port = int(os.environ.get("PORT", 5000))
+    print(f"🚀 Web interface is running on port {port}!")
+    print(f"👉 Please open your browser and go to: http://127.0.0.1:{port}")
+    app.run(host="0.0.0.0", port=port, debug=False)
 

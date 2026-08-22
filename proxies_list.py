@@ -11,6 +11,7 @@ WEBSHARE_PORT = "80"
 
 # Gateway xoay IP tự động của Webshare
 ROTATING_PROXY_URL = f"http://{WEBSHARE_USERNAME}:{WEBSHARE_PASSWORD}@{WEBSHARE_HOST}:{WEBSHARE_PORT}"
+PROXIES = [ROTATING_PROXY_URL]
 
 # Đảm bảo _PROXIES_CACHE lưu đúng định dạng dict chuẩn cho requests
 ROTATING_PROXY_DICT = {

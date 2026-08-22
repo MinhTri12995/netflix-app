@@ -1,16 +1,20 @@
 import os
+import threading
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from supabase import create_client, Client
 
-import threading
-
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://zzdlmwhmhjofqmhfknbv.supabase.co")
-SUPABASE_KEY = os.environ.get("SUPABASE_SECRET_KEY", "")
+SUPABASE_KEY = os.environ.get("SUPABASE_SECRET_KEY") or os.environ.get("SUPABASE_KEY") or ""
 
 _local = threading.local()
 
 def get_supabase() -> Client:
     if not hasattr(_local, "client"):
-        _local.client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        key = SUPABASE_KEY or "dummy_key_to_prevent_startup_crash"
+        _local.client = create_client(SUPABASE_URL, key)
     return _local.client
 
 import json
@@ -69,28 +73,128 @@ def save_account(email, expire_date, netflix_id, secure_netflix_id="", plan=None
     }
     if plan:
         data["plan"] = plan
-    get_supabase().table("netflix_accounts").upsert(data).execute()
+    try:
+        if SUPABASE_KEY:
+            get_supabase().table("netflix_accounts").upsert(data).execute()
+            return
+    except Exception as e:
+        print(f"Supabase save_account error: {e}")
+    try:
+        import sqlite3
+        conn = sqlite3.connect("accounts.db")
+        c = conn.cursor()
+        c.execute("""CREATE TABLE IF NOT EXISTS netflix_accounts (
+            email TEXT PRIMARY KEY,
+            expire_date TEXT,
+            netflix_id TEXT,
+            secure_netflix_id TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            plan TEXT
+        )""")
+        c.execute("INSERT OR REPLACE INTO netflix_accounts (email, expire_date, netflix_id, secure_netflix_id, plan) VALUES (?, ?, ?, ?, ?)",
+                  (email, expire_date, netflix_id, secure_netflix_id, plan or "Premium"))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"SQLite save_account error: {e}")
     
 def delete_account(email):
-    get_supabase().table("netflix_accounts").delete().eq("email", email).execute()
+    try:
+        if SUPABASE_KEY:
+            get_supabase().table("netflix_accounts").delete().eq("email", email).execute()
+    except Exception as e:
+        print(f"Supabase delete error: {e}")
+    try:
+        import sqlite3
+        if os.path.exists("accounts.db"):
+            conn = sqlite3.connect("accounts.db")
+            c = conn.cursor()
+            c.execute("DELETE FROM netflix_accounts WHERE email = ?", (email,))
+            conn.commit()
+            conn.close()
+    except Exception:
+        pass
 
 def update_plan(email, plan):
     data = {"plan": plan}
-    get_supabase().table("netflix_accounts").update(data).eq("email", email).execute()
+    try:
+        if SUPABASE_KEY:
+            get_supabase().table("netflix_accounts").update(data).eq("email", email).execute()
+    except Exception as e:
+        print(f"Supabase update_plan error: {e}")
+    try:
+        import sqlite3
+        if os.path.exists("accounts.db"):
+            conn = sqlite3.connect("accounts.db")
+            c = conn.cursor()
+            c.execute("UPDATE netflix_accounts SET plan = ? WHERE email = ?", (plan, email))
+            conn.commit()
+            conn.close()
+    except Exception:
+        pass
 
 def fetch_all_rows(table_name, columns="*"):
     all_data = []
     limit = 1000
     offset = 0
-    while True:
-        response = get_supabase().table(table_name).select(columns).range(offset, offset + limit - 1).execute()
-        data = response.data
-        if not data:
-            break
-        all_data.extend(data)
-        if len(data) < limit:
-            break
-        offset += limit
+    try:
+        if SUPABASE_KEY:
+            while True:
+                response = get_supabase().table(table_name).select(columns).range(offset, offset + limit - 1).execute()
+                data = response.data
+                if not data:
+                    break
+                all_data.extend(data)
+                if len(data) < limit:
+                    break
+                offset += limit
+            if all_data:
+                return all_data
+    except Exception as e:
+        print(f"Supabase fetch error for {table_name}: {e}")
+
+    # Fallback to local SQLite if Supabase credentials are missing or API fails
+    try:
+        import sqlite3
+        db_path = "accounts.db" if os.path.exists("accounts.db") else ("netflix.db" if os.path.exists("netflix.db") else None)
+        if db_path:
+            conn = sqlite3.connect(db_path)
+            c = conn.cursor()
+            if table_name == "netflix_accounts":
+                c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='netflix_accounts'")
+                if c.fetchone():
+                    c.execute("SELECT * FROM netflix_accounts")
+                    rows = c.fetchall()
+                    conn.close()
+                    result = []
+                    for r in rows:
+                        result.append({
+                            "email": r[0] if len(r) > 0 else "",
+                            "expire_date": r[1] if len(r) > 1 else "",
+                            "netflix_id": r[2] if len(r) > 2 else "",
+                            "secure_netflix_id": r[3] if len(r) > 3 else "",
+                            "created_at": r[4] if len(r) > 4 else "",
+                            "plan": r[5] if len(r) > 5 else "Premium",
+                        })
+                    return result
+            elif table_name == "access_keys":
+                c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='access_keys'")
+                if c.fetchone():
+                    c.execute("SELECT * FROM access_keys")
+                    rows = c.fetchall()
+                    conn.close()
+                    result = []
+                    for r in rows:
+                        result.append({
+                            "code": r[0] if len(r) > 0 else "",
+                            "assigned_email": r[1] if len(r) > 1 else "",
+                            "created_at": r[2] if len(r) > 2 else "",
+                            "expire_at": r[3] if len(r) > 3 else None,
+                        })
+                    return result
+            conn.close()
+    except Exception as e:
+        print(f"SQLite fallback error: {e}")
     return all_data
 
 def get_all_accounts():
@@ -98,14 +202,30 @@ def get_all_accounts():
     # Chuyển đổi list of dicts thành list of tuples cho code cũ tương thích
     rows = []
     for r in data:
-        rows.append((r["email"], r["expire_date"], r["netflix_id"], r["secure_netflix_id"], r.get("created_at"), r.get("plan")))
+        rows.append((r.get("email"), r.get("expire_date"), r.get("netflix_id"), r.get("secure_netflix_id"), r.get("created_at"), r.get("plan", "Premium")))
     return rows
 
 def get_account_by_email(email):
-    response = get_supabase().table("netflix_accounts").select("*").eq("email", email).execute()
-    if response.data:
-        r = response.data[0]
-        return (r["email"], r["expire_date"], r["netflix_id"], r["secure_netflix_id"], r.get("created_at"), r.get("plan"))
+    try:
+        if SUPABASE_KEY:
+            response = get_supabase().table("netflix_accounts").select("*").eq("email", email).execute()
+            if response.data:
+                r = response.data[0]
+                return (r["email"], r["expire_date"], r["netflix_id"], r["secure_netflix_id"], r.get("created_at"), r.get("plan"))
+    except Exception:
+        pass
+    try:
+        import sqlite3
+        if os.path.exists("accounts.db"):
+            conn = sqlite3.connect("accounts.db")
+            c = conn.cursor()
+            c.execute("SELECT email, expire_date, netflix_id, secure_netflix_id, created_at, plan FROM netflix_accounts WHERE email = ?", (email,))
+            r = c.fetchone()
+            conn.close()
+            if r:
+                return (r[0], r[1], r[2], r[3], r[4], r[5] if len(r)>5 else "Premium")
+    except Exception:
+        pass
     return None
 
 def get_random_available_account(plan_type=None):

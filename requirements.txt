@@ -4,3 +4,4 @@ requests[socks]
 gunicorn
 supabase
 boto3
+python-dotenv
