@@ -1704,17 +1704,37 @@ def index():
     return render_template_string(PUBLIC_TEMPLATE)
 
 @app.route("/api/check_and_import", methods=["POST"])
+@app.route("/admin/api/check_and_import", methods=["POST"])
+@login_required
 def check_and_import():
-    status, updated_plan = checker.check_account_live(netflix_id, secure_netflix_id, check_payment=True)
-    
-    if status == "LIVE":
-        final_plan = updated_plan if updated_plan else plan
-        database.save_account(email, expire, netflix_id, secure_netflix_id, final_plan)
-        return jsonify({"success": True, "status": "LIVE", "plan": final_plan})
-    elif status == "ERROR":
-        return jsonify({"success": False, "status": "ERROR", "error": "Proxy or API error. Retry later."})
-    else:
-        return jsonify({"success": False, "status": "DIE", "error": "Account is dead or payment issue."})
+    try:
+        data = request.get_json(silent=True) or {}
+        email = (data.get("email") or "").strip().lower()
+        expire = (data.get("expire") or "").strip()
+        plan = (data.get("plan") or "").strip()
+        netflix_id = (data.get("netflix_id") or "").strip()
+        secure_netflix_id = (data.get("secure_netflix_id") or "").strip()
+        
+        if not netflix_id:
+            return jsonify({"success": False, "status": "ERROR", "error": "NetflixId is required"}), 400
+            
+        status, updated_plan = checker.check_account_live(netflix_id, secure_netflix_id, check_payment=True)
+        
+        if status == "LIVE":
+            final_plan = updated_plan if updated_plan and updated_plan != "VALID" else (plan if plan and plan != "Unknown" else "Premium")
+            import_email = email if email else f"bulk_{netflix_id[:8]}@netflix.com"
+            import_expire = expire if expire and expire != "N/A" else "2099-12-31"
+            
+            database.init_db()
+            database.save_account(import_email, import_expire, netflix_id, secure_netflix_id, final_plan)
+            return jsonify({"success": True, "status": "LIVE", "plan": final_plan})
+        elif status == "ERROR":
+            return jsonify({"success": False, "status": "ERROR", "error": "Proxy or API error. Retry later."})
+        else:
+            return jsonify({"success": False, "status": "DIE", "error": "Account is dead or payment issue."})
+    except Exception as e:
+        print(f"Check and import error: {e}")
+        return jsonify({"success": False, "status": "ERROR", "error": str(e)}), 500
 
 @app.route("/login", methods=["GET", "POST"])
 @app.route("/admin/login", methods=["GET", "POST"])
@@ -1892,6 +1912,7 @@ def generate_key():
     return redirect(url_for("admin"))
 
 @app.route("/admin/rotate_key/<code>", methods=["POST"])
+@app.route("/admin/keys/<code>/rotate", methods=["POST"])
 @login_required
 def rotate_key(code):
     success = database.rotate_access_key(code)
@@ -1902,6 +1923,7 @@ def rotate_key(code):
     return redirect(url_for("admin"))
 
 @app.route("/admin/delete_key/<code>", methods=["POST"])
+@app.route("/admin/keys/<code>/delete", methods=["POST"])
 @login_required
 def delete_key(code):
     database.delete_access_key(code)
@@ -1909,6 +1931,7 @@ def delete_key(code):
     return redirect(url_for("admin"))
 
 @app.route("/upload", methods=["POST"])
+@app.route("/admin/upload", methods=["POST"])
 @login_required
 def upload():
     if "account_file" not in request.files:
@@ -1946,7 +1969,9 @@ def upload():
             
     return redirect(url_for("admin"))
 
-@app.route("/delete/<email>", methods=["POST"])
+@app.route("/delete/<path:email>", methods=["POST"])
+@app.route("/admin/delete/<path:email>", methods=["POST"])
+@app.route("/admin/accounts/<path:email>/delete", methods=["POST"])
 @login_required
 def delete_acc(email):
     database.delete_account(email)
@@ -1957,18 +1982,18 @@ from concurrent.futures import ThreadPoolExecutor
 
 def check_single_account(acc, force=False, check_payment=False):
     email = acc[0]
-    current_plan = acc[5]
+    current_plan = acc[5] if len(acc) > 5 else None
     
     # Bỏ qua những tài khoản đã có gói cước nếu không force
     if not force and current_plan:
         return
         
     netflix_id = acc[2]
-    secure_netflix_id = acc[3]
+    secure_netflix_id = acc[3] if len(acc) > 3 else ""
     status, plan = checker.check_account_live(netflix_id, secure_netflix_id, check_payment)
     
-    if status == "LIVE" and plan:
-        if not check_payment:
+    if status == "LIVE":
+        if plan and plan != "VALID":
             database.update_plan(email, plan)
     elif status == "DIE":
         database.delete_account(email)
@@ -1983,6 +2008,7 @@ def background_check_all():
                 executor.submit(check_single_account, acc, False)
 
 @app.route("/check_all", methods=["POST"])
+@app.route("/admin/check_all", methods=["POST"])
 @login_required
 def check_all():
     database.init_db()
@@ -2023,6 +2049,7 @@ def background_check_payment_all():
                 executor.submit(check_single_account, acc, True, True)
 
 @app.route("/check_payment", methods=["POST"])
+@app.route("/admin/check_payment", methods=["POST"])
 @login_required
 def check_payment_route():
     database.init_db()
@@ -2042,6 +2069,7 @@ def check_payment_route():
     return redirect(url_for("admin"))
 
 @app.route("/filter_duplicates", methods=["POST"])
+@app.route("/admin/filter_duplicates", methods=["POST"])
 @login_required
 def filter_duplicates():
     database.init_db()
@@ -2097,6 +2125,7 @@ def filter_duplicates():
     return redirect(url_for("admin"))
 
 @app.route("/force_check_all", methods=["POST"])
+@app.route("/admin/force_check_all", methods=["POST"])
 @login_required
 def force_check_all():
     database.init_db()

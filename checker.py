@@ -2,7 +2,11 @@ import requests
 import time
 import json
 import re
+from datetime import datetime
 import proxies_list
+from urllib3.exceptions import InsecureRequestWarning
+
+requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
 
 NETFLIX_API_URL = "https://ios.prod.ftl.netflix.com/nq/mobile/nqios/~15.48.0/user"
 
@@ -139,7 +143,8 @@ def check_web_account_status_and_plan(cookies, proxy_dict):
             headers=headers,
             proxies=proxy_dict,
             allow_redirects=True,
-            timeout=15
+            timeout=15,
+            verify=False
         )
         url_lower = response.url.lower()
         html = response.text

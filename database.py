@@ -61,8 +61,36 @@ def set_config(key, value):
         print(f"Supabase set_config notice: {e}")
 
 def init_db():
-    # Bảng sẽ được tạo bằng tay trên giao diện Supabase
-    print("Sử dụng Supabase REST API (Không cần init local)")
+    try:
+        import sqlite3
+        conn = sqlite3.connect("accounts.db")
+        c = conn.cursor()
+        c.execute("""CREATE TABLE IF NOT EXISTS netflix_accounts (
+            email TEXT PRIMARY KEY,
+            expire_date TEXT,
+            netflix_id TEXT,
+            secure_netflix_id TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            plan TEXT
+        )""")
+        try:
+            c.execute("ALTER TABLE netflix_accounts ADD COLUMN plan TEXT")
+        except Exception:
+            pass
+        c.execute("""CREATE TABLE IF NOT EXISTS access_keys (
+            code TEXT PRIMARY KEY,
+            assigned_email TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            expire_at TEXT
+        )""")
+        try:
+            c.execute("ALTER TABLE access_keys ADD COLUMN expire_at TEXT")
+        except Exception:
+            pass
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"init_db local SQLite notice: {e}")
 
 def save_account(email, expire_date, netflix_id, secure_netflix_id="", plan=None):
     data = {
@@ -91,6 +119,10 @@ def save_account(email, expire_date, netflix_id, secure_netflix_id="", plan=None
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             plan TEXT
         )""")
+        try:
+            c.execute("ALTER TABLE netflix_accounts ADD COLUMN plan TEXT")
+        except Exception:
+            pass
         c.execute("INSERT OR REPLACE INTO netflix_accounts (email, expire_date, netflix_id, secure_netflix_id, plan) VALUES (?, ?, ?, ?, ?)",
                   (email, expire_date, netflix_id, secure_netflix_id, plan or "Premium"))
         conn.commit()
