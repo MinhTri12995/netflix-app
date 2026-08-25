@@ -1150,7 +1150,16 @@ ADMIN_TEMPLATE = r"""
         <div class="glass-panel" style="border: 1px solid #3498db; margin-bottom: 20px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
                 <h3 style="margin: 0; font-weight: 400; color: #3498db;">📊 System Stock & Proxy</h3>
-                <div style="display: flex; align-items: center; gap: 15px;">
+                <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                    <form action="/admin/toggle_mix_plan" method="POST" style="margin: 0; display: flex; align-items: center; gap: 5px;" title="Khi bật, mã 15 ký tự (Premium) sẽ ưu tiên cấp Premium, nếu hết sẽ tự động cấp Standard không ads">
+                        <span style="font-size: 0.9rem; color: #aaa;">Mix Plan (Standard + Premium):</span>
+                        <label class="switch" style="position: relative; display: inline-block; width: 40px; height: 20px;">
+                            <input type="checkbox" onChange="this.form.submit()" {% if mix_plan_enabled %}checked{% endif %} style="opacity: 0; width: 0; height: 0;">
+                            <span class="slider round" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: {% if mix_plan_enabled %}#2ecc71{% else %}#ccc{% endif %}; transition: .4s; border-radius: 20px;">
+                                <span style="position: absolute; height: 16px; width: 16px; left: {% if mix_plan_enabled %}22px{% else %}2px{% endif %}; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%;"></span>
+                            </span>
+                        </label>
+                    </form>
                     <form action="/admin/toggle_share_mode" method="POST" style="margin: 0; display: flex; align-items: center; gap: 5px;">
                         <span style="font-size: 0.9rem; color: #aaa;">Share Mode (1 Code = 2 Accs):</span>
                         <label class="switch" style="position: relative; display: inline-block; width: 40px; height: 20px;">
@@ -1852,6 +1861,7 @@ def admin():
         current_proxy = "p.webshare.io:80"
     
     share_mode_enabled = database.get_config("SHARE_MODE_ENABLED", False)
+    mix_plan_enabled = database.get_config("MIX_PREMIUM_STANDARD", False)
 
     return render_template_string(
         ADMIN_TEMPLATE, 
@@ -1867,10 +1877,21 @@ def admin():
         pending_requests=pending_requests,
         stats=stats,
         current_proxy=current_proxy,
-        share_mode_enabled=share_mode_enabled
+        share_mode_enabled=share_mode_enabled,
+        mix_plan_enabled=mix_plan_enabled
     )
 
 from datetime import datetime, timedelta
+
+@app.route("/admin/toggle_mix_plan", methods=["POST"])
+@login_required
+def toggle_mix_plan():
+    current_mode = database.get_config("MIX_PREMIUM_STANDARD", False)
+    new_mode = not current_mode
+    database.set_config("MIX_PREMIUM_STANDARD", new_mode)
+    status_str = "BẬT" if new_mode else "TẮT"
+    flash(f"✅ Đã {status_str} chế độ Mix Plan (Premium + Standard không ads cho Code 15 ký tự, ưu tiên Premium trước).", "success")
+    return redirect(url_for("admin"))
 
 @app.route("/admin/toggle_share_mode", methods=["POST"])
 @login_required

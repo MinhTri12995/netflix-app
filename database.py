@@ -268,60 +268,47 @@ def get_random_available_account(plan_type=None):
     if not acc_data:
         return None
         
-    # Lọc tài khoản theo gói cước nếu có yêu cầu
-    if plan_type:
-        premium_kws = ['premium', 'ultra', 'премиум', 'özel', 'ozel', 'cao cấp', 'พรีเมียม', 'مميز', '高級', '高级', 'プレミアム', '프리미엄']
-        standard_kws = ['standard', 'tiêu chuẩn', 'стандартный', 'standart', '標準', '标准', 'estándar', 'padrão', 'มาตรฐาน', 'قياسي', 'スタンダード', '스탠다드']
-        basic_kws = ['basic', 'cơ bản', 'базовый', 'temel', 'básico', 'พื้นฐาน', 'أساسي', '基本', 'ベーシック', '베이직']
-        ads_kws = ['ads', 'adverts', 'anuncios', 'pub', 'werbung', 'pubblicità', 'quảng cáo', 'โฆษณา', '広告', '광고', '廣告', '广告', 'рекламо', 'reklam', 'reklamy']
+    premium_kws = ['premium', 'ultra', 'премиум', 'özel', 'ozel', 'cao cấp', 'พรีเมียม', 'مميز', '高級', '高级', 'プレミアム', '프리미엄']
+    standard_kws = ['standard', 'tiêu chuẩn', 'стандартный', 'standart', '標準', '标准', 'estándar', 'padrão', 'มาตรฐาน', 'قياسي', 'スタンダード', '스탠다드']
+    basic_kws = ['basic', 'cơ bản', 'базовый', 'temel', 'básico', 'พื้นฐาน', 'أساسي', '基本', 'ベーシック', '베이직']
+    # Danh sách từ khóa nhận diện quảng cáo trên tất cả các ngôn ngữ
+    ads_kws = [
+        'ads', 'advert', 'anuncio', 'anúncio', 'pub ', 'pub.', 'pub,', 'avec pub', 
+        'con pub', 'publicit', 'pubblicit', 'werbung', 'quảng cáo', 'quang cao', 
+        'โฆษณา', '広告', '광고', '廣告', '广告', 'реклам', 'reklam', 'publicidad', 'with ads', 'with_ads'
+    ]
 
-        import re
-        def has_any_kw(text, kws):
-            for kw in kws:
-                if re.match(r'^[a-z_]+$', kw):
-                    if re.search(r'\b' + kw + r'\b', text):
-                        return True
-                else:
-                    if kw in text:
-                        return True
+    import re
+    def has_any_kw(text, kws):
+        for kw in kws:
+            if kw in text:
+                return True
+        return False
+
+    def is_acc_premium(plan_str):
+        if not plan_str or plan_str in ["none", "n/a"]:
+            return True
+        return has_any_kw(plan_str, premium_kws) or "premium" in plan_str
+
+    def is_acc_standard_no_ads(plan_str):
+        if not plan_str:
             return False
+        # Nếu có bất kỳ dấu hiệu nào của quảng cáo (Ads) -> Loại bỏ ngay lập tức 100%
+        if has_any_kw(plan_str, ads_kws) or "standard_ads" in plan_str:
+            return False
+        # Phải có từ khóa của gói Standard
+        return has_any_kw(plan_str, standard_kws) or "standard" in plan_str
 
-        all_emails = []
-        for r in acc_data:
-            raw_plan = r.get("plan")
-            plan_str = str(raw_plan).lower() if raw_plan else ""
-            
-            # Nếu chưa có thông tin gói (plan rỗng/None/N/A), mặc định coi là Premium (giống như thống kê ngoài Dashboard)
-            if not plan_str or plan_str == "none" or plan_str == "n/a":
-                if plan_type == "Premium":
-                    all_emails.append(r["email"])
-                continue
-                
-            is_match = False
-            if plan_type == "Premium":
-                if has_any_kw(plan_str, premium_kws):
-                    is_match = True
-            elif plan_type == "Standard_Ads":
-                if has_any_kw(plan_str, standard_kws) and has_any_kw(plan_str, ads_kws):
-                    is_match = True
-                elif "standard_ads" in plan_str:
-                    is_match = True
-            elif plan_type == "Standard":
-                if has_any_kw(plan_str, standard_kws) and not has_any_kw(plan_str, ads_kws):
-                    is_match = True
-            elif plan_type == "Basic":
-                if has_any_kw(plan_str, basic_kws):
-                    is_match = True
-                    
-            if is_match or plan_type.lower() == plan_str:
-                all_emails.append(r["email"])
-                
-        # Nếu không tìm thấy acc khớp gói chính xác, dùng toàn bộ acc trong kho làm fallback
-        if not all_emails:
-            all_emails = [r["email"] for r in acc_data]
-    else:
-        all_emails = [r["email"] for r in acc_data]
-    
+    def is_acc_standard_ads(plan_str):
+        if not plan_str:
+            return False
+        return (has_any_kw(plan_str, standard_kws) and has_any_kw(plan_str, ads_kws)) or "standard_ads" in plan_str or "with ads" in plan_str
+
+    def is_acc_basic(plan_str):
+        if not plan_str:
+            return False
+        return has_any_kw(plan_str, basic_kws) or "basic" in plan_str
+
     keys_data = fetch_all_rows("access_keys", "assigned_email")
     from collections import Counter
     email_counts = Counter()
@@ -332,6 +319,81 @@ def get_random_available_account(plan_type=None):
                 email = e.strip()
                 if email:
                     email_counts[email] += 1
+
+    # Kiểm tra chế độ Mix Plan (Premium + Standard không Ads cho code 15 ký tự / Premium)
+    mix_plan_enabled = get_config("MIX_PREMIUM_STANDARD", False)
+
+    if plan_type == "Premium" and mix_plan_enabled:
+        premium_emails = []
+        standard_no_ads_emails = []
+
+        for r in acc_data:
+            raw_plan = r.get("plan")
+            plan_str = str(raw_plan).lower() if raw_plan else ""
+            if is_acc_premium(plan_str):
+                premium_emails.append(r["email"])
+            elif is_acc_standard_no_ads(plan_str):
+                standard_no_ads_emails.append(r["email"])
+
+        # 1. Ưu tiên cao nhất: Tài khoản Premium mới tinh chưa gán cho code nào (0 code)
+        prem_0 = [e for e in premium_emails if email_counts.get(e, 0) == 0]
+        if prem_0:
+            return random.choice(prem_0)
+
+        # 2. Ưu tiên thứ 2: Tài khoản Standard không ads mới tinh (0 code)
+        std_0 = [e for e in standard_no_ads_emails if email_counts.get(e, 0) == 0]
+        if std_0:
+            return random.choice(std_0)
+
+        # 3. Khi hết tài khoản mới (0 code): Ưu tiên tài khoản Premium có 1 code
+        prem_1 = [e for e in premium_emails if email_counts.get(e, 0) == 1]
+        if prem_1:
+            return random.choice(prem_1)
+
+        # 4. Ưu tiên kế tiếp: Tài khoản Standard không ads có 1 code
+        std_1 = [e for e in standard_no_ads_emails if email_counts.get(e, 0) == 1]
+        if std_1:
+            return random.choice(std_1)
+
+        # 5. Fallback trong tập mix (chỉ gồm Premium và Standard KHÔNG ads, ưu tiên Premium trước nếu cùng số lượt gán)
+        mix_emails = premium_emails + standard_no_ads_emails
+        if mix_emails:
+            return min(mix_emails, key=lambda e: (email_counts.get(e, 0), 0 if e in premium_emails else 1))
+
+        # Tuyệt đối không fallback sang tài khoản có Ads hoặc gói Basic
+        return None
+
+    # Logic phân phối mặc định (Khi Mix Plan tắt hoặc với các gói Standard / Standard_Ads / Basic)
+    if plan_type:
+        all_emails = []
+        for r in acc_data:
+            raw_plan = r.get("plan")
+            plan_str = str(raw_plan).lower() if raw_plan else ""
+            
+            is_match = False
+            if plan_type == "Premium":
+                if is_acc_premium(plan_str):
+                    is_match = True
+            elif plan_type == "Standard_Ads":
+                if is_acc_standard_ads(plan_str):
+                    is_match = True
+            elif plan_type == "Standard":
+                if is_acc_standard_no_ads(plan_str):
+                    is_match = True
+            elif plan_type == "Basic":
+                if is_acc_basic(plan_str):
+                    is_match = True
+                    
+            if is_match or plan_type.lower() == plan_str:
+                all_emails.append(r["email"])
+                
+        # Nếu yêu cầu Premium hoặc Standard (không ads) mà không có acc khớp, trả về None (không fallback lung tung sang acc có ads)
+        if not all_emails:
+            if plan_type in ["Premium", "Standard"]:
+                return None
+            all_emails = [r["email"] for r in acc_data]
+    else:
+        all_emails = [r["email"] for r in acc_data]
     
     available_emails_0 = []
     available_emails_1 = []
@@ -351,13 +413,9 @@ def get_random_available_account(plan_type=None):
     if available_emails_1:
         return random.choice(available_emails_1)
         
-    # 3. Fallback cuối: Chọn tài khoản có số lượng code gán ít nhất
+    # 3. Fallback cuối: Chọn tài khoản có số lượng code gán ít nhất trong danh sách gói
     if all_emails:
         return min(all_emails, key=lambda e: email_counts.get(e, 0))
-        
-    all_all = [r["email"] for r in acc_data]
-    if all_all:
-        return min(all_all, key=lambda e: email_counts.get(e, 0))
         
     return None
 
