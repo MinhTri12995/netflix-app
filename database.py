@@ -260,6 +260,31 @@ def get_account_by_email(email):
         pass
     return None
 
+def get_account_by_netflix_id(netflix_id):
+    if not netflix_id:
+        return None
+    try:
+        if SUPABASE_KEY:
+            response = get_supabase().table("netflix_accounts").select("*").eq("netflix_id", netflix_id).limit(1).execute()
+            if response.data and len(response.data) > 0:
+                r = response.data[0]
+                return (r["email"], r["expire_date"], r["netflix_id"], r["secure_netflix_id"], r.get("created_at"), r.get("plan"))
+    except Exception:
+        pass
+    try:
+        import sqlite3
+        if os.path.exists("accounts.db"):
+            conn = sqlite3.connect("accounts.db")
+            c = conn.cursor()
+            c.execute("SELECT email, expire_date, netflix_id, secure_netflix_id, created_at, plan FROM netflix_accounts WHERE netflix_id = ? LIMIT 1", (netflix_id,))
+            r = c.fetchone()
+            conn.close()
+            if r:
+                return (r[0], r[1], r[2], r[3], r[4], r[5] if len(r)>5 else "Premium")
+    except Exception:
+        pass
+    return None
+
 def get_random_available_account(plan_type=None):
     import random
     

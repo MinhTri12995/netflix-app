@@ -17,15 +17,16 @@ PAYMENT_DIE_KEYWORDS = [
     "paymentupdate", "payment-update", "billing-update",
     "your account is on hold", "membership is on hold", "account is on hold",
     "reactivar la suscripción", "reactivar tu suscripción", "reactivar suscripción",
-    "cập nhật thanh toán", "tài khoản bị tạm hoãn", "tài khoản bị tạm dừng",
+    "cập nhật thanh toán", "cập nhật phương thức thanh toán", "cập nhật thông tin thanh toán",
+    "tài khoản bị tạm hoãn", "tài khoản bị tạm dừng", "không thể xử lý khoản thanh toán",
     "zaktualizuj metodę płatności", "restart your membership", "update your payment",
     "update your billing information", "update billing", "we were unable to process your payment",
-    "actualiza tu información de pago", "actualiza tu thông tin de pago",
+    "actualiza tu información de pago", "actualizar información de pago",
     "atualize sua forma de pagamento", "renovar assinatura", "reiniciar membresía", "reiniciar membresia",
     "aggiorna i dati di pagamento", "mise à jour de votre mode de paiement", "ödeme bilgilerinizi güncelleyin", 
     "aktualisieren sie ihre zahlungsart", "reaktivera ditt medlemskap", "renouveler votre abonnement",
-    "suspension de votre compte", "cuenta suspendida", "payment is required", "thanh toán của bạn", 
-    "cập nhật phương thức thanh toán", "membershipstatus\":\"rejoin", "membershipstatus\":\"former_member",
+    "suspension de votre compte", "cuenta suspendida", "payment is required",
+    "membershipstatus\":\"rejoin", "membershipstatus\":\"former_member",
     "membershipstatus\":\"never_member", "ismembershipactive\":false", "finish sign-up", "hoàn tất đăng ký",
     "choose a plan", "choose your plan", "membership paused", "membership is paused",
     "warnuserofpaymentfailure", "ispaymentfailure", "payment_failure", "payment_hold", "paymenthold"
@@ -33,30 +34,60 @@ PAYMENT_DIE_KEYWORDS = [
 
 def normalize_plan_name(raw_plan_name, fallback_text=""):
     import unicodedata
+    import re
     
-    # 1. Nếu đã trích xuất được plan_name cụ thể từ JSON (e.g. "Premium", "Standard", "Standard with Ads")
+    # 1. Nếu đã trích xuất được plan_name cụ thể từ JSON / Metadata (e.g. "Premium", "Standard", "Cao cấp", "Standard with Ads")
     if raw_plan_name and str(raw_plan_name).strip():
-        p_clean = unicodedata.normalize('NFKD', str(raw_plan_name).lower()).encode('ASCII', 'ignore').decode('utf-8')
-        if any(kw in p_clean for kw in ['ads', 'adverts', 'anuncios', 'pub', 'werbung', 'quang cao', 'reklam', 'reklama']):
-            return "Standard with Ads"
-        elif any(kw in p_clean for kw in ['premium', 'ultra', '4k', '4-screen']):
-            return "Premium"
-        elif any(kw in p_clean for kw in ['standard', 'estandar', 'standardowy', 'padrao', 'hd']):
-            return "Standard"
-        elif any(kw in p_clean for kw in ['basic', 'basico', 'podstawowy']):
-            return "Basic"
-        return str(raw_plan_name).strip()
+        # Loại bỏ các ký tự vô hình zero-width (\ufeff, \u200b, v.v.)
+        raw_str = re.sub(r'[\ufeff\u200b\u200c\u200d\u200e\u200f\xa0]', '', str(raw_plan_name)).strip()
+        p_clean = unicodedata.normalize('NFKD', raw_str.lower()).encode('ASCII', 'ignore').decode('utf-8')
         
-    # 2. Fallback: Chỉ tìm trong các cụm từ gói cước chính xác
-    if fallback_text:
-        text = unicodedata.normalize('NFKD', str(fallback_text).lower()).encode('ASCII', 'ignore').decode('utf-8')
-        if any(kw in text for kw in ['"standard with ads"', '"standard_ads"', 'standard with ads', 'standard con anuncios', 'standard z reklamami']):
+        # Nhận diện Ads trước (trên tất cả ngôn ngữ)
+        if any(kw in p_clean for kw in ['ads', 'advert', 'anuncio', 'pub', 'werbung', 'quang cao', 'reklam', 'iklan', 'publicit']):
             return "Standard with Ads"
-        elif any(kw in text for kw in ['"premium"', 'plan: premium', 'premium plan', 'ultra hd', '4k uhd']):
+        elif any(kw in raw_str for kw in ['広告つきスタンダード', '広告']):
+            return "Standard with Ads"
+            
+        # Nhận diện Premium (trên tất cả ngôn ngữ)
+        if any(kw in p_clean for kw in ['premium', 'ultra', '4k', '4-screen', 'cao cap', 'ozel', 'premjum']):
             return "Premium"
-        elif any(kw in text for kw in ['"standard"', 'plan: standard', 'standard plan', 'standardowy']):
+        elif any(kw in raw_str for kw in ['المميزة', 'プレミアム', 'Cao cấp']):
+            return "Premium"
+            
+        # Nhận diện Standard (trên tất cả ngôn ngữ)
+        if any(kw in p_clean for kw in ['standard', 'estandar', 'standardowy', 'padrao', 'hd', 'standar', 'tieu chuan']):
             return "Standard"
-        elif any(kw in text for kw in ['"basic"', 'plan: basic', 'podstawowy']):
+        elif any(kw in raw_str for kw in ['القياسية', 'スタンダード', 'Tiêu chuẩn']):
+            return "Standard"
+            
+        # Nhận diện Basic & Mobile
+        if any(kw in p_clean for kw in ['basic', 'basico', 'podstawowy', 'co ban', 'temel', 'mobil']):
+            return "Basic"
+        elif any(kw in raw_str for kw in ['ベーシック', 'Cơ bản']):
+            return "Basic"
+            
+        return raw_str
+        
+    # 2. Fallback: Tìm trong các cụm từ gói cước chính xác từ HTML/JSON response
+    if fallback_text:
+        text_orig = str(fallback_text)
+        text_clean = unicodedata.normalize('NFKD', text_orig.lower()).encode('ASCII', 'ignore').decode('utf-8')
+        
+        if any(kw in text_clean for kw in ['"standard with ads"', '"standard_ads"', 'standard with ads', 'standard con anuncios', 'standard z reklamami', 'standard avec pub', 'reklam iceren', 'standar dengan iklan']):
+            return "Standard with Ads"
+        elif any(kw in text_orig for kw in ['広告つきスタンダード']):
+            return "Standard with Ads"
+        elif any(kw in text_clean for kw in ['"premium"', 'plan: premium', 'premium plan', 'ultra hd', '4k uhd', 'cao cap']):
+            return "Premium"
+        elif any(kw in text_orig for kw in ['المميزة', 'プレミアム']):
+            return "Premium"
+        elif any(kw in text_clean for kw in ['"standard"', 'plan: standard', 'standard plan', 'standardowy', 'padrao', 'tieu chuan']):
+            return "Standard"
+        elif any(kw in text_orig for kw in ['القياسية', 'スタンダード']):
+            return "Standard"
+        elif any(kw in text_clean for kw in ['"basic"', 'plan: basic', 'podstawowy', 'co ban', 'basico', 'mobile']):
+            return "Basic"
+        elif any(kw in text_orig for kw in ['ベーシック']):
             return "Basic"
             
     return "Premium"
@@ -66,13 +97,14 @@ def is_date_expired(date_str):
         return False
     
     clean_str = str(date_str).strip()
+    now = datetime.now()
     
     # 1. ISO format YYYY-MM-DD
     iso_match = re.search(r'(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})', clean_str)
     if iso_match:
         try:
             dt = datetime(int(iso_match.group(1)), int(iso_match.group(2)), int(iso_match.group(3)))
-            return dt.date() < datetime.now().date()
+            return dt.date() < now.date()
         except Exception:
             pass
 
@@ -81,7 +113,7 @@ def is_date_expired(date_str):
     if dmy_match:
         try:
             dt = datetime(int(dmy_match.group(3)), int(dmy_match.group(2)), int(dmy_match.group(1)))
-            return dt.date() < datetime.now().date()
+            return dt.date() < now.date()
         except Exception:
             pass
 
@@ -114,13 +146,16 @@ def is_date_expired(date_str):
         elif w in months and month is None:
             month = months[w]
 
-    if not year:
-        year = datetime.now().year
-
     if month and day:
+        if not year:
+            # Nếu không có năm, kiểm tra nếu tháng < tháng hiện tại thì là năm sau
+            if month < now.month:
+                year = now.year + 1
+            else:
+                year = now.year
         try:
             dt = datetime(year, month, day)
-            return dt.date() < datetime.now().date()
+            return dt.date() < now.date()
         except Exception:
             pass
 
@@ -192,6 +227,7 @@ def check_account_live(netflix_id, secure_netflix_id="", check_payment=True):
     """
     Kiem tra toan dien ca Token API va Web HTML.
     Chi tra ve LIVE khi tai khoan thuc su tao duoc Token VA khong bi loi thanh toan.
+    Co co che retry tu dong khi proxy gap loi ket noi.
     """
     cookies = {"NetflixId": netflix_id}
     if secure_netflix_id:
@@ -201,21 +237,37 @@ def check_account_live(netflix_id, secure_netflix_id="", check_payment=True):
     
     # 1. Kiem tra kha nang tao Token dang nhap truc tiep
     plan_api = _get_token_and_plan_api(netflix_id, secure_netflix_id, proxy_dict)
+    
+    # Retry voi Proxy moi neu bi loi mang/proxy
+    if plan_api == "ERROR":
+        proxy_dict = proxies_list.get_random_proxy()
+        plan_api = _get_token_and_plan_api(netflix_id, secure_netflix_id, proxy_dict)
+        
     if plan_api is None:
         return "DIE", None
-    elif plan_api == "ERROR":
-        # Thu kiem tra qua Web neu API bi loi mang/proxy
+    elif plan_api == "API_DEAD" or plan_api == "ERROR":
+        # API khong phan hoi, thu kiem tra qua Web
         web_status, web_plan = check_web_account_status_and_plan(cookies, proxy_dict)
+        if web_status == "ERROR":
+            proxy_dict = proxies_list.get_random_proxy()
+            web_status, web_plan = check_web_account_status_and_plan(cookies, proxy_dict)
         return web_status, web_plan
         
     # 2. Kiem tra trang Web YourAccount de tranh loi Payment Hold
     if check_payment:
         web_status, web_plan = check_web_account_status_and_plan(cookies, proxy_dict)
+        if web_status == "ERROR":
+            proxy_dict = proxies_list.get_random_proxy()
+            web_status, web_plan = check_web_account_status_and_plan(cookies, proxy_dict)
+            
         if web_status == "DIE":
             return "DIE", None
         elif web_status == "LIVE":
             final_plan = web_plan if web_plan else (plan_api if plan_api != "VALID" else "Premium")
             return "LIVE", final_plan
+        elif web_status == "ERROR":
+            # Neu web gap loi mang sau khi da co Token tu API, coi nhu van co the dung duoc hoac bao ERROR
+            return "LIVE", plan_api if plan_api != "VALID" else "Premium"
             
     return "LIVE", plan_api if plan_api != "VALID" else "Premium"
 

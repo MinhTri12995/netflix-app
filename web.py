@@ -1319,9 +1319,11 @@ ADMIN_TEMPLATE = r"""
             <h3 style="margin-top: 0; margin-bottom: 10px; font-weight: 400; color: #3498db;">🚀 Smart Bulk Folder Scanner</h3>
             <p style="font-size: 0.9rem; color: #aaa; margin-bottom: 20px;">Upload an entire folder containing multiple subfolders and text files. The browser will automatically extract cookies and check them LIVE one by one to prevent server overload.</p>
             
-            <div style="display: flex; gap: 15px; align-items: center; margin-bottom: 15px;">
-                <input type="file" id="bulkFolderInput" webkitdirectory directory multiple style="padding: 10px; background: rgba(0,0,0,0.2); border: 1px dashed #3498db; color: #ccc; flex: 1;">
+            <div style="display: flex; gap: 15px; align-items: center; margin-bottom: 15px; flex-wrap: wrap;">
+                <input type="file" id="bulkFolderInput" webkitdirectory directory multiple style="padding: 10px; background: rgba(0,0,0,0.2); border: 1px dashed #3498db; color: #ccc; flex: 1; min-width: 250px;">
                 <button id="startScanBtn" onclick="startBulkScan()" style="background: #3498db; padding: 12px 20px;">Start Scanning</button>
+                <button id="pauseScanBtn" onclick="togglePauseScan()" style="background: #f39c12; padding: 12px 20px; display: none;">⏸ Tạm dừng</button>
+                <button id="stopScanBtn" onclick="stopBulkScan()" style="background: #e74c3c; padding: 12px 20px; display: none;">⏹ Dừng quét</button>
             </div>
             
             <div id="scanProgressArea" style="display: none; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px;">
@@ -1333,9 +1335,14 @@ ADMIN_TEMPLATE = r"""
                     <div id="scanProgressBar" style="height: 100%; width: 0%; background: #2ecc71; transition: width 0.3s;"></div>
                 </div>
                 
-                <div style="display: flex; gap: 15px; font-size: 0.85rem; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 4px;">
+                <div style="display: flex; gap: 15px; font-size: 0.85rem; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 4px; margin-bottom: 10px;">
                     <div style="flex: 1; text-align: center;"><span style="color: #2ecc71; font-weight: bold; font-size: 1.2rem;" id="scanLiveCount">0</span><br>LIVE Added</div>
-                    <div style="flex: 1; text-align: center;"><span style="color: #e74c3c; font-weight: bold; font-size: 1.2rem;" id="scanDieCount">0</span><br>DIE / ERROR</div>
+                    <div style="flex: 1; text-align: center;"><span style="color: #e74c3c; font-weight: bold; font-size: 1.2rem;" id="scanDieCount">0</span><br>DIE</div>
+                    <div style="flex: 1; text-align: center;"><span style="color: #f39c12; font-weight: bold; font-size: 1.2rem;" id="scanErrorCount">0</span><br>LỖI MẠNG / PROXY</div>
+                </div>
+
+                <div id="scanActionArea" style="display: none; text-align: center; margin-top: 15px;">
+                    <button onclick="window.location.reload()" style="background: #2ecc71; padding: 10px 20px; font-size: 0.95rem; font-weight: bold; cursor: pointer; border: none; border-radius: 6px; color: #fff;">🔄 Tải lại trang để xem danh sách tài khoản mới</button>
                 </div>
             </div>
         </div>
@@ -1438,38 +1445,88 @@ ADMIN_TEMPLATE = r"""
             btn.style.opacity = '0.7';
         }
 
+        let isScanPaused = false;
+        let isScanStopped = false;
+
+        function togglePauseScan() {
+            const pauseBtn = document.getElementById('pauseScanBtn');
+            if (!isScanPaused) {
+                isScanPaused = true;
+                pauseBtn.innerHTML = "▶ Tiếp tục";
+                pauseBtn.style.background = "#2ecc71";
+                document.getElementById('scanStatusText').innerText = "ĐÃ TẠM DỪNG";
+                document.getElementById('scanStatusText').style.color = "#f39c12";
+            } else {
+                isScanPaused = false;
+                pauseBtn.innerHTML = "⏸ Tạm dừng";
+                pauseBtn.style.background = "#f39c12";
+                document.getElementById('scanStatusText').innerText = "Đang kiểm tra LIVE qua Proxy...";
+                document.getElementById('scanStatusText').style.color = "#3498db";
+            }
+        }
+
+        function stopBulkScan() {
+            isScanStopped = true;
+            document.getElementById('scanStatusText').innerText = "ĐÃ DỪNG QUÉT!";
+            document.getElementById('scanStatusText').style.color = "#e74c3c";
+            const btn = document.getElementById('startScanBtn');
+            btn.disabled = false;
+            btn.innerHTML = "Quét thư mục khác";
+            document.getElementById('pauseScanBtn').style.display = "none";
+            document.getElementById('stopScanBtn').style.display = "none";
+            document.getElementById('scanActionArea').style.display = "block";
+        }
+
+        // Helper giải mã an toàn tránh lỗi URIError
+        const safeDecode = (str) => {
+            if (!str) return "";
+            try {
+                return decodeURIComponent(str);
+            } catch(e) {
+                try {
+                    return unescape(str);
+                } catch(err) {
+                    return str;
+                }
+            }
+        };
+
         // Bulk Scan Logic
         async function startBulkScan() {
             const fileInput = document.getElementById('bulkFolderInput');
             if (!fileInput.files || fileInput.files.length === 0) {
-                alert("Please select a folder first!");
+                alert("Vui lòng chọn một thư mục chứa cookies trước!");
                 return;
             }
 
             const btn = document.getElementById('startScanBtn');
+            const pauseBtn = document.getElementById('pauseScanBtn');
+            const stopBtn = document.getElementById('stopScanBtn');
+
             btn.disabled = true;
-            btn.innerHTML = "⏳ Scanning files...";
+            btn.innerHTML = "⏳ Đang phân tích files...";
+            pauseBtn.style.display = "inline-block";
+            pauseBtn.innerHTML = "⏸ Tạm dừng";
+            pauseBtn.style.background = "#f39c12";
+            stopBtn.style.display = "inline-block";
+            document.getElementById('scanActionArea').style.display = "none";
 
             document.getElementById('scanProgressArea').style.display = "block";
+            document.getElementById('scanLiveCount').innerText = "0";
+            document.getElementById('scanDieCount').innerText = "0";
+            document.getElementById('scanErrorCount').innerText = "0";
+            document.getElementById('scanProgressBar').style.width = "0%";
+            document.getElementById('scanStatusText').innerText = "Đang đọc và lọc file...";
+            document.getElementById('scanStatusText').style.color = "#f39c12";
+            
+            isScanPaused = false;
+            isScanStopped = false;
             
             let allCookies = [];
-            
-            // Helper giải mã an toàn tránh lỗi URIError
-            const safeDecode = (str) => {
-                if (!str) return "";
-                try {
-                    return decodeURIComponent(str);
-                } catch(e) {
-                    try {
-                        return unescape(str);
-                    } catch(err) {
-                        return str;
-                    }
-                }
-            };
 
             // 1. Lọc và Đọc File Cục Bộ (Client-side)
             for (let i = 0; i < fileInput.files.length; i++) {
+                if (isScanStopped) break;
                 const file = fileInput.files[i];
                 const fname = file.name.toLowerCase();
                 
@@ -1480,24 +1537,41 @@ ADMIN_TEMPLATE = r"""
                         const trimmedText = text.trim();
                         if (!trimmedText) continue;
 
-                        // Xử lý trực tiếp nếu là định dạng JSON Array Cookie
-                        if (trimmedText.startsWith('[')) {
+                        // Lấy email gợi ý từ tên file (e.g. user@gmail.com_India_0001.txt hoặc user@gmail.com.txt)
+                        let fname_email = null;
+                        const fname_clean = file.name.replace(/\.[^/.]+$/, "");
+                        const email_match_fname = fname_clean.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+                        if (email_match_fname) {
+                            fname_email = email_match_fname[1];
+                        }
+
+                        // Xử lý định dạng JSON Cookie
+                        if (trimmedText.startsWith('[') || trimmedText.startsWith('{')) {
                             try {
-                                const jsonArr = JSON.parse(trimmedText);
-                                let j_nid = null, j_snid = "";
-                                for (let c of jsonArr) {
-                                    if (c.name === 'NetflixId') j_nid = c.value;
-                                    if (c.name === 'SecureNetflixId') j_snid = c.value;
+                                const parsedJson = JSON.parse(trimmedText);
+                                let cookieArray = null;
+                                if (Array.isArray(parsedJson)) {
+                                    cookieArray = parsedJson;
+                                } else if (parsedJson && Array.isArray(parsedJson.cookies)) {
+                                    cookieArray = parsedJson.cookies;
                                 }
-                                if (j_nid) {
-                                    allCookies.push({
-                                        email: file.name.replace(/\.[^/.]+$/, "") + "@cookie.com",
-                                        expire: 'N/A',
-                                        plan: 'Premium',
-                                        netflix_id: j_nid,
-                                        secure_netflix_id: j_snid
-                                    });
-                                    continue;
+                                
+                                if (cookieArray) {
+                                    let j_nid = null, j_snid = "";
+                                    for (let c of cookieArray) {
+                                        if (c && c.name === 'NetflixId') j_nid = safeDecode(c.value);
+                                        if (c && c.name === 'SecureNetflixId') j_snid = safeDecode(c.value);
+                                    }
+                                    if (j_nid) {
+                                        allCookies.push({
+                                            email: fname_email || (fname_clean + "@cookie.com"),
+                                            expire: 'N/A',
+                                            plan: 'Premium',
+                                            netflix_id: j_nid,
+                                            secure_netflix_id: j_snid
+                                        });
+                                        continue;
+                                    }
                                 }
                             } catch(jsonErr) {}
                         }
@@ -1511,13 +1585,15 @@ ADMIN_TEMPLATE = r"""
 
                         const push_account = () => {
                             if (current_netflix_id) {
-                                if (!current_email) {
-                                    current_email = "auto_" + Math.random().toString(36).substr(2, 8) + "@netflix.com";
+                                const acc_email = current_email || fname_email || ("auto_" + Math.random().toString(36).substr(2, 8) + "@netflix.com");
+                                let acc_plan = current_plan;
+                                if (acc_plan && ['none found', 'none', 'unknown', 'n/a', 'null', ''].includes(acc_plan.trim().toLowerCase())) {
+                                    acc_plan = null;
                                 }
                                 allCookies.push({
-                                    email: current_email,
+                                    email: acc_email,
                                     expire: current_expire,
-                                    plan: current_plan,
+                                    plan: acc_plan,
                                     netflix_id: current_netflix_id,
                                     secure_netflix_id: current_secure_netflix_id
                                 });
@@ -1555,10 +1631,17 @@ ADMIN_TEMPLATE = r"""
                                 continue;
                             }
                             
-                            if (line.toUpperCase().startsWith("NETFLIX ACCOUNT DETAILS")) { push_account(); continue; }
+                            if (line.toUpperCase().startsWith("NETFLIX ACCOUNT DETAILS")) { 
+                                if (current_netflix_id) push_account(); 
+                                continue; 
+                            }
                             
                             let e_match = line.match(/^(?:–|-|#)?\s*Email:\s*(.+)/i);
-                            if (e_match) { push_account(); current_email = e_match[1].trim(); continue; }
+                            if (e_match) { 
+                                if (current_netflix_id && current_email) push_account();
+                                current_email = e_match[1].trim(); 
+                                continue; 
+                            }
                             
                             let ex_match = line.match(/^(?:–|-|#)?\s*(?:Next Billing|Expire):\s*(.+)/i);
                             if (ex_match) { current_expire = ex_match[1].trim(); continue; }
@@ -1567,13 +1650,19 @@ ADMIN_TEMPLATE = r"""
                             if (p_match) { current_plan = p_match[1].trim(); continue; }
                             
                             let id_match = line.match(/^(?:–|-|#)?\s*NetflixId:\s*(.+)/i);
-                            if (id_match) { current_netflix_id = safeDecode(id_match[1].trim()); continue; }
+                            if (id_match) { 
+                                if (current_netflix_id && current_email) push_account();
+                                current_netflix_id = safeDecode(id_match[1].trim()); 
+                                continue; 
+                            }
                             
                             let sid_match = line.match(/^(?:–|-|#)?\s*SecureNetflixId:\s*(.+)/i);
                             if (sid_match) { current_secure_netflix_id = safeDecode(sid_match[1].trim()); continue; }
                             
-                            if (line.startsWith("# ===")) {
-                                push_account();
+                            if (line.startsWith("# ===") || line.startsWith("===") || line.startsWith("---")) {
+                                if (current_netflix_id && (current_email || current_secure_netflix_id)) {
+                                    push_account();
+                                }
                                 continue;
                             }
 
@@ -1600,7 +1689,7 @@ ADMIN_TEMPLATE = r"""
             let uniqueCookies = [];
             let seenIds = new Set();
             for (let c of allCookies) {
-                if (!seenIds.has(c.netflix_id)) {
+                if (c.netflix_id && !seenIds.has(c.netflix_id)) {
                     seenIds.add(c.netflix_id);
                     uniqueCookies.push(c);
                 }
@@ -1608,46 +1697,85 @@ ADMIN_TEMPLATE = r"""
             
             const total = uniqueCookies.length;
             if (total === 0) {
-                alert("No valid cookies found in the selected folder!");
+                alert("Không tìm thấy cookies hợp lệ nào trong thư mục đã chọn!");
                 btn.disabled = false;
                 btn.innerHTML = "Start Scanning";
+                pauseBtn.style.display = "none";
+                stopBtn.style.display = "none";
                 return;
             }
 
-            document.getElementById('scanStatusText').innerText = "Checking Live via API...";
+            document.getElementById('scanStatusText').innerText = "Đang kiểm tra LIVE qua Proxy...";
             document.getElementById('scanStatusText').style.color = "#3498db";
+            btn.innerHTML = "⏳ Đang quét...";
             
             let processed = 0;
             let liveCount = 0;
             let dieCount = 0;
+            let errorCount = 0;
             
             // 2. Gửi API Check từng cái (Concurrency = 3 để không sập proxy/server)
             const CONCURRENCY = 3;
             let index = 0;
             
             async function worker() {
-                while (index < total) {
+                while (index < total && !isScanStopped) {
+                    while (isScanPaused && !isScanStopped) {
+                        await new Promise(r => setTimeout(r, 500));
+                    }
+                    if (isScanStopped) break;
+
                     const currentIndex = index++;
+                    if (currentIndex >= total) break;
                     const acc = uniqueCookies[currentIndex];
                     
-                    try {
-                        const res = await fetch('/api/check_and_import', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(acc)
-                        });
-                        const data = await res.json();
-                        
-                        if (data.status === 'LIVE') {
-                            liveCount++;
-                            document.getElementById('scanLiveCount').innerText = liveCount;
-                        } else {
-                            dieCount++;
-                            document.getElementById('scanDieCount').innerText = dieCount;
+                    let successChecked = false;
+                    let retries = 0;
+
+                    while (!successChecked && retries < 2 && !isScanStopped) {
+                        try {
+                            const res = await fetch('/api/check_and_import', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(acc)
+                            });
+
+                            if (res.status === 401 || res.redirected) {
+                                alert("Phiên đăng nhập đã hết hạn! Vui lòng đăng nhập lại để tiếp tục.");
+                                stopBulkScan();
+                                return;
+                            }
+
+                            const data = await res.json();
+                            
+                            if (data.status === 'LIVE') {
+                                liveCount++;
+                                document.getElementById('scanLiveCount').innerText = liveCount;
+                                successChecked = true;
+                            } else if (data.status === 'ERROR') {
+                                retries++;
+                                if (retries < 2) {
+                                    await new Promise(r => setTimeout(r, 1000));
+                                } else {
+                                    errorCount++;
+                                    document.getElementById('scanErrorCount').innerText = errorCount;
+                                    successChecked = true;
+                                }
+                            } else {
+                                dieCount++;
+                                document.getElementById('scanDieCount').innerText = dieCount;
+                                successChecked = true;
+                            }
+                        } catch (e) {
+                            retries++;
+                            if (retries >= 2) {
+                                errorCount++;
+                                document.getElementById('scanErrorCount').innerText = errorCount;
+                                successChecked = true;
+                            } else {
+                                await new Promise(r => setTimeout(r, 1000));
+                            }
                         }
-                    } catch (e) {
-                        dieCount++;
-                        document.getElementById('scanDieCount').innerText = dieCount;
                     }
                     
                     processed++;
@@ -1663,12 +1791,15 @@ ADMIN_TEMPLATE = r"""
             
             await Promise.all(workers);
             
-            document.getElementById('scanStatusText').innerText = "SCAN COMPLETE!";
-            document.getElementById('scanStatusText').style.color = "#2ecc71";
-            btn.disabled = false;
-            btn.innerHTML = "Scan Another Folder";
-            alert(`Complete! Added ${liveCount} LIVE accounts to Database.`);
-            window.location.reload();
+            if (!isScanStopped) {
+                document.getElementById('scanStatusText').innerText = "HOÀN TẤT QUÉT!";
+                document.getElementById('scanStatusText').style.color = "#2ecc71";
+                btn.disabled = false;
+                btn.innerHTML = "Quét thư mục khác";
+                pauseBtn.style.display = "none";
+                stopBtn.style.display = "none";
+                document.getElementById('scanActionArea').style.display = "block";
+            }
         }
     </script>
 </body>
@@ -1730,13 +1861,19 @@ def check_and_import():
         status, updated_plan = checker.check_account_live(netflix_id, secure_netflix_id, check_payment=True)
         
         if status == "LIVE":
-            final_plan = updated_plan if updated_plan and updated_plan != "VALID" else (plan if plan and plan != "Unknown" else "Premium")
-            import_email = email if email else f"bulk_{netflix_id[:8]}@netflix.com"
+            final_plan = updated_plan if updated_plan and updated_plan != "VALID" else (plan if plan and plan not in ["Unknown", "None found", "None"] else "Premium")
+            
+            # Check if this netflix_id already exists in database under another email to avoid duplicate rows
+            existing_acc = database.get_account_by_netflix_id(netflix_id)
+            if existing_acc:
+                import_email = existing_acc[0]
+            else:
+                import_email = email if email else f"bulk_{netflix_id[:8]}@netflix.com"
+                
             import_expire = expire if expire and expire != "N/A" else "2099-12-31"
             
-            database.init_db()
             database.save_account(import_email, import_expire, netflix_id, secure_netflix_id, final_plan)
-            return jsonify({"success": True, "status": "LIVE", "plan": final_plan})
+            return jsonify({"success": True, "status": "LIVE", "plan": final_plan, "email": import_email})
         elif status == "ERROR":
             return jsonify({"success": False, "status": "ERROR", "error": "Proxy or API error. Retry later."})
         else:
