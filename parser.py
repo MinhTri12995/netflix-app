@@ -4,43 +4,54 @@ import json
 import urllib.parse
 
 def parse_lines(lines):
+    """
+    Universally parse Netflix accounts and cookies from various formats:
+    1. JSON Array: [{"name": "NetflixId", "value": "..."}, ...]
+    2. JSON Object: {"cookies": [...]}
+    3. Single-line Pipe formats:
+       - email:pass | memberPlan = ... | NextBillingDate = ... | Cookie = NetflixId=...;SecureNetflixId=...
+       - email:pass | ... | Cookie = NetflixId=... | SecureNetflixId=...
+       - email:pass | cookies: NetflixId=...; SecureNetflixId=...
+    4. Multi-line Account details:
+       - Email: ...
+       - Next Billing: ...
+       - Plan: ...
+       - NetflixId: ...
+       - SecureNetflixId: ...
+    5. Netscape cookie format:
+       - .netflix.com TRUE / FALSE ... NetflixId ...
+       - .netflix.com TRUE / FALSE ... SecureNetflixId ...
+    6. Raw cookie header lines:
+       - NetflixId=...; SecureNetflixId=...
+    """
     accounts = []
     
-    # Handle single string JSON content if passed
+    # Handle single string content if passed
     if isinstance(lines, str):
         lines = lines.splitlines()
         
     full_text = "\n".join(lines).strip()
+    
+    # 1. JSON Support
     if full_text.startswith('[') or full_text.startswith('{'):
         try:
             parsed_json = json.loads(full_text)
-            # 1. JSON Array of cookies: [{"name": "NetflixId", "value": "..."}, ...]
+            cookie_array = None
             if isinstance(parsed_json, list):
-                nid, snid = None, ""
-                for c in parsed_json:
-                    if isinstance(c, dict):
-                        if c.get('name') == 'NetflixId':
-                            nid = urllib.parse.unquote(str(c.get('value', '')))
-                        elif c.get('name') == 'SecureNetflixId':
-                            snid = urllib.parse.unquote(str(c.get('value', '')))
-                if nid:
-                    accounts.append({
-                        'email': f"auto_{uuid.uuid4().hex[:8]}@netflix.com",
-                        'expire': 'N/A',
-                        'plan': 'Premium',
-                        'netflix_id': nid,
-                        'secure_netflix_id': snid
-                    })
-                    return accounts
-            # 2. JSON Object with 'cookies' array: {"cookies": [...]}
+                cookie_array = parsed_json
             elif isinstance(parsed_json, dict) and 'cookies' in parsed_json and isinstance(parsed_json['cookies'], list):
+                cookie_array = parsed_json['cookies']
+                
+            if cookie_array:
                 nid, snid = None, ""
-                for c in parsed_json['cookies']:
+                for c in cookie_array:
                     if isinstance(c, dict):
-                        if c.get('name') == 'NetflixId':
-                            nid = urllib.parse.unquote(str(c.get('value', '')))
-                        elif c.get('name') == 'SecureNetflixId':
-                            snid = urllib.parse.unquote(str(c.get('value', '')))
+                        c_name = c.get('name') or c.get('Name')
+                        c_val = c.get('value') or c.get('Value', '')
+                        if c_name == 'NetflixId':
+                            nid = urllib.parse.unquote(str(c_val))
+                        elif c_name == 'SecureNetflixId':
+                            snid = urllib.parse.unquote(str(c_val))
                 if nid:
                     accounts.append({
                         'email': f"auto_{uuid.uuid4().hex[:8]}@netflix.com",
@@ -63,17 +74,16 @@ def parse_lines(lines):
         nonlocal current_email, current_expire, current_plan, current_netflix_id, current_secure_netflix_id
         if current_netflix_id:
             if not current_email:
-                # Tạo email giả nếu định dạng không có email
                 current_email = f"auto_{uuid.uuid4().hex[:8]}@netflix.com"
             clean_plan = current_plan
             if clean_plan and str(clean_plan).strip().lower() in ['none found', 'none', 'unknown', 'n/a', 'null', '']:
                 clean_plan = None
             accounts.append({
                 'email': current_email,
-                'expire': current_expire,
-                'plan': clean_plan,
+                'expire': current_expire or 'N/A',
+                'plan': clean_plan or 'Premium',
                 'netflix_id': current_netflix_id,
-                'secure_netflix_id': current_secure_netflix_id
+                'secure_netflix_id': current_secure_netflix_id or ""
             })
         current_email = None
         current_expire = None
@@ -86,60 +96,75 @@ def parse_lines(lines):
         if not line:
             continue
             
-        if '|' in line and ('cookies:' in line or 'cookies =' in line):
-            email_part = line.split(':')[0] if ':' in line else None
-            if email_part and '@' in email_part:
-                current_email = email_part.strip()
-            
-            expire_match_single = re.search(r'(?:Nextbillingdate|nextBillingDate)\s*=\s*([^|]+)', line, re.IGNORECASE)
-            if expire_match_single:
-                current_expire = expire_match_single.group(1).strip()
-                
-            plan_match_single = re.search(r'(?:Membership|memberPlan)\s*[=:]\s*([^|]+)', line, re.IGNORECASE)
-            if plan_match_single:
-                current_plan = plan_match_single.group(1).strip()
-                
-            cookies_match = re.search(r'cookies\s*=\s*(.+?)(?: general login link|$)', line, re.IGNORECASE)
-            if not cookies_match:
-                cookies_match = re.search(r'cookies:\s*(.+?)(?: general login link|$)', line, re.IGNORECASE)
-                
-            if cookies_match:
-                cookies_str = cookies_match.group(1).strip()
-                n_id = re.search(r'(?<!Secure)NetflixId=([^;\s]+)', cookies_str, re.IGNORECASE)
-                s_n_id = re.search(r'SecureNetflixId=([^;\s]+)', cookies_str, re.IGNORECASE)
-                
-                if n_id:
-                    current_netflix_id = urllib.parse.unquote(n_id.group(1).strip())
-                if s_n_id:
-                    current_secure_netflix_id = urllib.parse.unquote(s_n_id.group(1).strip())
-                    
+        lower_line = line.lower()
+        
+        # A. Single-line formatted accounts containing '|'
+        if '|' in line:
+            # 1. Check if line contains Netflix cookies
+            if 'netflixid=' in lower_line or 'cookie' in lower_line or 'memberplan' in lower_line or 'membership' in lower_line:
+                # If we have an unfinished account from previous lines, push it
                 if current_netflix_id:
                     push_account()
-            continue
-            
+                    
+                # Extract Email
+                email_match = re.search(r'([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})', line)
+                line_email = email_match.group(1).strip().lower() if email_match else None
+                if not line_email and ':' in line:
+                    part0 = line.split(':')[0].strip()
+                    if '@' in part0:
+                        line_email = part0.lower()
+                        
+                # Extract Plan
+                plan_match = re.search(r'(?:memberPlan|Membership|Plan)\s*[=:]\s*([^|]+)', line, re.IGNORECASE)
+                line_plan = plan_match.group(1).strip() if plan_match else None
+                
+                # Extract Expire
+                exp_match = re.search(r'(?:NextBillingDate|Nextbillingdate|Next Billing|Expire)\s*[=:]\s*([^|]+)', line, re.IGNORECASE)
+                line_expire = exp_match.group(1).strip() if exp_match else None
+                
+                # Extract NetflixId & SecureNetflixId
+                nid_match = re.search(r'(?<!Secure)NetflixId=([^;|\s]+)', line, re.IGNORECASE)
+                snid_match = re.search(r'SecureNetflixId=([^;|\s]+)', line, re.IGNORECASE)
+                
+                line_nid = urllib.parse.unquote(nid_match.group(1).strip()) if nid_match else None
+                line_snid = urllib.parse.unquote(snid_match.group(1).strip()) if snid_match else ""
+                
+                if line_nid:
+                    current_email = line_email
+                    current_plan = line_plan
+                    current_expire = line_expire
+                    current_netflix_id = line_nid
+                    current_secure_netflix_id = line_snid
+                    push_account()
+                    continue
+                    
+        # B. Header markers
         if line.upper().startswith("NETFLIX ACCOUNT DETAILS"):
             if current_netflix_id:
                 push_account()
             continue
             
+        # C. Multi-line Email
         deadflix_email_match = re.search(r'^(?:–|-|#)?\s*Email:\s*(.+)', line, re.IGNORECASE)
         if deadflix_email_match:
-            # If we already have a full account ready, push it
             if current_netflix_id and current_email:
                 push_account()
-            current_email = deadflix_email_match.group(1).strip()
+            current_email = deadflix_email_match.group(1).strip().lower()
             continue
 
+        # D. Multi-line Expire
         deadflix_expire_match = re.search(r'^(?:–|-|#)?\s*(?:Next Billing|Expire):\s*(.+)', line, re.IGNORECASE)
         if deadflix_expire_match:
             current_expire = deadflix_expire_match.group(1).strip()
             continue
 
+        # E. Multi-line Plan
         deadflix_plan_match = re.search(r'^(?:–|-|#)?\s*(?:Plan|Membership):\s*(.+)', line, re.IGNORECASE)
         if deadflix_plan_match:
             current_plan = deadflix_plan_match.group(1).strip()
             continue
             
+        # F. Multi-line NetflixId
         netflixid_match = re.search(r'^NetflixId(?:=|\s*:\s*)(.+)', line, re.IGNORECASE)
         if netflixid_match:
             if current_netflix_id and current_email:
@@ -147,16 +172,19 @@ def parse_lines(lines):
             current_netflix_id = urllib.parse.unquote(netflixid_match.group(1).strip())
             continue
 
+        # G. Multi-line SecureNetflixId
         secure_netflixid_match = re.search(r'^SecureNetflixId(?:=|\s*:\s*)(.+)', line, re.IGNORECASE)
         if secure_netflixid_match:
             current_secure_netflix_id = urllib.parse.unquote(secure_netflixid_match.group(1).strip())
             continue
 
-        if line.startswith("# ===") or line.startswith("===") or line.startswith("---"):
+        # H. Separator lines
+        if line.startswith("# ===") or line.startswith("===") or line.startswith("---") or line.startswith("___"):
             if current_netflix_id and (current_email or current_secure_netflix_id):
                 push_account()
             continue
 
+        # I. Netscape tab-separated format
         if '.netflix.com' in line:
             parts = line.split()
             if len(parts) >= 3:
@@ -167,7 +195,19 @@ def parse_lines(lines):
                     current_netflix_id = cookie_value
                 elif cookie_name == 'SecureNetflixId':
                     current_secure_netflix_id = cookie_value
-                    
-    push_account()
+            continue
+            
+        # J. Raw Cookie String line (e.g. NetflixId=...; SecureNetflixId=...)
+        if 'netflixid=' in lower_line:
+            nid_match = re.search(r'(?<!Secure)NetflixId=([^;|\s]+)', line, re.IGNORECASE)
+            snid_match = re.search(r'SecureNetflixId=([^;|\s]+)', line, re.IGNORECASE)
+            if nid_match:
+                if current_netflix_id and current_email:
+                    push_account()
+                current_netflix_id = urllib.parse.unquote(nid_match.group(1).strip())
+                if snid_match:
+                    current_secure_netflix_id = urllib.parse.unquote(snid_match.group(1).strip())
+                continue
 
+    push_account()
     return accounts

@@ -1609,26 +1609,34 @@ ADMIN_TEMPLATE = r"""
                             line = line.trim();
                             if (!line) continue;
                             
-                            if (line.includes('|') && (line.toLowerCase().includes('cookies:') || line.toLowerCase().includes('cookies ='))) {
-                                let email_part = line.includes(':') ? line.split(':')[0] : null;
-                                if (email_part && email_part.includes('@')) current_email = email_part.trim();
-                                
-                                let exp_match = line.match(/(?:Nextbillingdate|nextBillingDate)\s*=\s*([^|]+)/i);
-                                if (exp_match) current_expire = exp_match[1].trim();
-                                
-                                let plan_match = line.match(/(?:Membership|memberPlan)\s*[=:]\s*([^|]+)/i);
-                                if (plan_match) current_plan = plan_match[1].trim();
-                                
-                                let cookie_match = line.match(/cookies\s*[=:]\s*(.+?)(?: general login link|$)/i);
-                                if (cookie_match) {
-                                    let c_str = cookie_match[1].trim();
-                                    let n_id = c_str.match(/(?<!Secure)NetflixId=([^;\s]+)/i);
-                                    let s_n_id = c_str.match(/SecureNetflixId=([^;\s]+)/i);
+                            const lower_line = line.toLowerCase();
+                            
+                            // A. Single-line formatted accounts containing '|'
+                            if (line.includes('|')) {
+                                if (lower_line.includes('netflixid=') || lower_line.includes('cookie') || lower_line.includes('membership') || lower_line.includes('memberplan')) {
+                                    if (current_netflix_id) push_account();
+                                    
+                                    const email_match = line.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+                                    if (email_match) current_email = email_match[1].trim();
+                                    else if (line.includes(':')) {
+                                        const p0 = line.split(':')[0].trim();
+                                        if (p0.includes('@')) current_email = p0;
+                                    }
+                                    
+                                    const plan_match = line.match(/(?:memberPlan|Membership|Plan)\s*[=:]\s*([^|]+)/i);
+                                    if (plan_match) current_plan = plan_match[1].trim();
+                                    
+                                    const exp_match = line.match(/(?:Nextbillingdate|nextBillingDate|Next Billing|Expire)\s*[=:]\s*([^|]+)/i);
+                                    if (exp_match) current_expire = exp_match[1].trim();
+                                    
+                                    const n_id = line.match(/(?<!Secure)NetflixId=([^;|\s]+)/i);
+                                    const s_n_id = line.match(/SecureNetflixId=([^;|\s]+)/i);
                                     if (n_id) current_netflix_id = safeDecode(n_id[1].trim());
                                     if (s_n_id) current_secure_netflix_id = safeDecode(s_n_id[1].trim());
+                                    
                                     if (current_netflix_id) push_account();
+                                    continue;
                                 }
-                                continue;
                             }
                             
                             if (line.toUpperCase().startsWith("NETFLIX ACCOUNT DETAILS")) { 
