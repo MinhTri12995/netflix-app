@@ -769,7 +769,10 @@ def cleanup_expired_keys():
     deleted_count = 0
     try:
         if SUPABASE_KEY:
-            get_supabase().table("access_keys").delete().lt("expire_at", today_str).execute()
+            res = get_supabase().table("access_keys").select("code").lt("expire_at", today_str).execute()
+            if res.data:
+                deleted_count = len(res.data)
+                get_supabase().table("access_keys").delete().lt("expire_at", today_str).execute()
     except Exception as e:
         print(f"Supabase cleanup_expired_keys error: {e}")
     try:
@@ -778,7 +781,8 @@ def cleanup_expired_keys():
             conn = sqlite3.connect("accounts.db")
             c = conn.cursor()
             c.execute("DELETE FROM access_keys WHERE expire_at IS NOT NULL AND expire_at != '' AND expire_at != 'Lifetime' AND expire_at != 'None' AND expire_at < ?", (today_str,))
-            deleted_count = c.rowcount
+            if deleted_count == 0:
+                deleted_count = c.rowcount
             conn.commit()
             conn.close()
     except Exception as e:

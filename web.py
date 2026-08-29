@@ -1274,11 +1274,15 @@ ADMIN_TEMPLATE = r"""
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
                 <h3 style="margin: 0; font-weight: 400;">Access Code Management (License Keys)</h3>
                 <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-                    <form action="/admin/keys/cleanup_expired" method="POST" style="margin: 0;" onsubmit="return confirm('Clean up all expired keys (expired > today)?');">
-                        <button type="submit" style="background: #f39c12; font-size: 0.85rem; padding: 8px 12px; white-space: nowrap; border-radius: 6px;">🧹 Dọn Code Hết Hạn</button>
+                    <form action="/admin/keys/cleanup_expired" method="POST" style="margin: 0;" onsubmit="return confirm('🧹 Bạn có chắc muốn quét và XÓA TẤT CẢ các mã Code đã hết hạn (quá ngày sử dụng)?');">
+                        <button type="submit" style="background: linear-gradient(135deg, #f39c12, #e67e22); font-weight: 600; font-size: 0.88rem; padding: 9px 15px; white-space: nowrap; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 4px 10px rgba(243, 156, 18, 0.3); cursor: pointer;">
+                            🧹 Dọn Dẹp Code Hết Hạn
+                        </button>
                     </form>
                     <form action="/admin/keys/delete_lifetime" method="POST" style="margin: 0;" onsubmit="return confirm('⚠️ BẠN CÓ CHẮC CHẮN? Thao tác này sẽ XÓA VĨNH VIỄN tất cả các Code có thời hạn vĩnh viễn (Lifetime)!');">
-                        <button type="submit" style="background: #c0392b; font-size: 0.85rem; padding: 8px 12px; white-space: nowrap; border-radius: 6px;">🗑️ Xóa Tất Cả Code Vĩnh Viễn</button>
+                        <button type="submit" style="background: linear-gradient(135deg, #c0392b, #962d22); font-weight: 600; font-size: 0.88rem; padding: 9px 15px; white-space: nowrap; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 4px 10px rgba(192, 57, 43, 0.3); cursor: pointer;">
+                            🗑️ Xóa Tất Cả Code Vĩnh Viễn
+                        </button>
                     </form>
                     <form action="/admin/generate_key" method="POST" style="margin: 0; display: flex; gap: 8px; align-items: center;" onsubmit="showLoading(this.querySelector('button'))">
                         <select name="plan_type" style="padding: 8px; border-radius: 6px; background: rgba(0,0,0,0.5); color: white; border: 1px solid #555;">
@@ -2625,7 +2629,10 @@ def delete_lifetime_keys():
 def cleanup_expired_keys_route():
     database.init_db()
     deleted = database.cleanup_expired_keys()
-    flash(f"Successfully cleaned up expired access keys (Total: {deleted}).", "success")
+    if deleted > 0:
+        flash(f"✅ Đã dọn dẹp và xóa thành công {deleted} mã Access Code đã hết hạn khỏi hệ thống!", "success")
+    else:
+        flash("ℹ️ Không có mã Access Code nào đã hết hạn cần dọn dẹp (tất cả các mã đều đang còn hạn hoặc vĩnh viễn).", "info")
     return redirect(url_for("admin"))
 
 @app.route("/api/check_live_code", methods=["POST"])
