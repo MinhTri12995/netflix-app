@@ -87,6 +87,23 @@ def init_db():
             c.execute("ALTER TABLE access_keys ADD COLUMN expire_at TEXT")
         except Exception:
             pass
+        c.execute("""CREATE TABLE IF NOT EXISTS requests (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            code TEXT,
+            u7buy_order_id TEXT,
+            image_url TEXT,
+            reason TEXT,
+            status TEXT DEFAULT 'pending',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )""")
+        try:
+            c.execute("ALTER TABLE requests ADD COLUMN u7buy_order_id TEXT")
+        except Exception:
+            pass
+        try:
+            c.execute("ALTER TABLE requests ADD COLUMN reason TEXT")
+        except Exception:
+            pass
         conn.commit()
         conn.close()
     except Exception as e:
@@ -444,76 +461,186 @@ def get_random_available_account(plan_type=None):
         
     return None
 
-def create_request(code, image_url, status="pending"):
+def create_request(code, image_url, u7buy_order_id="", reason="", status="pending"):
     data = {
         "code": code,
+        "u7buy_order_id": u7buy_order_id,
         "image_url": image_url,
+        "reason": reason,
         "status": status
     }
-    # created_at is automatically handled by Supabase
-    get_supabase().table("requests").insert(data).execute()
+    try:
+        if SUPABASE_KEY:
+            get_supabase().table("requests").insert(data).execute()
+            return
+    except Exception as e:
+        print(f"Supabase create_request error: {e}")
+    try:
+        import sqlite3
+        if os.path.exists("accounts.db"):
+            conn = sqlite3.connect("accounts.db")
+            c = conn.cursor()
+            c.execute("INSERT INTO requests (code, u7buy_order_id, image_url, reason, status) VALUES (?, ?, ?, ?, ?)",
+                      (code, u7buy_order_id, image_url, reason, status))
+            conn.commit()
+            conn.close()
+    except Exception as e:
+        print(f"SQLite create_request error: {e}")
 
 def has_recent_request(code, minutes=5):
     import datetime
     try:
-        time_ago = (datetime.datetime.utcnow() - datetime.timedelta(minutes=minutes)).isoformat()
-        response = get_supabase().table("requests").select("id").eq("code", code).gt("created_at", time_ago).limit(1).execute()
-        return len(response.data) > 0
+        if SUPABASE_KEY:
+            time_ago = (datetime.datetime.utcnow() - datetime.timedelta(minutes=minutes)).isoformat()
+            response = get_supabase().table("requests").select("id").eq("code", code).gt("created_at", time_ago).limit(1).execute()
+            return len(response.data) > 0
     except Exception as e:
-        print(f"Lỗi check_rate_limit: {e}")
-        return False
+        pass
+    try:
+        import sqlite3
+        if os.path.exists("accounts.db"):
+            conn = sqlite3.connect("accounts.db")
+            c = conn.cursor()
+            c.execute("SELECT id FROM requests WHERE code = ? AND datetime(created_at) > datetime('now', ?) LIMIT 1", (code, f"-{minutes} minutes"))
+            r = c.fetchone()
+            conn.close()
+            return bool(r)
+    except Exception:
+        pass
+    return False
 
 def get_today_rotation_count(code):
     import datetime
     try:
-        twenty_four_hours_ago = (datetime.datetime.utcnow() - datetime.timedelta(hours=24)).isoformat()
-        response = get_supabase().table("requests") \
-            .select("id, status") \
-            .eq("code", code) \
-            .gt("created_at", twenty_four_hours_ago) \
-            .execute()
-        rows = response.data if response.data else []
-        accepted_count = sum(1 for r in rows if str(r.get("status", "")).startswith("accepted"))
-        return accepted_count
+        if SUPABASE_KEY:
+            twenty_four_hours_ago = (datetime.datetime.utcnow() - datetime.timedelta(hours=24)).isoformat()
+            response = get_supabase().table("requests") \
+                .select("id, status") \
+                .eq("code", code) \
+                .gt("created_at", twenty_four_hours_ago) \
+                .execute()
+            rows = response.data if response.data else []
+            accepted_count = sum(1 for r in rows if str(r.get("status", "")).startswith("accepted"))
+            return accepted_count
     except Exception as e:
-        print(f"Lỗi get_today_rotation_count: {e}")
-        return 0
+        pass
+    return 0
 
 def get_pending_requests():
     try:
-        response = get_supabase().table("requests").select("*").eq("status", "pending").order("created_at", desc=True).execute()
-        return response.data if response.data else []
+        if SUPABASE_KEY:
+            response = get_supabase().table("requests").select("*").eq("status", "pending").order("created_at", desc=True).execute()
+            if response.data:
+                return response.data
     except Exception as e:
-        print(f"Lỗi get_pending_requests (Có thể chưa tạo bảng requests): {e}")
-        return []
+        print(f"Supabase get_pending_requests error: {e}")
+    try:
+        import sqlite3
+        if os.path.exists("accounts.db"):
+            conn = sqlite3.connect("accounts.db")
+            c = conn.cursor()
+            c.execute("SELECT id, code, u7buy_order_id, image_url, reason, status, created_at FROM requests WHERE status = 'pending' ORDER BY created_at DESC")
+            rows = c.fetchall()
+            conn.close()
+            res = []
+            for r in rows:
+                res.append({
+                    "id": r[0],
+                    "code": r[1],
+                    "u7buy_order_id": r[2] if r[2] else "N/A",
+                    "image_url": r[3],
+                    "reason": r[4] if r[4] else "",
+                    "status": r[5],
+                    "created_at": r[6]
+                })
+            return res
+    except Exception as e:
+        print(f"SQLite get_pending_requests error: {e}")
+    return []
 
 def update_request_status(req_id, status):
     data = {"status": status}
-    get_supabase().table("requests").update(data).eq("id", req_id).execute()
+    try:
+        if SUPABASE_KEY:
+            get_supabase().table("requests").update(data).eq("id", req_id).execute()
+            return
+    except Exception as e:
+        print(f"Supabase update_request_status error: {e}")
+    try:
+        import sqlite3
+        if os.path.exists("accounts.db"):
+            conn = sqlite3.connect("accounts.db")
+            c = conn.cursor()
+            c.execute("UPDATE requests SET status = ? WHERE id = ?", (status, req_id))
+            conn.commit()
+            conn.close()
+    except Exception:
+        pass
+
+def delete_request(req_id):
+    try:
+        if SUPABASE_KEY:
+            get_supabase().table("requests").delete().eq("id", req_id).execute()
+            return
+    except Exception as e:
+        print(f"Supabase delete_request error: {e}")
+    try:
+        import sqlite3
+        if os.path.exists("accounts.db"):
+            conn = sqlite3.connect("accounts.db")
+            c = conn.cursor()
+            c.execute("DELETE FROM requests WHERE id = ?", (req_id,))
+            conn.commit()
+            conn.close()
+    except Exception:
+        pass
 
 def get_request_by_id(req_id):
-    response = get_supabase().table("requests").select("*").eq("id", req_id).execute()
-    return response.data[0] if response.data else None
+    try:
+        if SUPABASE_KEY:
+            response = get_supabase().table("requests").select("*").eq("id", req_id).execute()
+            if response.data:
+                return response.data[0]
+    except Exception:
+        pass
+    try:
+        import sqlite3
+        if os.path.exists("accounts.db"):
+            conn = sqlite3.connect("accounts.db")
+            c = conn.cursor()
+            c.execute("SELECT id, code, u7buy_order_id, image_url, reason, status, created_at FROM requests WHERE id = ?", (req_id,))
+            r = c.fetchone()
+            conn.close()
+            if r:
+                return {
+                    "id": r[0],
+                    "code": r[1],
+                    "u7buy_order_id": r[2] if r[2] else "N/A",
+                    "image_url": r[3],
+                    "reason": r[4] if r[4] else "",
+                    "status": r[5],
+                    "created_at": r[6]
+                }
+    except Exception:
+        pass
+    return None
 
 def cleanup_old_requests():
     import datetime
     try:
-        # Tìm các request cũ hơn 24 giờ
-        yesterday = (datetime.datetime.utcnow() - datetime.timedelta(days=1)).isoformat()
-        response = get_supabase().table("requests").select("*").lt("created_at", yesterday).execute()
-        old_requests = response.data if response.data else []
-        
-        for req in old_requests:
-            # Xóa ảnh trên storage nếu là ảnh lưu trên Supabase
-            if req.get("image_url") and "supabase.co/storage/v1/object/public/requests/" in req["image_url"]:
-                try:
-                    filename = req["image_url"].split("/")[-1]
-                    get_supabase().storage.from_("requests").remove([filename])
-                except Exception as e:
-                    print(f"Lỗi xóa ảnh cũ: {e}")
-            
-            # Xóa row trong DB
-            get_supabase().table("requests").delete().eq("id", req["id"]).execute()
+        # Tìm các request cũ hơn 7 ngày
+        old_date = (datetime.datetime.utcnow() - datetime.timedelta(days=7)).isoformat()
+        if SUPABASE_KEY:
+            response = get_supabase().table("requests").select("*").lt("created_at", old_date).execute()
+            old_requests = response.data if response.data else []
+            for req in old_requests:
+                if req.get("image_url") and "supabase.co/storage/v1/object/public/requests/" in req["image_url"]:
+                    try:
+                        filename = req["image_url"].split("/")[-1]
+                        get_supabase().storage.from_("requests").remove([filename])
+                    except Exception:
+                        pass
+                get_supabase().table("requests").delete().eq("id", req["id"]).execute()
     except Exception as e:
         print(f"Lỗi cleanup requests: {e}")
 
@@ -594,4 +721,66 @@ def rotate_access_key(code):
         return False
 
 def delete_access_key(code):
-    get_supabase().table("access_keys").delete().eq("code", code).execute()
+    try:
+        if SUPABASE_KEY:
+            get_supabase().table("access_keys").delete().eq("code", code).execute()
+    except Exception as e:
+        print(f"Supabase delete_access_key error: {e}")
+    try:
+        import sqlite3
+        if os.path.exists("accounts.db"):
+            conn = sqlite3.connect("accounts.db")
+            c = conn.cursor()
+            c.execute("DELETE FROM access_keys WHERE code = ?", (code,))
+            conn.commit()
+            conn.close()
+    except Exception:
+        pass
+
+def delete_all_lifetime_keys():
+    """Xóa tất cả các mã Access Code có thời hạn vĩnh viễn (expire_at is NULL hoặc rỗng hoặc Lifetime)"""
+    deleted_count = 0
+    try:
+        if SUPABASE_KEY:
+            # 1. Null expire_at
+            get_supabase().table("access_keys").delete().is_("expire_at", "null").execute()
+            # 2. Empty string or Lifetime
+            get_supabase().table("access_keys").delete().eq("expire_at", "").execute()
+            get_supabase().table("access_keys").delete().eq("expire_at", "Lifetime").execute()
+    except Exception as e:
+        print(f"Supabase delete_all_lifetime_keys error: {e}")
+    try:
+        import sqlite3
+        if os.path.exists("accounts.db"):
+            conn = sqlite3.connect("accounts.db")
+            c = conn.cursor()
+            c.execute("DELETE FROM access_keys WHERE expire_at IS NULL OR expire_at = '' OR expire_at = 'Lifetime' OR expire_at = 'None'")
+            deleted_count = c.rowcount
+            conn.commit()
+            conn.close()
+    except Exception as e:
+        print(f"SQLite delete_all_lifetime_keys error: {e}")
+    return deleted_count
+
+def cleanup_expired_keys():
+    """Tự động xóa các Access Code đã hết hạn (quá 23:59:59 của ngày expire_at)"""
+    from datetime import datetime
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    deleted_count = 0
+    try:
+        if SUPABASE_KEY:
+            get_supabase().table("access_keys").delete().lt("expire_at", today_str).execute()
+    except Exception as e:
+        print(f"Supabase cleanup_expired_keys error: {e}")
+    try:
+        import sqlite3
+        if os.path.exists("accounts.db"):
+            conn = sqlite3.connect("accounts.db")
+            c = conn.cursor()
+            c.execute("DELETE FROM access_keys WHERE expire_at IS NOT NULL AND expire_at != '' AND expire_at != 'Lifetime' AND expire_at != 'None' AND expire_at < ?", (today_str,))
+            deleted_count = c.rowcount
+            conn.commit()
+            conn.close()
+    except Exception as e:
+        print(f"SQLite cleanup_expired_keys error: {e}")
+    return deleted_count

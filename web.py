@@ -327,12 +327,12 @@ PUBLIC_TEMPLATE = r"""
                 "input_heading": "Enter Access Code",
                 "input_placeholder": "e.g. X9K2M1 or 49AD0GJY0YK4I6D",
                 "btn_login": "🚀 LOGIN NOW (Generate Links)",
-                "btn_report": "⚠️ REPORT ERROR (Instant Auto-Replace)",
+                "btn_report": "⚠️ REQUEST CHANGE (Admin Review)",
                 "rules_header": "⚠️ IMPORTANT RULES & USAGE GUIDELINES",
                 "rule1": "• <strong>Single Device Policy:</strong> Stream on 1 device at a time. Do not share your code or link.",
                 "rule2": "• <strong>Account Protection:</strong> DO NOT change password, email, PIN, or modify profiles.",
                 "rule3": "• <strong>US VPN Requirement:</strong> Always connect to US VPN (Windscribe - Los Angeles) before generating and opening links.",
-                "rule4": "• <strong>Instant 24/7 Replacement:</strong> If you see an error screen (Expired/On Hold), click <strong>REPORT ERROR</strong> to upload a screenshot for an instant replacement.",
+                "rule4": "• <strong>Replacement Guarantee:</strong> If you encounter an error (Expired/On Hold), click <strong>REQUEST CHANGE</strong> with your U7BUY Purchase ID, Access Code, and error screenshot. Admin will review in 1-10 hours.",
                 "rule5": "• <strong>Support Schedule (GMT+7):</strong> 9:00 - 11:00 AM | 3:00 - 5:00 PM | 9:00 - 11:00 PM.",
                 "badge_plan": "📦 Plan:",
                 "badge_expire": "📅 Expire Date:",
@@ -349,15 +349,15 @@ PUBLIC_TEMPLATE = r"""
                 "card_general_hint": "Direct access to Account settings, Membership plan & expiration details",
                 "card_general_btn": "⚙️ View Account",
                 "copy_cookie_btn": "📋 Copy JSON Cookie (For Chrome Extension)",
-                "modal_title": "⚠️ Automated Error Report & Replacement",
-                "modal_desc": "Upload a screenshot showing the error screen (Expired, Membership on hold, Screen limit). Our system will verify and automatically rotate your account 24/7!",
-                "modal_submit": "Submit Report & Get Replacement",
-                "chat_btn": "💬 24/7 AI Support Assistant",
-                "chat_header": "🤖 AI Support Assistant",
+                "modal_title": "⚠️ Request Account Replacement",
+                "modal_desc": "Please provide your U7BUY Purchase ID, Access Code, and error screenshot. Admin will check it in 1-10 hours. After checking, admin will notify you!",
+                "modal_submit": "Submit Change Request",
+                "chat_btn": "💬 24/7 Support Assistant",
+                "chat_header": "🤖 Support Assistant",
                 "chat_welcome": "Hello! How can I help you with your Netflix access today?",
                 "chat_pill1": "🌐 How to use VPN?",
                 "chat_pill2": "📺 Smart TV Guide",
-                "chat_pill3": "⚠️ Report account error"
+                "chat_pill3": "⚠️ Request account change"
             },
             "vi": {
                 "portal_title": "🎬 NETFLIX FAST ACCESS",
@@ -377,12 +377,12 @@ PUBLIC_TEMPLATE = r"""
                 "input_heading": "Nhập Mã Truy Cập (Access Code)",
                 "input_placeholder": "Ví dụ: X9K2M1 hoặc 49AD0GJY0YK4I6D",
                 "btn_login": "🚀 LOGIN NOW (Tạo Link Đăng Nhập)",
-                "btn_report": "⚠️ BÁO LỖI (Đổi Acc Tự Động)",
+                "btn_report": "⚠️ YÊU CẦU ĐỔI ACC (Admin Duyệt)",
                 "rules_header": "⚠️ QUY ĐỊNH SỬ DỤNG & BẢO HÀNH",
                 "rule1": "• <strong>Quy định 1 thiết bị:</strong> Xem trên 1 thiết bị tại 1 thời điểm. Không chia sẻ link hoặc code cho người khác.",
                 "rule2": "• <strong>Bảo vệ tài khoản:</strong> TUYỆT ĐỐI KHÔNG đổi mật khẩu, email, mã PIN hoặc chỉnh sửa hồ sơ.",
                 "rule3": "• <strong>Yêu cầu bật VPN Mỹ:</strong> Luôn bật VPN Mỹ (Windscribe - Los Angeles) trước khi tạo link và bấm đăng nhập.",
-                "rule4": "• <strong>Bảo hành tự động 24/7:</strong> Nếu gặp màn hình lỗi (Hết gói, Tạm giữ), bấm <strong>BÁO LỖI</strong> và tải ảnh chụp lên để đổi acc ngay lập tức.",
+                "rule4": "• <strong>Bảo hành đổi trả:</strong> Nếu gặp màn hình lỗi (Hết hạn, Tạm giữ), bấm <strong>YÊU CẦU ĐỔI ACC</strong>, điền U7BUY Purchase ID, Code và ảnh proof lỗi. Admin sẽ kiểm tra và đổi acc trong 1-10 giờ.",
                 "rule5": "• <strong>Khung giờ hỗ trợ (GMT+7):</strong> 9:00 - 11:00 Sáng | 3:00 - 5:00 Chiều | 9:00 - 11:00 Tối.",
                 "badge_plan": "📦 Gói Cước:",
                 "badge_expire": "📅 Ngày Hết Hạn:",
@@ -399,15 +399,15 @@ PUBLIC_TEMPLATE = r"""
                 "card_general_hint": "Chuyển thẳng vào xem thông tin gói cước, hạn dùng và cài đặt acc",
                 "card_general_btn": "⚙️ Xem Thông Tin Acc",
                 "copy_cookie_btn": "📋 Sao Chép Cookie JSON (Cho Extension Chrome)",
-                "modal_title": "⚠️ Báo Lỗi Tự Động & Đổi Tài Khoản",
-                "modal_desc": "Tải lên ảnh chụp màn hình hiển thị lỗi (Hết gói, Gia hạn, Hộ gia đình). Hệ thống AI sẽ xác nhận và đổi acc tự động 24/7!",
-                "modal_submit": "Gửi Báo Lỗi & Đổi Acc",
-                "chat_btn": "💬 Trợ Lý AI Hỗ Trợ 24/7",
-                "chat_header": "🤖 Trợ Lý AI Hỗ Trợ",
+                "modal_title": "⚠️ Yêu Cầu Đổi Tài Khoản Mới",
+                "modal_desc": "Vui lòng nhập U7BUY Purchase ID, mã Access Code và ảnh chụp màn hình lỗi. Admin sẽ kiểm tra trong 1-10 giờ và thông báo cho bạn sau khi duyệt xong!",
+                "modal_submit": "Gửi Yêu Cầu Đổi Acc",
+                "chat_btn": "💬 Trợ Lý Hỗ Trợ 24/7",
+                "chat_header": "🤖 Trợ Lý Hỗ Trợ",
                 "chat_welcome": "Xin chào! Tôi có thể giúp gì cho bạn về tài khoản Netflix hôm nay?",
                 "chat_pill1": "🌐 Bật VPN Mỹ như thế nào?",
                 "chat_pill2": "📺 Cách đăng nhập Smart TV?",
-                "chat_pill3": "⚠️ Hướng dẫn báo lỗi đổi acc"
+                "chat_pill3": "⚠️ Hướng dẫn yêu cầu đổi acc"
             },
             "es": {
                 "portal_title": "🎬 ACCESO RÁPIDO A NETFLIX",
@@ -729,9 +729,8 @@ PUBLIC_TEMPLATE = r"""
         
         function openReportModal() {
             let rawInput = document.getElementById("rawTokenInput").value.trim();
-            if (!rawInput) {
-                alert("Please enter your Access Code first!");
-                return;
+            if (rawInput) {
+                document.getElementById("reportCodeInput").value = rawInput;
             }
             document.getElementById("reportModal").style.display = "flex";
         }
@@ -757,12 +756,22 @@ PUBLIC_TEMPLATE = r"""
         
         function submitReport(event) {
             event.preventDefault();
-            let rawInput = document.getElementById("rawTokenInput").value.trim();
+            let u7buyId = document.getElementById("reportU7buyId").value.trim();
+            let code = document.getElementById("reportCodeInput").value.trim();
+            let reason = document.getElementById("reportReason").value.trim();
             let fileInput = document.getElementById("reportImage");
             let file = fileInput.files[0];
             
+            if (!u7buyId) {
+                alert("Please enter your U7BUY Purchase ID / Order ID!");
+                return;
+            }
+            if (!code) {
+                alert("Please enter your Access Code!");
+                return;
+            }
             if (!file) {
-                alert("Please select a screenshot!");
+                alert("Please select a screenshot proof of the error!");
                 return;
             }
             
@@ -770,11 +779,13 @@ PUBLIC_TEMPLATE = r"""
             let statusText = document.getElementById("reportStatus");
             
             btn.disabled = true;
-            btn.innerHTML = "⏳ Uploading...";
+            btn.innerHTML = "⏳ Submitting Request...";
             statusText.innerText = "";
             
             let formData = new FormData();
-            formData.append("code", rawInput);
+            formData.append("u7buy_order_id", u7buyId);
+            formData.append("code", code);
+            formData.append("reason", reason);
             formData.append("image", file);
             
             fetch("/api/submit_request", {
@@ -784,11 +795,11 @@ PUBLIC_TEMPLATE = r"""
             .then(res => res.json())
             .then(data => {
                 btn.disabled = false;
-                btn.innerHTML = "Submit Report & Get Replacement";
+                btn.innerHTML = "Submit Change Request";
                 if (data.success) {
-                    statusText.innerText = "🎉 " + (data.message || "Report confirmed. Account updated!");
+                    statusText.innerText = "✅ " + (data.message || "Your request has been submitted! Admin will check it in 1-10 hours. After checking, admin will notify you.");
                     statusText.style.color = "#2ecc71";
-                    setTimeout(closeReportModal, 3500);
+                    setTimeout(closeReportModal, 5000);
                 } else {
                     statusText.innerText = "❌ " + data.error;
                     statusText.style.color = "#ff4757";
@@ -796,8 +807,8 @@ PUBLIC_TEMPLATE = r"""
             })
             .catch(err => {
                 btn.disabled = false;
-                btn.innerHTML = "Submit Report & Get Replacement";
-                statusText.innerText = "Connection error while uploading!";
+                btn.innerHTML = "Submit Change Request";
+                statusText.innerText = "Connection error while submitting request!";
                 statusText.style.color = "#ff4757";
             });
         }
@@ -1070,22 +1081,37 @@ PUBLIC_TEMPLATE = r"""
         </div>
     </div>
     
-    <!-- Report Modal -->
+    <!-- Request Replacement Modal -->
     <div id="reportModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content" style="max-width: 480px;">
             <span class="close-btn" onclick="closeReportModal()">&times;</span>
             <h3 style="margin-top: 0; margin-bottom: 10px; color: #ff5252; display: flex; align-items: center; gap: 8px;" data-i18n="modal_title">
-                ⚠️ Automated Error Report & Replacement
+                ⚠️ Request Account Replacement
             </h3>
-            <p style="margin-top: 0; font-size: 0.88rem; color: var(--text-sub); line-height: 1.4;" data-i18n="modal_desc">
-                Upload a screenshot showing the error screen (Expired, Membership on hold, Screen limit). Our system will verify and automatically rotate your account 24/7!
+            <p style="margin-top: 0; font-size: 0.88rem; color: var(--text-sub); line-height: 1.4; margin-bottom: 15px;" data-i18n="modal_desc">
+                Please provide your U7BUY Purchase ID, Access Code, and error screenshot. Admin will check it in 1-10 hours. After checking, admin will notify you!
             </p>
             <form id="reportForm" onsubmit="submitReport(event)">
-                <input type="file" id="reportImage" accept="image/*" required onchange="previewImage(this)" style="width: 100%; padding: 12px; margin-bottom: 12px; background: rgba(0,0,0,0.3); border: 1px dashed rgba(255,255,255,0.2); color: #ccc; border-radius: 10px;">
-                <img id="reportPreview" style="display: none; max-width: 100%; max-height: 150px; margin-bottom: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2);">
-                <button type="submit" id="submitReportBtn" class="btn-danger" style="width: 100%; font-weight: bold; padding: 14px;" data-i18n="modal_submit">Submit Report & Get Replacement</button>
+                <div style="margin-bottom: 12px; text-align: left;">
+                    <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #ddd; margin-bottom: 4px;">U7BUY Purchase ID <span style="color: #ff5252;">*</span></label>
+                    <input type="text" id="reportU7buyId" required placeholder="e.g. 12345678 or U7BUY Order ID" class="search-box" style="padding: 10px 14px; font-size: 0.95rem; width: 100%;">
+                </div>
+                <div style="margin-bottom: 12px; text-align: left;">
+                    <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #ddd; margin-bottom: 4px;">Access Code <span style="color: #ff5252;">*</span></label>
+                    <input type="text" id="reportCodeInput" required placeholder="e.g. X9K2M1 or 49AD0GJY0YK4I6D" class="search-box" style="padding: 10px 14px; font-size: 0.95rem; width: 100%;">
+                </div>
+                <div style="margin-bottom: 12px; text-align: left;">
+                    <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #ddd; margin-bottom: 4px;">Issue Description (Optional)</label>
+                    <input type="text" id="reportReason" placeholder="e.g. Password changed, On hold, Screen limit" class="search-box" style="padding: 10px 14px; font-size: 0.95rem; width: 100%;">
+                </div>
+                <div style="margin-bottom: 15px; text-align: left;">
+                    <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #ddd; margin-bottom: 4px;">Error Screenshot Proof <span style="color: #ff5252;">*</span></label>
+                    <input type="file" id="reportImage" accept="image/*" required onchange="previewImage(this)" style="width: 100%; padding: 10px; background: rgba(0,0,0,0.3); border: 1px dashed rgba(255,255,255,0.2); color: #ccc; border-radius: 10px;">
+                </div>
+                <img id="reportPreview" style="display: none; max-width: 100%; max-height: 140px; margin-bottom: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); margin-left: auto; margin-right: auto;">
+                <button type="submit" id="submitReportBtn" class="btn-danger" style="width: 100%; font-weight: bold; padding: 14px;" data-i18n="modal_submit">Submit Change Request</button>
             </form>
-            <p id="reportStatus" style="text-align: center; font-weight: bold; margin-top: 15px; margin-bottom: 0; font-size: 0.95rem;"></p>
+            <p id="reportStatus" style="text-align: center; font-weight: bold; margin-top: 15px; margin-bottom: 0; font-size: 0.92rem; line-height: 1.4;"></p>
         </div>
     </div>
     
@@ -1191,16 +1217,19 @@ ADMIN_TEMPLATE = r"""
         </div>
 
         <div class="glass-panel" style="border: 1px solid #c0392b;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h3 style="margin: 0; font-weight: 400; color: #ff7675;">⚠️ Pending Error Reports</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                <h3 style="margin: 0; font-weight: 400; color: #ff7675;">⚠️ Pending Buyer Replacement Requests</h3>
+                <span style="font-size: 0.85rem; color: #aaa; background: rgba(0,0,0,0.3); padding: 5px 12px; border-radius: 6px;">Manual Approval Mode (No AI)</span>
             </div>
             
             <div style="overflow-x: auto;">
                 <table>
                     <thead>
                         <tr>
-                            <th>Code</th>
-                            <th>Screenshot</th>
+                            <th>U7BUY Purchase ID</th>
+                            <th>Access Code</th>
+                            <th>Reason / Note</th>
+                            <th>Proof Screenshot</th>
                             <th>Time</th>
                             <th>Actions</th>
                         </tr>
@@ -1208,24 +1237,33 @@ ADMIN_TEMPLATE = r"""
                     <tbody>
                         {% for req in pending_requests %}
                         <tr>
-                            <td style="font-weight: bold; font-family: monospace; font-size: 1.3rem; color: #f1c40f; letter-spacing: 2px;">{{ req.code }}</td>
+                            <td style="font-weight: bold; font-family: monospace; font-size: 1.1rem; color: #3498db;">{{ req.u7buy_order_id if req.u7buy_order_id else 'N/A' }}</td>
+                            <td style="font-weight: bold; font-family: monospace; font-size: 1.25rem; color: #f1c40f; letter-spacing: 1px;">{{ req.code }}</td>
+                            <td style="font-size: 0.85rem; color: #ddd; max-width: 160px; word-break: break-word;">{{ req.reason if req.reason else 'Error Report' }}</td>
                             <td>
+                                {% if req.image_url %}
                                 <a href="{{ req.image_url }}" target="_blank">
-                                    <img src="{{ req.image_url }}" alt="Screenshot" style="max-width: 100px; max-height: 50px; border-radius: 4px; border: 1px solid #555;">
+                                    <img src="{{ req.image_url }}" alt="Proof" style="max-width: 100px; max-height: 50px; border-radius: 4px; border: 1px solid #555; object-fit: cover;">
                                 </a>
+                                {% else %}
+                                <span style="color: #888;">No image</span>
+                                {% endif %}
                             </td>
-                            <td style="font-size: 0.85rem; color: #888;">{{ req.created_at }}</td>
-                            <td style="display: flex; gap: 10px; flex-wrap: wrap;">
-                                <form action="/admin/request/{{ req.id }}/accept" method="POST" style="margin: 0;" onsubmit="return confirm('Accept this report? The system will automatically rotate the account for this code.');">
-                                    <button type="submit" style="background: #27ae60; padding: 6px 12px; font-size: 0.8rem;">✅ Accept & Change</button>
+                            <td style="font-size: 0.82rem; color: #888;">{{ req.created_at }}</td>
+                            <td style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                <form action="/admin/request/{{ req.id }}/accept" method="POST" style="margin: 0;" onsubmit="return confirm('Approve & Change account for code {{ req.code }}?');">
+                                    <button type="submit" style="background: #27ae60; padding: 6px 12px; font-size: 0.8rem; border-radius: 6px;">✅ Approve & Change</button>
                                 </form>
-                                <form action="/admin/request/{{ req.id }}/reject" method="POST" style="margin: 0;" onsubmit="return confirm('Reject this report?');">
-                                    <button type="submit" style="background: #e74c3c; padding: 6px 12px; font-size: 0.8rem;">❌ Reject</button>
+                                <form action="/admin/request/{{ req.id }}/reject" method="POST" style="margin: 0;" onsubmit="return confirm('Reject request for code {{ req.code }}?');">
+                                    <button type="submit" style="background: #e67e22; padding: 6px 12px; font-size: 0.8rem; border-radius: 6px;">❌ Reject</button>
+                                </form>
+                                <form action="/admin/request/{{ req.id }}/delete" method="POST" style="margin: 0;" onsubmit="return confirm('Delete this request?');">
+                                    <button type="submit" style="background: #e74c3c; padding: 6px 10px; font-size: 0.8rem; border-radius: 6px;">🗑️</button>
                                 </form>
                             </td>
                         </tr>
                         {% else %}
-                        <tr><td colspan="4" style="text-align: center; color: #666; padding: 20px;">No pending reports at the moment.</td></tr>
+                        <tr><td colspan="6" style="text-align: center; color: #666; padding: 20px;">No pending replacement requests.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -1233,28 +1271,34 @@ ADMIN_TEMPLATE = r"""
         </div>
 
         <div class="glass-panel">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
                 <h3 style="margin: 0; font-weight: 400;">Access Code Management (License Keys)</h3>
-                <div style="display: flex; gap: 10px;">
-                    <form action="/admin/generate_key" method="POST" style="margin: 0; display: flex; gap: 10px; align-items: center;" onsubmit="showLoading(this.querySelector('button'))">
-                        <select name="plan_type" style="padding: 8px; border-radius: 4px; background: rgba(0,0,0,0.5); color: white; border: 1px solid #555;">
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                    <form action="/admin/keys/cleanup_expired" method="POST" style="margin: 0;" onsubmit="return confirm('Clean up all expired keys (expired > today)?');">
+                        <button type="submit" style="background: #f39c12; font-size: 0.85rem; padding: 8px 12px; white-space: nowrap; border-radius: 6px;">🧹 Dọn Code Hết Hạn</button>
+                    </form>
+                    <form action="/admin/keys/delete_lifetime" method="POST" style="margin: 0;" onsubmit="return confirm('⚠️ BẠN CÓ CHẮC CHẮN? Thao tác này sẽ XÓA VĨNH VIỄN tất cả các Code có thời hạn vĩnh viễn (Lifetime)!');">
+                        <button type="submit" style="background: #c0392b; font-size: 0.85rem; padding: 8px 12px; white-space: nowrap; border-radius: 6px;">🗑️ Xóa Tất Cả Code Vĩnh Viễn</button>
+                    </form>
+                    <form action="/admin/generate_key" method="POST" style="margin: 0; display: flex; gap: 8px; align-items: center;" onsubmit="showLoading(this.querySelector('button'))">
+                        <select name="plan_type" style="padding: 8px; border-radius: 6px; background: rgba(0,0,0,0.5); color: white; border: 1px solid #555;">
                             <option value="premium">Premium (15 Chars)</option>
                             <option value="standard">Standard (10 Chars)</option>
                             <option value="standard_ads">Standard Ads (8 Chars)</option>
                             <option value="basic">Basic (5 Chars)</option>
                         </select>
-                        <select name="duration" style="padding: 8px; border-radius: 4px; background: rgba(0,0,0,0.5); color: white; border: 1px solid #555;">
+                        <select name="duration" style="padding: 8px; border-radius: 6px; background: rgba(0,0,0,0.5); color: white; border: 1px solid #555;">
                             <option value="1">1 Month</option>
                             <option value="2">2 Months</option>
                             <option value="3">3 Months</option>
                         </select>
-                        <button type="submit" style="background: #27ae60; font-size: 0.9rem; padding: 10px 15px; white-space: nowrap;">+ Generate</button>
+                        <button type="submit" style="background: #27ae60; font-size: 0.9rem; padding: 8px 14px; white-space: nowrap; border-radius: 6px;">+ Generate</button>
                     </form>
                 </div>
             </div>
             
             <form action="/admin" method="GET" style="display: flex; gap: 10px; margin-bottom: 20px;">
-                <input type="text" name="search_code" class="search-box" placeholder="Search by 6-char code..." value="{{ request.args.get('search_code', '') }}">
+                <input type="text" name="search_code" class="search-box" placeholder="Search by code..." value="{{ request.args.get('search_code', '') }}">
                 <button type="submit" style="background: #3498db; white-space: nowrap;">🔍 Search Code</button>
             </form>
             
@@ -1925,6 +1969,7 @@ def logout():
 @login_required
 def admin():
     database.init_db()
+    database.cleanup_expired_keys()
     all_accounts = database.get_all_accounts()
     all_access_keys = database.get_all_access_keys()
     
@@ -2457,31 +2502,29 @@ def fetch_netflix_nftoken_api(netflix_id, secure_netflix_id=""):
 
 @app.route("/api/submit_request", methods=["POST"])
 def api_submit_request():
+    u7buy_order_id = request.form.get("u7buy_order_id", "").strip()
     code = request.form.get("code", "").strip()
+    reason = request.form.get("reason", "").strip()
     image = request.files.get("image")
     
-    if not code or not image:
-        return jsonify({"success": False, "error": "Missing code or image!"}), 400
+    if not u7buy_order_id:
+        return jsonify({"success": False, "error": "Please enter your U7BUY Purchase ID / Order ID!"}), 400
+    if not code:
+        return jsonify({"success": False, "error": "Please enter your Access Code!"}), 400
+    if not image:
+        return jsonify({"success": False, "error": "Please upload a screenshot proof of the error!"}), 400
         
     database.init_db()
     acc_key_row = database.get_access_key(code)
     
     if not acc_key_row:
-        return jsonify({"success": False, "error": "Invalid or non-existent access code."}), 400
+        return jsonify({"success": False, "error": "Invalid or non-existent access code. Please check your code!"}), 400
         
-    # 1. Giới hạn đổi tối đa 5 lần / 24 giờ cho 1 mã
-    daily_rotations = database.get_today_rotation_count(code)
-    if daily_rotations >= 5:
+    # Cooldown 2 phút giữa các lần gửi báo lỗi
+    if database.has_recent_request(code, minutes=2):
         return jsonify({
             "success": False, 
-            "error": "You have reached the maximum auto-replacement limit (5 times/day) for this code. Please contact customer support for manual assistance!"
-        }), 429
-
-    # 2. Cooldown 5 phút giữa các lần gửi báo lỗi
-    if database.has_recent_request(code, minutes=5):
-        return jsonify({
-            "success": False, 
-            "error": "Please wait 5 minutes before submitting another report."
+            "error": "You already submitted a request recently. Please wait a moment before submitting another."
         }), 429
         
     try:
@@ -2490,95 +2533,43 @@ def api_submit_request():
         filename = f"{uuid.uuid4()}.{file_ext}"
         
         file_bytes = image.read()
+        content_type = image.content_type or "image/png"
         
-        content_type = image.content_type
-        if not content_type:
-            content_type = "image/png"
+        image_url = ""
+        if database.SUPABASE_KEY:
+            try:
+                database.get_supabase().storage.from_("requests").upload(
+                    filename, 
+                    file_bytes, 
+                    file_options={"content-type": content_type}
+                )
+                image_url = f"{database.SUPABASE_URL}/storage/v1/object/public/requests/{filename}"
+            except Exception as upload_err:
+                print(f"Supabase upload notice: {upload_err}")
+                
+        if not image_url:
+            # Fallback Base64 so image is always visible in Admin Dashboard
+            import base64
+            b64_img = base64.b64encode(file_bytes).decode('utf-8')
+            image_url = f"data:{content_type};base64,{b64_img}"
             
-        database.get_supabase().storage.from_("requests").upload(
-            filename, 
-            file_bytes, 
-            file_options={"content-type": content_type}
+        # Lưu request vào DB để Admin duyệt thủ công (KHÔNG dùng AI auto-rotate)
+        database.create_request(
+            code=code, 
+            image_url=image_url, 
+            u7buy_order_id=u7buy_order_id, 
+            reason=reason, 
+            status="pending"
         )
         
-        image_url = f"{database.SUPABASE_URL}/storage/v1/object/public/requests/{filename}"
-        # Chuyển ảnh sang base64 để gửi trực tiếp cho Mistral, tránh lỗi Mistral không download được từ Supabase
-        import base64
-        b64_img = base64.b64encode(file_bytes).decode('utf-8')
-        data_uri = f"data:{content_type};base64,{b64_img}"
-        
-        # Gọi API Mistral Vision
-        mistral_api_key = os.environ.get("MISTRAL_API_KEY", "KKGaQ" + "pdMpvJq45" + "tumMFhH" + "cghr1dkNOb9")
-        headers = {
-            "Authorization": f"Bearer {mistral_api_key}",
-            "Content-Type": "application/json"
-        }
-        
-        prompt = """You are an AI assistant analyzing Netflix error and subscription status screenshots.
-The screenshot can be in ANY LANGUAGE (English, Spanish, Vietnamese, Polish, Portuguese, German, French, etc.).
-
-Analyze the image carefully. Reply with ONLY ONE WORD from the following options:
-- NO_PLAN: If the image shows ANY Netflix screen indicating membership/subscription is canceled, expired, inactive, on hold, payment update required, choose a plan, or restart membership (for example: 'Reactivar tu suscripción', 'Update Payment', 'Your account is on hold', 'Choose your plan', 'Restart Your Membership', 'Reactivar la suscripción', 'Tái kích hoạt tư cách thành viên', 'Renovar assinatura', etc.).
-- TOO_MANY_PEOPLE: If the image shows a Netflix error about too many people watching, screen limit reached, or device limit reached.
-- HOUSEHOLD: If the image shows a Netflix Household error (for example: 'Your device isn't part of the Netflix Household', 'This TV isn't part of your Netflix Household', 'Cập nhật Hộ gia đình', 'Update Netflix Household', 'Hộ gia đình Netflix').
-- OTHER: ONLY if the image is completely unrelated to Netflix or shows a normal video playing without any error/subscription prompt."""
-
-        data = {
-            "model": "pixtral-12b-2409",
-            "messages": [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": prompt},
-                        {"type": "image_url", "image_url": {"url": data_uri}}
-                    ]
-                }
-            ]
-        }
-        
-        try:
-            r = requests.post("https://api.mistral.ai/v1/chat/completions", headers=headers, json=data, timeout=30)
-            r.raise_for_status()
-            ai_response = r.json()["choices"][0]["message"]["content"].strip().upper()
-            print(f"Mistral AI Response: {ai_response}")
-        except Exception as e:
-            print(f"Mistral API error: {e}")
-            ai_response = "OTHER" # Fallback if API fails
-            
-        if "NO_PLAN" in ai_response or "REACTIVAR" in ai_response or "PAYMENT" in ai_response or "HOLD" in ai_response or "RESTART" in ai_response or "SUSCRIPCI" in ai_response:
-            assigned_email = acc_key_row[1]
-            database.delete_account(assigned_email) # Delete old dead account from db
-            rotated = database.rotate_access_key(code)
-            if rotated:
-                database.create_request(code, image_url, "accepted_no_plan")
-                return jsonify({"success": True, "message": "Report confirmed. Your account has been updated, please generate a new link!"})
-            else:
-                return jsonify({"success": False, "error": "The system is out of backup accounts!"})
-                
-        elif "TOO_MANY" in ai_response or "LIMIT" in ai_response or "SCREEN" in ai_response:
-            rotated = database.rotate_access_key(code)
-            if rotated:
-                database.create_request(code, image_url, "accepted_too_many_people")
-                return jsonify({"success": True, "message": "Report confirmed. Your account has been updated, please generate a new link!"})
-            else:
-                return jsonify({"success": False, "error": "The system is out of backup accounts!"})
-
-        elif "HOUSEHOLD" in ai_response or "HỘ GIA ĐÌNH" in ai_response:
-            rotated = database.rotate_access_key(code)
-            if rotated:
-                database.create_request(code, image_url, "accepted_household")
-                return jsonify({"success": True, "message": "Report confirmed. Your account has been updated, please generate a new link!"})
-            else:
-                return jsonify({"success": False, "error": "The system is out of backup accounts!"})
-                
-        else:
-            database.create_request(code, image_url, "rejected_other")
-            return jsonify({"success": False, "error": "Invalid report image or unsupported error."})
-
+        return jsonify({
+            "success": True, 
+            "message": "Your request has been submitted! Admin will check it in 1-10 hours. After checking, admin will notify you."
+        })
         
     except Exception as e:
-        print(f"Lỗi upload ảnh: {e}")
-        return jsonify({"success": False, "error": f"Upload failed: {str(e)}. Admin has not created the 'requests' bucket in Supabase!"}), 500
+        print(f"Lỗi submit request: {e}")
+        return jsonify({"success": False, "error": f"Failed to submit request: {str(e)}"}), 500
 
 from werkzeug.exceptions import RequestEntityTooLarge
 @app.errorhandler(RequestEntityTooLarge)
@@ -2611,6 +2602,30 @@ def reject_request(req_id):
     database.init_db()
     database.update_request_status(req_id, "rejected")
     flash("Request rejected.", "warning")
+    return redirect(url_for("admin"))
+
+@app.route("/admin/request/<req_id>/delete", methods=["POST"])
+@login_required
+def delete_request_route(req_id):
+    database.init_db()
+    database.delete_request(req_id)
+    flash("Request deleted.", "success")
+    return redirect(url_for("admin"))
+
+@app.route("/admin/keys/delete_lifetime", methods=["POST"])
+@login_required
+def delete_lifetime_keys():
+    database.init_db()
+    deleted = database.delete_all_lifetime_keys()
+    flash(f"Successfully deleted all Lifetime Access Keys (Total: {deleted}).", "success")
+    return redirect(url_for("admin"))
+
+@app.route("/admin/keys/cleanup_expired", methods=["POST"])
+@login_required
+def cleanup_expired_keys_route():
+    database.init_db()
+    deleted = database.cleanup_expired_keys()
+    flash(f"Successfully cleaned up expired access keys (Total: {deleted}).", "success")
     return redirect(url_for("admin"))
 
 @app.route("/api/check_live_code", methods=["POST"])
