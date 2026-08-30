@@ -472,7 +472,6 @@ def create_request(code, image_url, u7buy_order_id="", reason="", status="pendin
     try:
         if SUPABASE_KEY:
             get_supabase().table("requests").insert(data).execute()
-            return
     except Exception as e:
         print(f"Supabase create_request error: {e}")
     try:
@@ -493,7 +492,8 @@ def has_recent_request(code, minutes=5):
         if SUPABASE_KEY:
             time_ago = (datetime.datetime.utcnow() - datetime.timedelta(minutes=minutes)).isoformat()
             response = get_supabase().table("requests").select("id").eq("code", code).gt("created_at", time_ago).limit(1).execute()
-            return len(response.data) > 0
+            if response.data:
+                return True
     except Exception as e:
         pass
     try:
@@ -530,7 +530,7 @@ def get_pending_requests():
     try:
         if SUPABASE_KEY:
             response = get_supabase().table("requests").select("*").eq("status", "pending").order("created_at", desc=True).execute()
-            if response.data:
+            if response.data is not None and len(response.data) > 0:
                 return response.data
     except Exception as e:
         print(f"Supabase get_pending_requests error: {e}")
@@ -558,12 +558,18 @@ def get_pending_requests():
         print(f"SQLite get_pending_requests error: {e}")
     return []
 
-def update_request_status(req_id, status):
+def update_request_status(req_id, status, code=None):
     data = {"status": status}
+    req_id_str = str(req_id).strip()
     try:
         if SUPABASE_KEY:
-            get_supabase().table("requests").update(data).eq("id", req_id).execute()
-            return
+            # 1. Update by ID
+            if req_id_str.isdigit():
+                get_supabase().table("requests").update(data).eq("id", int(req_id_str)).execute()
+            get_supabase().table("requests").update(data).eq("id", req_id_str).execute()
+            # 2. Update by Code if provided
+            if code:
+                get_supabase().table("requests").update(data).eq("code", code).eq("status", "pending").execute()
     except Exception as e:
         print(f"Supabase update_request_status error: {e}")
     try:
@@ -571,17 +577,22 @@ def update_request_status(req_id, status):
         if os.path.exists("accounts.db"):
             conn = sqlite3.connect("accounts.db")
             c = conn.cursor()
-            c.execute("UPDATE requests SET status = ? WHERE id = ?", (status, req_id))
+            c.execute("UPDATE requests SET status = ? WHERE id = ? OR id = ? OR (code = ? AND status = 'pending')",
+                      (status, req_id_str, int(req_id_str) if req_id_str.isdigit() else -1, code or ""))
             conn.commit()
             conn.close()
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"SQLite update_request_status error: {e}")
 
-def delete_request(req_id):
+def delete_request(req_id, code=None):
+    req_id_str = str(req_id).strip()
     try:
         if SUPABASE_KEY:
-            get_supabase().table("requests").delete().eq("id", req_id).execute()
-            return
+            if req_id_str.isdigit():
+                get_supabase().table("requests").delete().eq("id", int(req_id_str)).execute()
+            get_supabase().table("requests").delete().eq("id", req_id_str).execute()
+            if code:
+                get_supabase().table("requests").delete().eq("code", code).execute()
     except Exception as e:
         print(f"Supabase delete_request error: {e}")
     try:
@@ -589,16 +600,22 @@ def delete_request(req_id):
         if os.path.exists("accounts.db"):
             conn = sqlite3.connect("accounts.db")
             c = conn.cursor()
-            c.execute("DELETE FROM requests WHERE id = ?", (req_id,))
+            c.execute("DELETE FROM requests WHERE id = ? OR id = ? OR (code = ? AND ? != '')",
+                      (req_id_str, int(req_id_str) if req_id_str.isdigit() else -1, code or "", code or ""))
             conn.commit()
             conn.close()
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"SQLite delete_request error: {e}")
 
 def get_request_by_id(req_id):
+    req_id_str = str(req_id).strip()
     try:
         if SUPABASE_KEY:
-            response = get_supabase().table("requests").select("*").eq("id", req_id).execute()
+            if req_id_str.isdigit():
+                response = get_supabase().table("requests").select("*").eq("id", int(req_id_str)).execute()
+                if response.data:
+                    return response.data[0]
+            response = get_supabase().table("requests").select("*").eq("id", req_id_str).execute()
             if response.data:
                 return response.data[0]
     except Exception:
@@ -608,7 +625,8 @@ def get_request_by_id(req_id):
         if os.path.exists("accounts.db"):
             conn = sqlite3.connect("accounts.db")
             c = conn.cursor()
-            c.execute("SELECT id, code, u7buy_order_id, image_url, reason, status, created_at FROM requests WHERE id = ?", (req_id,))
+            c.execute("SELECT id, code, u7buy_order_id, image_url, reason, status, created_at FROM requests WHERE id = ? OR id = ?",
+                      (req_id_str, int(req_id_str) if req_id_str.isdigit() else -1))
             r = c.fetchone()
             conn.close()
             if r:

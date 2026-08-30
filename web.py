@@ -1252,13 +1252,16 @@ ADMIN_TEMPLATE = r"""
                             <td style="font-size: 0.82rem; color: #888;">{{ req.created_at }}</td>
                             <td style="display: flex; gap: 8px; flex-wrap: wrap;">
                                 <form action="/admin/request/{{ req.id }}/accept" method="POST" style="margin: 0;" onsubmit="return confirm('Approve & Change account for code {{ req.code }}?');">
-                                    <button type="submit" style="background: #27ae60; padding: 6px 12px; font-size: 0.8rem; border-radius: 6px;">✅ Approve & Change</button>
+                                    <input type="hidden" name="code" value="{{ req.code }}">
+                                    <button type="submit" style="background: #27ae60; padding: 6px 12px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">✅ Approve & Change</button>
                                 </form>
                                 <form action="/admin/request/{{ req.id }}/reject" method="POST" style="margin: 0;" onsubmit="return confirm('Reject request for code {{ req.code }}?');">
-                                    <button type="submit" style="background: #e67e22; padding: 6px 12px; font-size: 0.8rem; border-radius: 6px;">❌ Reject</button>
+                                    <input type="hidden" name="code" value="{{ req.code }}">
+                                    <button type="submit" style="background: #e67e22; padding: 6px 12px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">❌ Reject</button>
                                 </form>
                                 <form action="/admin/request/{{ req.id }}/delete" method="POST" style="margin: 0;" onsubmit="return confirm('Delete this request?');">
-                                    <button type="submit" style="background: #e74c3c; padding: 6px 10px; font-size: 0.8rem; border-radius: 6px;">🗑️</button>
+                                    <input type="hidden" name="code" value="{{ req.code }}">
+                                    <button type="submit" style="background: #e74c3c; padding: 6px 10px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">🗑️</button>
                                 </form>
                             </td>
                         </tr>
@@ -2584,19 +2587,23 @@ def handle_file_size_error(e):
 @login_required
 def accept_request(req_id):
     database.init_db()
-    req = database.get_request_by_id(req_id)
-    if not req or req["status"] != "pending":
-        flash("Request not found or already processed.", "error")
+    code = (request.form.get("code") or "").strip()
+    if not code:
+        req = database.get_request_by_id(req_id)
+        if req:
+            code = req.get("code", "").strip()
+            
+    if not code:
+        flash("Mã Code không tồn tại hoặc đã xử lý.", "error")
         return redirect(url_for("admin"))
         
-    code = req["code"]
     rotated = database.rotate_access_key(code)
+    database.update_request_status(req_id, "accepted", code=code)
     
     if rotated:
-        database.update_request_status(req_id, "accepted")
-        flash(f"Successfully rotated account for code {code}.", "success")
+        flash(f"✅ Đã duyệt và đổi tài khoản mới thành công cho code {code}.", "success")
     else:
-        flash("Failed to rotate account! Out of backup cookies.", "error")
+        flash(f"⚠️ Đã đánh dấu duyệt, nhưng kho hết Cookie dự phòng cho code {code}. Vui lòng nạp thêm cookie!", "warning")
         
     return redirect(url_for("admin"))
 
@@ -2604,16 +2611,18 @@ def accept_request(req_id):
 @login_required
 def reject_request(req_id):
     database.init_db()
-    database.update_request_status(req_id, "rejected")
-    flash("Request rejected.", "warning")
+    code = (request.form.get("code") or "").strip()
+    database.update_request_status(req_id, "rejected", code=code)
+    flash("Đã từ chối yêu cầu đổi tài khoản.", "warning")
     return redirect(url_for("admin"))
 
 @app.route("/admin/request/<req_id>/delete", methods=["POST"])
 @login_required
 def delete_request_route(req_id):
     database.init_db()
-    database.delete_request(req_id)
-    flash("Request deleted.", "success")
+    code = (request.form.get("code") or "").strip()
+    database.delete_request(req_id, code=code)
+    flash("Đã xóa yêu cầu khỏi danh sách.", "success")
     return redirect(url_for("admin"))
 
 @app.route("/admin/keys/delete_lifetime", methods=["POST"])
