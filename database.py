@@ -524,6 +524,19 @@ def get_today_rotation_count(code):
             return accepted_count
     except Exception as e:
         pass
+
+    try:
+        import sqlite3
+        if os.path.exists("accounts.db"):
+            conn = sqlite3.connect("accounts.db")
+            c = conn.cursor()
+            c.execute("SELECT COUNT(*) FROM requests WHERE code = ? AND status LIKE 'accepted%' AND datetime(created_at) > datetime('now', '-24 hours')", (code,))
+            r = c.fetchone()
+            conn.close()
+            if r:
+                return r[0]
+    except Exception as e:
+        print(f"SQLite get_today_rotation_count error: {e}")
     return 0
 
 def get_pending_requests():
@@ -683,24 +696,57 @@ def create_access_key(code, expire_at=None):
     if get_access_key(code):
         return False, "This access key already exists."
         
+    saved = False
     try:
-        data = {
-            "code": code,
-            "assigned_email": email
-        }
-        if expire_at:
-            data["expire_at"] = expire_at
-            
-        get_supabase().table("access_keys").insert(data).execute()
-        return True, "Success"
+        if SUPABASE_KEY:
+            data = {
+                "code": code,
+                "assigned_email": email
+            }
+            if expire_at:
+                data["expire_at"] = expire_at
+            get_supabase().table("access_keys").insert(data).execute()
+            saved = True
     except Exception as e:
-        return False, f"Database error: {e}"
+        print(f"Supabase create_access_key error: {e}")
+
+    try:
+        import sqlite3
+        if os.path.exists("accounts.db"):
+            conn = sqlite3.connect("accounts.db")
+            c = conn.cursor()
+            c.execute("INSERT OR REPLACE INTO access_keys (code, assigned_email, expire_at) VALUES (?, ?, ?)",
+                      (code, email, expire_at))
+            conn.commit()
+            conn.close()
+            saved = True
+    except Exception as e:
+        print(f"SQLite create_access_key error: {e}")
+
+    if saved:
+        return True, "Success"
+    return False, "Failed to save access key to database."
 
 def get_access_key(code):
-    response = get_supabase().table("access_keys").select("*").eq("code", code).execute()
-    if response.data:
-        r = response.data[0]
-        return (r["code"], r["assigned_email"], r.get("expire_at"))
+    try:
+        if SUPABASE_KEY:
+            response = get_supabase().table("access_keys").select("*").eq("code", code).execute()
+            if response.data:
+                r = response.data[0]
+                return (r["code"], r["assigned_email"], r.get("expire_at"))
+    except Exception as e:
+        print(f"Supabase get_access_key error: {e}")
+    try:
+        import sqlite3
+        if os.path.exists("accounts.db"):
+            conn = sqlite3.connect("accounts.db")
+            c = conn.cursor()
+            c.execute("SELECT code, assigned_email, expire_at FROM access_keys WHERE code = ?", (code,))
+            r = c.fetchone()
+            conn.close()
+            return r
+    except Exception:
+        pass
     return None
 
 def get_all_access_keys():
@@ -731,12 +777,27 @@ def rotate_access_key(code):
         return False
         
     data = {"assigned_email": new_email}
+    success = False
     try:
-        get_supabase().table("access_keys").update(data).eq("code", code).execute()
-        return True
+        if SUPABASE_KEY:
+            get_supabase().table("access_keys").update(data).eq("code", code).execute()
+            success = True
     except Exception as e:
-        print(f"Lỗi Rotate DB: {e}")
-        return False
+        print(f"Supabase Rotate error: {e}")
+
+    try:
+        import sqlite3
+        if os.path.exists("accounts.db"):
+            conn = sqlite3.connect("accounts.db")
+            c = conn.cursor()
+            c.execute("UPDATE access_keys SET assigned_email = ? WHERE code = ?", (new_email, code))
+            conn.commit()
+            conn.close()
+            success = True
+    except Exception as e:
+        print(f"SQLite Rotate error: {e}")
+
+    return success
 
 def delete_access_key(code):
     try:

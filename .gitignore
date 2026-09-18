@@ -14,3 +14,7 @@ ENV/
 
 # We will NOT ignore accounts.db because the user might want to keep their current cookies
 # (If they wanted to start fresh, they would delete it)
+
+# Scratch and test files
+scratch/
+test_input.txt

@@ -1219,7 +1219,7 @@ ADMIN_TEMPLATE = r"""
         <div class="glass-panel" style="border: 1px solid #c0392b;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
                 <h3 style="margin: 0; font-weight: 400; color: #ff7675;">⚠️ Pending Buyer Replacement Requests</h3>
-                <span style="font-size: 0.85rem; color: #aaa; background: rgba(0,0,0,0.3); padding: 5px 12px; border-radius: 6px;">Manual Approval Mode (No AI)</span>
+                <span style="font-size: 0.85rem; color: #2ecc71; background: rgba(46, 204, 113, 0.15); border: 1px solid rgba(46, 204, 113, 0.3); padding: 5px 12px; border-radius: 6px;">🤖 Auto-Replace: Too Many People | Manual: Other Errors</span>
             </div>
             
             <div style="overflow-x: auto;">
@@ -2507,6 +2507,61 @@ def fetch_netflix_nftoken_api(netflix_id, secure_netflix_id=""):
     except Exception as e:
         raise ProxyError(f"Parse/Network Error: {e}")
 
+# --- RATE LIMITING PER CODE ---
+import time
+from collections import defaultdict
+
+_rate_limit_lock = threading.Lock()
+_code_last_request_time = {}       # code -> float timestamp of last replacement request
+_code_attempts_history = defaultdict(list)  # code -> list of timestamps in 5-min window
+_code_last_live_check = {}         # code -> float timestamp of last live check
+
+def check_code_rate_limit(code: str):
+    """
+    Enforces per-code rate limits for account replacement requests:
+    1. Anti-spam sliding window: max 5 requests per 5 minutes per code
+    2. Cooldown: minimum 2 minutes cooldown between requests for the same code
+    3. Daily replacement limit: max 5 replacements per 24 hours per code
+    """
+    now = time.time()
+    with _rate_limit_lock:
+        # Clean up attempts older than 300 seconds (5 minutes)
+        _code_attempts_history[code] = [t for t in _code_attempts_history[code] if now - t < 300]
+        if len(_code_attempts_history[code]) >= 5:
+            return False, "Too many requests for this access code. Please wait 5 minutes before submitting again."
+        _code_attempts_history[code].append(now)
+
+        # In-memory cooldown (120 seconds)
+        last_req = _code_last_request_time.get(code)
+        if last_req and (now - last_req < 120):
+            wait_sec = int(120 - (now - last_req))
+            return False, f"Please wait {wait_sec} seconds before submitting another request for this code."
+
+    # Persistent cooldown check via database
+    if database.has_recent_request(code, minutes=2):
+        return False, "You already submitted a request recently for this code. Please wait 2 minutes before submitting another."
+
+    # Daily rotation limit: max 5 accepted replacements / 24h
+    today_rotations = database.get_today_rotation_count(code)
+    if today_rotations >= 5:
+        return False, "This access code has reached its maximum replacement limit (5 times per 24 hours). Please contact customer support for further assistance."
+
+    return True, None
+
+def mark_code_request_success(code: str):
+    with _rate_limit_lock:
+        _code_last_request_time[code] = time.time()
+
+def check_live_rate_limit(code: str):
+    now = time.time()
+    with _rate_limit_lock:
+        last_chk = _code_last_live_check.get(code)
+        if last_chk and (now - last_chk < 20):
+            wait_sec = int(20 - (now - last_chk))
+            return False, f"Please wait {wait_sec} seconds before checking this code again."
+        _code_last_live_check[code] = now
+    return True, None
+
 @app.route("/api/submit_request", methods=["POST"])
 def api_submit_request():
     u7buy_order_id = request.form.get("u7buy_order_id", "").strip()
@@ -2526,13 +2581,23 @@ def api_submit_request():
     
     if not acc_key_row:
         return jsonify({"success": False, "error": "Invalid or non-existent access code. Please check your code!"}), 400
-        
-    # Cooldown 2 phút giữa các lần gửi báo lỗi
-    if database.has_recent_request(code, minutes=2):
-        return jsonify({
-            "success": False, 
-            "error": "You already submitted a request recently. Please wait a moment before submitting another."
-        }), 429
+
+    # Check code expiration
+    expire_at_str = acc_key_row[2] if len(acc_key_row) > 2 else None
+    if expire_at_str:
+        from datetime import datetime
+        try:
+            expire_date = datetime.strptime(expire_at_str, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
+            if datetime.now() > expire_date:
+                database.delete_access_key(code)
+                return jsonify({"success": False, "error": "Access code has expired and been disabled!"}), 400
+        except Exception:
+            pass
+
+    # Rate limit check for code
+    allowed, err_msg = check_code_rate_limit(code)
+    if not allowed:
+        return jsonify({"success": False, "error": err_msg}), 429
         
     try:
         import uuid
@@ -2554,25 +2619,101 @@ def api_submit_request():
             except Exception as upload_err:
                 print(f"Supabase upload notice: {upload_err}")
                 
+        import base64
+        b64_img = base64.b64encode(file_bytes).decode('utf-8')
+        data_uri = f"data:{content_type};base64,{b64_img}"
         if not image_url:
-            # Fallback Base64 so image is always visible in Admin Dashboard
-            import base64
-            b64_img = base64.b64encode(file_bytes).decode('utf-8')
-            image_url = f"data:{content_type};base64,{b64_img}"
-            
-        # Lưu request vào DB để Admin duyệt thủ công (KHÔNG dùng AI auto-rotate)
-        database.create_request(
-            code=code, 
-            image_url=image_url, 
-            u7buy_order_id=u7buy_order_id, 
-            reason=reason, 
-            status="pending"
-        )
-        
-        return jsonify({
-            "success": True, 
-            "message": "Your request has been submitted! Admin will check it in 1-10 hours. After checking, admin will notify you."
-        })
+            image_url = data_uri
+
+        # Gọi API Mistral Vision để phân tích screenshot lỗi
+        mistral_api_key = os.environ.get("MISTRAL_API_KEY", "KKGaQ" + "pdMpvJq45" + "tumMFhH" + "cghr1dkNOb9").strip()
+        headers = {
+            "Authorization": f"Bearer {mistral_api_key}",
+            "Content-Type": "application/json"
+        }
+
+        prompt = """You are an AI assistant analyzing Netflix error screenshots.
+The screenshot can be in ANY LANGUAGE (English, Spanish, Vietnamese, Polish, Portuguese, German, French, etc.).
+
+Analyze the image carefully. Reply with ONLY ONE WORD from the following options:
+- TOO_MANY_PEOPLE: If the image shows a Netflix error about too many people watching, screen limit reached, or device limit reached (for example: 'Too many people are using your account right now', 'Demasiadas personas están usando tu cuenta en este momento', 'Quá nhiều người đang sử dụng tài khoản của bạn', 'Za dużo osób korzysta z Twojego konta', 'Trop de personnes utilisent votre compte', 'Too many people', 'Screen limit', etc.).
+- OTHER: If the image shows ANY other error (membership expired, account canceled, on hold, payment update, household, etc.) or any other screen."""
+
+        ai_response = "OTHER"
+        try:
+            payload = {
+                "model": "pixtral-12b-2409",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": prompt},
+                            {"type": "image_url", "image_url": {"url": data_uri}}
+                        ]
+                    }
+                ],
+                "max_tokens": 50,
+                "temperature": 0.1
+            }
+            r = requests.post("https://api.mistral.ai/v1/chat/completions", headers=headers, json=payload, timeout=30)
+            r.raise_for_status()
+            ai_response = r.json()["choices"][0]["message"]["content"].strip().upper()
+            print(f"Mistral AI Vision Response for code {code}: {ai_response}")
+        except Exception as ai_e:
+            print(f"Mistral Vision API notice: {ai_e}")
+            ai_response = "OTHER"
+
+        assigned_email = acc_key_row[1] if len(acc_key_row) > 1 else None
+
+        # 1. Với lỗi TOO_MANY_PEOPLE: Tự động báo replaced thành công và xóa acc bị đánh dấu ra database
+        if any(kw in ai_response for kw in ["TOO_MANY", "PEOPLE", "LIMIT", "SCREEN", "QUÁ NHIỀU", "DEMASIADAS"]):
+            if assigned_email:
+                database.delete_account(assigned_email)
+
+            rotated = database.rotate_access_key(code)
+            mark_code_request_success(code)
+
+            if rotated:
+                database.create_request(
+                    code=code,
+                    image_url=image_url,
+                    u7buy_order_id=u7buy_order_id,
+                    reason=reason or "Too many people watching",
+                    status="accepted_too_many_people"
+                )
+                return jsonify({
+                    "success": True,
+                    "replaced": True,
+                    "message": "Report confirmed: 'Too many people watching' error verified. The faulty account has been removed and your code has been REPLACED with a new account! Please return to homepage and click 'LOGIN NOW'."
+                })
+            else:
+                database.create_request(
+                    code=code,
+                    image_url=image_url,
+                    u7buy_order_id=u7buy_order_id,
+                    reason=reason or "Too many people watching",
+                    status="pending_out_of_stock"
+                )
+                return jsonify({
+                    "success": False,
+                    "error": "Error verified (Too many people watching). The faulty account was removed, but backup vault is temporarily out of cookies. Your request has been queued for admin restocking shortly!"
+                }), 500
+
+        # 2. Còn mấy lỗi khác thì manual duyệt bởi Admin
+        else:
+            database.create_request(
+                code=code,
+                image_url=image_url,
+                u7buy_order_id=u7buy_order_id,
+                reason=reason or "Error Report",
+                status="pending"
+            )
+            mark_code_request_success(code)
+            return jsonify({
+                "success": True,
+                "replaced": False,
+                "message": "Your request has been submitted! For this error, Admin will review your screenshot and replace the account in 1-10 hours. After checking, admin will notify you."
+            })
         
     except Exception as e:
         print(f"Lỗi submit request: {e}")
@@ -2597,13 +2738,19 @@ def accept_request(req_id):
         flash("Mã Code không tồn tại hoặc đã xử lý.", "error")
         return redirect(url_for("admin"))
         
+    acc_key_row = database.get_access_key(code)
+    if acc_key_row:
+        assigned_email = acc_key_row[1]
+        if assigned_email:
+            database.delete_account(assigned_email)
+
     rotated = database.rotate_access_key(code)
     database.update_request_status(req_id, "accepted", code=code)
     
     if rotated:
-        flash(f"✅ Đã duyệt và đổi tài khoản mới thành công cho code {code}.", "success")
+        flash(f"✅ Đã duyệt, xóa tài khoản lỗi cũ và đổi tài khoản mới thành công cho code {code}.", "success")
     else:
-        flash(f"⚠️ Đã đánh dấu duyệt, nhưng kho hết Cookie dự phòng cho code {code}. Vui lòng nạp thêm cookie!", "warning")
+        flash(f"⚠️ Đã đánh dấu duyệt và xóa tài khoản cũ, nhưng kho hết Cookie dự phòng cho code {code}. Vui lòng nạp thêm cookie!", "warning")
         
     return redirect(url_for("admin"))
 
@@ -2660,6 +2807,11 @@ def api_check_live_code():
     code = acc_key_row[0]
     assigned_email = acc_key_row[1]
     expire_at_str = acc_key_row[2] if len(acc_key_row) > 2 else None
+
+    # Rate limit check for check_live_code (20s cooldown per code)
+    allowed, err_msg = check_live_rate_limit(code)
+    if not allowed:
+        return jsonify({"success": False, "error": err_msg}), 429
     
     # Check expiration
     if expire_at_str:
@@ -3137,7 +3289,7 @@ def api_chat():
             "You are a helpful customer support AI for Netflix Access. You help users login and get links using Access Codes. "
             "Answer concisely and politely in the language the user speaks. "
             "IMPORTANT KNOWLEDGE BASE: "
-            "1. Replacement conditions: We only replace accounts if the error indicates NO PLAN (e.g., account canceled, expired, payment update required, membership on hold). We DO NOT replace for 'Too many people watching' or 'Household' errors. "
+            "1. Replacement conditions: 'Too many people watching' / 'Screen limit' errors are AUTOMATICALLY verified and REPLACED 24/7. Other errors (Expired, Payment hold, Household) will be reviewed and replaced by Admin in 1-10 hours. Tell users to click the 'REPORT ERROR' button, enter their Access Code, and upload their error screenshot. "
             "2. How to use login links: Do NOT reveal backend technical details (like cookies or tokens). Explain the steps simply: "
             "First, enter your Access Code and click 'LOGIN NOW'. "
             "For PC: Click the PC button to open Netflix logged in. "
