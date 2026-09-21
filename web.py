@@ -316,14 +316,14 @@ PUBLIC_TEMPLATE = r"""
                 "lang_custom_ph": "Type any language (e.g. Spanish, Polish, Russian)...",
                 "lang_custom_btn": "✨ AI Translate",
                 "steps_header": "⚡ 4 EASY STEPS TO LOGIN",
-                "step1_title": "🌐 Connect to US VPN",
-                "step1_desc": "Open free <strong>Windscribe VPN</strong> and connect to <strong>USA (Los Angeles)</strong>.",
+                "step1_title": "🚫 Do NOT Use VPN",
+                "step1_desc": "Do not use VPN on our website. If you cannot access or open links, please use <strong>4G/5G mobile data</strong>.",
                 "step2_title": "🔑 Enter Access Code",
                 "step2_desc": "Paste your 5 to 15 character <strong>Access Code</strong> from your order below.",
                 "step3_title": "🚀 Select Device",
                 "step3_desc": "Click <strong>LOGIN NOW</strong> and choose your device: PC, Mobile, Smart TV, or General.",
                 "step4_title": "🎬 Stream & Enjoy",
-                "step4_desc": "Once logged in successfully, you can <strong>disconnect VPN</strong> to stream at full speed!",
+                "step4_desc": "Once logged in successfully, select your profile and stream at full speed!",
                 "input_heading": "Enter Access Code",
                 "input_placeholder": "e.g. X9K2M1 or 49AD0GJY0YK4I6D",
                 "btn_login": "🚀 LOGIN NOW (Generate Links)",
@@ -331,7 +331,7 @@ PUBLIC_TEMPLATE = r"""
                 "rules_header": "⚠️ IMPORTANT RULES & USAGE GUIDELINES",
                 "rule1": "• <strong>Single Device Policy:</strong> Stream on 1 device at a time. Do not share your code or link.",
                 "rule2": "• <strong>Account Protection:</strong> DO NOT change password, email, PIN, or modify profiles.",
-                "rule3": "• <strong>US VPN Requirement:</strong> Always connect to US VPN (Windscribe - Los Angeles) before generating and opening links.",
+                "rule3": "• <strong>No VPN Policy:</strong> Do NOT use VPN on our website. If you cannot access the link, please switch to <strong>4G/5G mobile data</strong>.",
                 "rule4": "• <strong>Replacement Guarantee:</strong> If you encounter an error (Expired/On Hold), click <strong>REQUEST CHANGE</strong> with your U7BUY Purchase ID, Access Code, and error screenshot. Admin will review in 1-10 hours.",
                 "rule5": "• <strong>Support Schedule (GMT+7):</strong> 9:00 - 11:00 AM | 3:00 - 5:00 PM | 9:00 - 11:00 PM.",
                 "badge_plan": "📦 Plan:",
@@ -355,7 +355,7 @@ PUBLIC_TEMPLATE = r"""
                 "chat_btn": "💬 24/7 Support Assistant",
                 "chat_header": "🤖 Support Assistant",
                 "chat_welcome": "Hello! How can I help you with your Netflix access today?",
-                "chat_pill1": "🌐 How to use VPN?",
+                "chat_pill1": "📱 Cannot access? Use 4G/5G",
                 "chat_pill2": "📺 Smart TV Guide",
                 "chat_pill3": "⚠️ Request account change"
             },
@@ -366,14 +366,14 @@ PUBLIC_TEMPLATE = r"""
                 "lang_custom_ph": "Nhập ngôn ngữ bất kỳ (VD: Tiếng Hàn, Tiếng Nga)...",
                 "lang_custom_btn": "✨ AI Dịch",
                 "steps_header": "⚡ 4 BƯỚC ĐĂNG NHẬP DỄ DÀNG",
-                "step1_title": "🌐 Bật VPN Mỹ / US VPN",
-                "step1_desc": "Mở ứng dụng <strong>Windscribe VPN</strong> miễn phí, kết nối vị trí <strong>USA (Los Angeles)</strong>.",
+                "step1_title": "🚫 Không Sử Dụng VPN",
+                "step1_desc": "Tuyệt đối <strong>không sử dụng VPN</strong> trên web. Nếu không vào được hãy dùng <strong>4G/5G data mobile</strong>.",
                 "step2_title": "🔑 Nhập mã Code",
                 "step2_desc": "Dán mã <strong>Access Code</strong> (5 đến 15 ký tự) đã nhận từ đơn hàng vào ô bên dưới.",
                 "step3_title": "🚀 Chọn Thiết Bị",
                 "step3_desc": "Bấm <strong>LOGIN NOW</strong> và chọn: Máy tính (Chọn Profile), Điện thoại, TV hoặc Xem Acc.",
                 "step4_title": "🎬 Thưởng Thức",
-                "step4_desc": "Đăng nhập thành công, bạn có thể <strong>tắt VPN</strong> đi để xem phim tốc độ cao!",
+                "step4_desc": "Đăng nhập thành công, bạn chọn profile và thưởng thức xem phim tốc độ cao!",
                 "input_heading": "Nhập Mã Truy Cập (Access Code)",
                 "input_placeholder": "Ví dụ: X9K2M1 hoặc 49AD0GJY0YK4I6D",
                 "btn_login": "🚀 LOGIN NOW (Tạo Link Đăng Nhập)",
@@ -381,7 +381,7 @@ PUBLIC_TEMPLATE = r"""
                 "rules_header": "⚠️ QUY ĐỊNH SỬ DỤNG & BẢO HÀNH",
                 "rule1": "• <strong>Quy định 1 thiết bị:</strong> Xem trên 1 thiết bị tại 1 thời điểm. Không chia sẻ link hoặc code cho người khác.",
                 "rule2": "• <strong>Bảo vệ tài khoản:</strong> TUYỆT ĐỐI KHÔNG đổi mật khẩu, email, mã PIN hoặc chỉnh sửa hồ sơ.",
-                "rule3": "• <strong>Yêu cầu bật VPN Mỹ:</strong> Luôn bật VPN Mỹ (Windscribe - Los Angeles) trước khi tạo link và bấm đăng nhập.",
+                "rule3": "• <strong>Không sử dụng VPN:</strong> Tuyệt đối không bật VPN trên web. Nếu không vô được link, hãy sử dụng <strong>4G/5G data mobile</strong>.",
                 "rule4": "• <strong>Bảo hành đổi trả:</strong> Nếu gặp màn hình lỗi (Hết hạn, Tạm giữ), bấm <strong>YÊU CẦU ĐỔI ACC</strong>, điền U7BUY Purchase ID, Code và ảnh proof lỗi. Admin sẽ kiểm tra và đổi acc trong 1-10 giờ.",
                 "rule5": "• <strong>Khung giờ hỗ trợ (GMT+7):</strong> 9:00 - 11:00 Sáng | 3:00 - 5:00 Chiều | 9:00 - 11:00 Tối.",
                 "badge_plan": "📦 Gói Cước:",
@@ -405,7 +405,7 @@ PUBLIC_TEMPLATE = r"""
                 "chat_btn": "💬 Trợ Lý Hỗ Trợ 24/7",
                 "chat_header": "🤖 Trợ Lý Hỗ Trợ",
                 "chat_welcome": "Xin chào! Tôi có thể giúp gì cho bạn về tài khoản Netflix hôm nay?",
-                "chat_pill1": "🌐 Bật VPN Mỹ như thế nào?",
+                "chat_pill1": "📱 Không vào được? Dùng 4G/5G",
                 "chat_pill2": "📺 Cách đăng nhập Smart TV?",
                 "chat_pill3": "⚠️ Hướng dẫn yêu cầu đổi acc"
             },
@@ -416,14 +416,14 @@ PUBLIC_TEMPLATE = r"""
                 "lang_custom_ph": "Escribe cualquier idioma...",
                 "lang_custom_btn": "✨ Traducir con IA",
                 "steps_header": "⚡ 4 PASOS FÁCILES PARA INICIAR SESIÓN",
-                "step1_title": "🌐 Conectar a VPN de EE.UU.",
-                "step1_desc": "Abre <strong>Windscribe VPN</strong> gratis y conéctate a <strong>USA (Los Ángeles)</strong>.",
+                "step1_title": "🚫 NO Usar VPN",
+                "step1_desc": "No uses VPN en nuestro sitio. Si no puedes acceder o abrir enlaces, usa <strong>datos móviles 4G/5G</strong>.",
                 "step2_title": "🔑 Ingresar Código de Acceso",
                 "step2_desc": "Pega tu <strong>Código de Acceso</strong> de 5 a 15 caracteres a continuación.",
                 "step3_title": "🚀 Seleccionar Dispositivo",
                 "step3_desc": "Haz clic en <strong>LOGIN NOW</strong> y elige tu dispositivo: PC, Móvil, Smart TV o Cuenta.",
                 "step4_title": "🎬 Disfruta del Streaming",
-                "step4_desc": "Una vez iniciada la sesión, ¡puedes <strong>desconectar la VPN</strong> para ver a máxima velocidad!",
+                "step4_desc": "¡Una vez iniciada la sesión, selecciona tu perfil y disfruta a máxima velocidad!",
                 "input_heading": "Ingresa tu Código de Acceso",
                 "input_placeholder": "ej. X9K2M1 o 49AD0GJY0YK4I6D",
                 "btn_login": "🚀 INICIAR SESIÓN AHORA",
@@ -431,7 +431,7 @@ PUBLIC_TEMPLATE = r"""
                 "rules_header": "⚠️ REGLAS IMPORTANTES Y POLÍTICA DE GARANTÍA",
                 "rule1": "• <strong>Un solo dispositivo:</strong> Mira en 1 dispositivo a la vez. No compartas tu código o enlace.",
                 "rule2": "• <strong>Seguridad:</strong> NO cambies contraseña, correo, PIN ni modifiques perfiles.",
-                "rule3": "• <strong>Requisito de VPN:</strong> Conéctate siempre a VPN de EE. UU. antes de generar y abrir enlaces.",
+                "rule3": "• <strong>Política Sin VPN:</strong> NO uses VPN en nuestro sitio. Si no puedes acceder al enlace, usa <strong>datos móviles 4G/5G</strong>.",
                 "rule4": "• <strong>Reemplazo automático 24/7:</strong> Si ves un error, haz clic en REPORTAR ERROR para obtener una cuenta nueva.",
                 "rule5": "• <strong>Horario de Soporte (GMT+7):</strong> 9-11 AM | 3-5 PM | 9-11 PM.",
                 "badge_plan": "📦 Plan:",
@@ -455,7 +455,7 @@ PUBLIC_TEMPLATE = r"""
                 "chat_btn": "💬 Asistente de Soporte IA 24/7",
                 "chat_header": "🤖 Asistente IA",
                 "chat_welcome": "¡Hola! ¿Cómo puedo ayudarte hoy con tu acceso a Netflix?",
-                "chat_pill1": "🌐 ¿Cómo usar la VPN?",
+                "chat_pill1": "📱 ¿No puedes entrar? Usa 4G/5G",
                 "chat_pill2": "📺 Guía para Smart TV",
                 "chat_pill3": "⚠️ Reportar un error"
             },
@@ -466,14 +466,14 @@ PUBLIC_TEMPLATE = r"""
                 "lang_custom_ph": "Digite qualquer idioma...",
                 "lang_custom_btn": "✨ Traduzir com IA",
                 "steps_header": "⚡ 4 PASSOS FÁCEIS PARA ENTRAR",
-                "step1_title": "🌐 Conectar à VPN dos EUA",
-                "step1_desc": "Abra o <strong>Windscribe VPN</strong> gratuito e conecte-se a <strong>USA (Los Angeles)</strong>.",
+                "step1_title": "🚫 NÃO Use VPN",
+                "step1_desc": "Não use VPN no nosso site. Se não conseguir acessar ou abrir links, use <strong>dados móveis 4G/5G</strong>.",
                 "step2_title": "🔑 Digitar Código de Acesso",
                 "step2_desc": "Cole o seu <strong>Código de Acesso</strong> de 5 a 15 caracteres no campo abaixo.",
                 "step3_title": "🚀 Selecionar Dispositivo",
                 "step3_desc": "Clique em <strong>LOGIN NOW</strong> e escolha: PC, Celular, Smart TV ou Conta.",
                 "step4_title": "🎬 Assistir e Aproveitar",
-                "step4_desc": "Após fazer login, você pode <strong>desconectar a VPN</strong> para assistir em alta velocidade!",
+                "step4_desc": "Após fazer login, escolha seu perfil e assista em alta velocidade!",
                 "input_heading": "Digite seu Código de Acesso",
                 "input_placeholder": "ex: X9K2M1 ou 49AD0GJY0YK4I6D",
                 "btn_login": "🚀 ENTRAR AGORA (Gerar Links)",
@@ -481,7 +481,7 @@ PUBLIC_TEMPLATE = r"""
                 "rules_header": "⚠️ REGRAS IMPORTANTES E GARANTIA",
                 "rule1": "• <strong>Apenas 1 dispositivo:</strong> Assista em 1 tela por vez. Não compartilhe seu código.",
                 "rule2": "• <strong>Segurança:</strong> NÃO altere senha, e-mail, PIN ou perfis.",
-                "rule3": "• <strong>VPN Obrigatória:</strong> Conecte-se sempre à VPN dos EUA antes de abrir os links.",
+                "rule3": "• <strong>Sem VPN:</strong> NÃO use VPN no nosso site. Se não conseguir abrir o link, use <strong>dados móveis 4G/5G</strong>.",
                 "rule4": "• <strong>Garantia Automática 24/7:</strong> Se houver erro, clique em REPORTAR ERRO para troca imediata.",
                 "rule5": "• <strong>Horário de Suporte (GMT+7):</strong> 9-11h | 15-17h | 21-23h.",
                 "badge_plan": "📦 Plano:",
@@ -505,7 +505,7 @@ PUBLIC_TEMPLATE = r"""
                 "chat_btn": "💬 Assistente de Suporte IA 24/7",
                 "chat_header": "🤖 Suporte IA",
                 "chat_welcome": "Olá! Como posso ajudar você hoje com seu acesso à Netflix?",
-                "chat_pill1": "🌐 Como usar a VPN?",
+                "chat_pill1": "📱 Sem acesso? Use 4G/5G",
                 "chat_pill2": "📺 Como entrar na Smart TV?",
                 "chat_pill3": "⚠️ Como relatar um erro?"
             },
@@ -516,14 +516,14 @@ PUBLIC_TEMPLATE = r"""
                 "lang_custom_ph": "Wpisz dowolny język...",
                 "lang_custom_btn": "✨ Przetłumacz z AI",
                 "steps_header": "⚡ 4 PROSTE KROKI DO LOGOWANIA",
-                "step1_title": "🌐 Połącz z VPN USA",
-                "step1_desc": "Włącz darmowy <strong>Windscribe VPN</strong> i połącz się z lokalizacją <strong>USA (Los Angeles)</strong>.",
+                "step1_title": "🚫 NIE Używaj VPN",
+                "step1_desc": "Nie używaj VPN na naszej stronie. Jeśli nie możesz wejść, przełącz się na <strong>dane mobilne 4G/5G</strong>.",
                 "step2_title": "🔑 Wprowadź Kod Dostępu",
                 "step2_desc": "Wklej swój 5-15 znakowy <strong>Kod Dostępu</strong> w polu poniżej.",
                 "step3_title": "🚀 Wybierz Urządzenie",
                 "step3_desc": "Kliknij <strong>LOGIN NOW</strong> i wybierz: Komputer, Telefon, Smart TV lub Konto.",
                 "step4_title": "🎬 Oglądaj i Ciesz się",
-                "step4_desc": "Po zalogowaniu możesz <strong>wyłączyć VPN</strong>, aby oglądać z maksymalną prędkością!",
+                "step4_desc": "Po zalogowaniu wybierz profil i ciesz się oglądaniem z pełną prędkością!",
                 "input_heading": "Wprowadź Kod Dostępu",
                 "input_placeholder": "np. X9K2M1 lub 49AD0GJY0YK4I6D",
                 "btn_login": "🚀 ZALOGUJ TERAZ (Generuj Linki)",
@@ -531,7 +531,7 @@ PUBLIC_TEMPLATE = r"""
                 "rules_header": "⚠️ WAŻNE ZASADY I GWARANCJA",
                 "rule1": "• <strong>Jedno urządzenie:</strong> Oglądaj na 1 urządzeniu jednocześnie. Nie udostępniaj kodu.",
                 "rule2": "• <strong>Bezpieczeństwo:</strong> NIE zmieniaj hasła, e-maila, PIN-u ani profili.",
-                "rule3": "• <strong>Wymóg VPN:</strong> Zawsze włączaj VPN USA przed wygenerowaniem i otwarciem linku.",
+                "rule3": "• <strong>Zakaz używania VPN:</strong> NIE używaj VPN na stronie. Jeśli nie możesz wejść w link, użyj <strong>danych mobilnych 4G/5G</strong>.",
                 "rule4": "• <strong>Automatyczna wymiana 24/7:</strong> W przypadku błędu kliknij ZGŁOŚ BŁĄD i wgraj zrzut ekranu.",
                 "rule5": "• <strong>Wsparcie (GMT+7):</strong> 9-11 | 15-17 | 21-23.",
                 "badge_plan": "📦 Plan:",
@@ -555,7 +555,7 @@ PUBLIC_TEMPLATE = r"""
                 "chat_btn": "💬 Asystent Wsparcia AI 24/7",
                 "chat_header": "🤖 Asystent AI",
                 "chat_welcome": "Cześć! W czym mogę Ci dzisiaj pomóc w dostępie do Netflix?",
-                "chat_pill1": "🌐 Jak włączyć VPN?",
+                "chat_pill1": "📱 Brak dostępu? Użyj 4G/5G",
                 "chat_pill2": "📺 Logowanie na Smart TV",
                 "chat_pill3": "⚠️ Jak zgłosić błąd?"
             }
@@ -978,8 +978,8 @@ PUBLIC_TEMPLATE = r"""
             <div class="steps-container">
                 <div class="step-card">
                     <span class="step-num">Step 1</span>
-                    <div class="step-title" data-i18n="step1_title">🌐 Connect to US VPN</div>
-                    <div class="step-desc" data-i18n="step1_desc">Open free <strong>Windscribe VPN</strong> and connect to <strong>USA (Los Angeles)</strong>.</div>
+                    <div class="step-title" data-i18n="step1_title">🚫 Do NOT Use VPN</div>
+                    <div class="step-desc" data-i18n="step1_desc">Do not use VPN on our website. If you cannot access or open links, please use <strong>4G/5G mobile data</strong>.</div>
                 </div>
                 <div class="step-card">
                     <span class="step-num">Step 2</span>
@@ -994,7 +994,7 @@ PUBLIC_TEMPLATE = r"""
                 <div class="step-card">
                     <span class="step-num">Step 4</span>
                     <div class="step-title" data-i18n="step4_title">🎬 Stream & Enjoy</div>
-                    <div class="step-desc" data-i18n="step4_desc">Once logged in successfully, you can <strong>disconnect VPN</strong> to stream at full speed!</div>
+                    <div class="step-desc" data-i18n="step4_desc">Once logged in successfully, select your profile and stream at full speed!</div>
                 </div>
             </div>
         </div>
@@ -1007,7 +1007,7 @@ PUBLIC_TEMPLATE = r"""
             <div class="rules-list">
                 <div data-i18n="rule1">• <strong>Single Device Policy:</strong> Stream on 1 device at a time. Do not share your code or link.</div>
                 <div data-i18n="rule2">• <strong>Account Protection:</strong> DO NOT change password, email, PIN, or modify profiles.</div>
-                <div data-i18n="rule3">• <strong>US VPN Requirement:</strong> Always connect to US VPN (Windscribe - Los Angeles) before generating and opening links.</div>
+                <div data-i18n="rule3">• <strong>No VPN Policy:</strong> Do NOT use VPN on our website. If you cannot access the link, please switch to <strong>4G/5G mobile data</strong>.</div>
                 <div data-i18n="rule4">• <strong>Instant 24/7 Replacement:</strong> If you see an error screen (Expired/On Hold), click <strong>REPORT ERROR</strong> to upload a screenshot for an instant replacement.</div>
                 <div data-i18n="rule5">• <strong>Support Schedule (GMT+7):</strong> 9:00 - 11:00 AM | 3:00 - 5:00 PM | 9:00 - 11:00 PM.</div>
             </div>
@@ -1131,7 +1131,7 @@ PUBLIC_TEMPLATE = r"""
             <div class="chat-msg msg-ai" data-i18n="chat_welcome">Hello! How can I help you with your Netflix access today?</div>
         </div>
         <div class="chat-pills">
-            <span class="chat-pill" onclick="sendChatMessage('How to connect US VPN with Windscribe?')" data-i18n="chat_pill1">🌐 How to use VPN?</span>
+            <span class="chat-pill" onclick="sendChatMessage('I cannot access the link. Should I use 4G/5G mobile data?')" data-i18n="chat_pill1">📱 Cannot access? Use 4G/5G</span>
             <span class="chat-pill" onclick="sendChatMessage('How to login Netflix on Smart TV?')" data-i18n="chat_pill2">📺 Smart TV Guide</span>
             <span class="chat-pill" onclick="sendChatMessage('My account shows membership on hold or error.')" data-i18n="chat_pill3">⚠️ Report account error</span>
         </div>
@@ -3296,9 +3296,10 @@ def api_chat():
             "For Mobile: Click the Mobile button using Chrome or Brave browser (DO NOT use Safari). "
             "For Smart TV: Click the TV button on your phone, then type the 8-digit code shown on your TV. "
             "If they still struggle, provide this guide: https://drive.google.com/file/d/1ucnKCVw1qPh--ruQWC3iDKyLDct6ERqJ/view?usp=sharing "
-            "3. Where to find the access code: Tell users to check their purchased account at https://www.u7buy.com/member/buyer-order, and look in the 'remark' section for a digit code. "
-            "4. Testing and Support: If the user wants to test or needs further support, tell them to contact us via u7buy chat. "
-            "5. STRICT SECURITY RULE: Absolutely DO NOT ask for, discuss, process, or provide any user's Netflix account email, password, or payment information. If a user asks about passwords or account details, firmly decline and state that the system uses Access Codes and no passwords are required or provided."
+            "3. NO VPN POLICY: Users must NOT use VPN on this website. If they cannot access or open links, instruct them to turn off VPN/Wi-Fi and use 4G/5G mobile data instead. "
+            "4. Where to find the access code: Tell users to check their purchased account at https://www.u7buy.com/member/buyer-order, and look in the 'remark' section for a digit code. "
+            "5. Testing and Support: If the user wants to test or needs further support, tell them to contact us via u7buy chat. "
+            "6. STRICT SECURITY RULE: Absolutely DO NOT ask for, discuss, process, or provide any user's Netflix account email, password, or payment information. If a user asks about passwords or account details, firmly decline and state that the system uses Access Codes and no passwords are required or provided."
         )
         
         payload = {
