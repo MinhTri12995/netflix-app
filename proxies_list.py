@@ -4,7 +4,7 @@ import requests
 import time
 
 # Cấu hình Webshare Rotating Proxy chuẩn từ Dashboard
-WEBSHARE_USERNAME = "gssazpnr"
+WEBSHARE_USERNAME = "gssazpnr-rotate"
 WEBSHARE_PASSWORD = "7tsf50ryio03"
 WEBSHARE_HOST = "p.webshare.io"
 WEBSHARE_PORT = "80"
