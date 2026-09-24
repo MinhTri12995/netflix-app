@@ -818,6 +818,19 @@ PUBLIC_TEMPLATE = r"""
             chat.style.display = chat.style.display === 'flex' ? 'none' : 'flex';
         }
         
+        function formatChatMessage(text) {
+            if (!text) return "";
+            // Escape HTML characters to prevent XSS
+            let safe = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            // Bold markdown: **text**
+            safe = safe.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            // Markdown links: [text](url)
+            safe = safe.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" style="color:#00d2d3;text-decoration:underline;font-weight:600;">$1</a>');
+            // Standalone URLs (not inside an existing tag)
+            safe = safe.replace(/(?<!href=")(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" style="color:#00d2d3;text-decoration:underline;word-break:break-all;">$1</a>');
+            return safe;
+        }
+
         function sendChatMessage(presetMsg) {
             const input = document.getElementById('chatInput');
             const msg = presetMsg || input.value.trim();
@@ -836,10 +849,10 @@ PUBLIC_TEMPLATE = r"""
             .then(res => res.json())
             .then(data => {
                 const typingEl = document.getElementById(typingId);
-                if(data.success) {
-                    typingEl.innerText = data.reply;
+                if(data.success && data.reply) {
+                    typingEl.innerHTML = formatChatMessage(data.reply);
                 } else {
-                    typingEl.innerText = "Error: " + data.error;
+                    typingEl.innerText = "Error: " + (data.error || "Unable to reach AI assistant.");
                     typingEl.style.color = "#ff4757";
                 }
                 const msgsDiv = document.getElementById('chatMessages');
@@ -847,7 +860,7 @@ PUBLIC_TEMPLATE = r"""
             })
             .catch(err => {
                 const typingEl = document.getElementById(typingId);
-                typingEl.innerText = "Connection failed.";
+                typingEl.innerText = "Connection failed. Please check your internet or retry.";
                 typingEl.style.color = "#ff4757";
             });
         }
@@ -856,8 +869,12 @@ PUBLIC_TEMPLATE = r"""
             const msgsDiv = document.getElementById('chatMessages');
             const msgEl = document.createElement('div');
             msgEl.className = 'chat-msg msg-' + sender;
-            msgEl.innerText = text;
-            const id = 'msg-' + Date.now();
+            if (sender === 'ai' && text !== '...') {
+                msgEl.innerHTML = formatChatMessage(text);
+            } else {
+                msgEl.innerText = text;
+            }
+            const id = 'msg-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
             msgEl.id = id;
             msgsDiv.appendChild(msgEl);
             msgsDiv.scrollTop = msgsDiv.scrollHeight;
@@ -3271,15 +3288,82 @@ def api_generate_nftoken():
 def ping():
     return jsonify({"status": "ok", "message": "Server is awake!"}), 200
 
+def get_ai_chat_fallback_reply(user_message: str) -> str:
+    """Intelligent knowledge-base fallback when Mistral API is unreachable or rate limited."""
+    lower = (user_message or "").lower()
+    
+    # TV / Smart TV
+    if any(k in lower for k in ["tv", "smart", "tivi", "television", "8-digit", "8 số", "mã tv"]):
+        return (
+            "📺 **Hướng dẫn đăng nhập trên Smart TV (Smart TV Guide):**\n\n"
+            "1. Bật ứng dụng Netflix trên TV của bạn để lấy mã 8 chữ số.\n"
+            "2. Trên điện thoại, truy cập trang web, nhập Access Code rồi nhấn **LOGIN NOW**.\n"
+            "3. Bấm vào nút **TV (Smart TV)** trên điện thoại, sau đó nhập 8 chữ số hiển thị trên màn hình TV vào.\n\n"
+            "🔗 Xem video hướng dẫn chi tiết: https://drive.google.com/file/d/1ucnKCVw1qPh--ruQWC3iDKyLDct6ERqJ/view?usp=sharing"
+        )
+    
+    # Lỗi màn hình / screen limit / too many people / expired
+    if any(k in lower for k in ["too many", "screen", "limit", "quá nhiều", "giới hạn", "lỗi", "error", "hold", "expired", "hết hạn", "replace", "đổi", "màn hình"]):
+        return (
+            "⚠️ **Hướng dẫn báo lỗi & Đổi tài khoản (Report & Replace):**\n\n"
+            "• Lỗi **'Too many people watching' / Giới hạn màn hình**: Hệ thống tự động quét và ĐỔI TỰ ĐỘNG 24/7 chỉ trong vài giây!\n"
+            "• Các lỗi khác (Expired, On hold, Household...): Admin sẽ duyệt và cấp mã mới trong vòng 1-10 giờ.\n\n"
+            "👉 Hãy bấm vào nút **'REPORT ERROR'** trên trang web, nhập mã Access Code của bạn và tải ảnh chụp màn hình lỗi lên để được xử lý ngay lập tức."
+        )
+        
+    # VPN / Network / 4G / 5G / Không vào được
+    if any(k in lower for k in ["vpn", "4g", "5g", "wifi", "wi-fi", "không vào được", "cannot access", "chặn", "block", "load"]):
+        return (
+            "📶 **Chính sách kết nối mạng (Connection Policy):**\n\n"
+            "Hệ thống **KHÔNG hỗ trợ VPN**. Nếu bạn đang bật VPN hoặc mạng Wi-Fi bị nhà mạng chặn:\n"
+            "1. Hãy tắt hoàn toàn các app VPN / 1.1.1.1.\n"
+            "2. Chuyển sang sử dụng dữ liệu di động **4G/5G** trên điện thoại để mở link và xem phim mượt mà."
+        )
+        
+    # Access Code / Mua ở đâu / Where is code
+    if any(k in lower for k in ["access code", "mã", "code", "u7buy", "mua ở đâu", "tìm ở đâu", "where", "find", "order", "đơn hàng", "remark"]):
+        return (
+            "🔑 **Cách lấy Access Code:**\n\n"
+            "Nếu bạn đã mua hàng trên U7BUY, hãy truy cập: https://www.u7buy.com/member/buyer-order\n"
+            "Mở chi tiết đơn hàng đã mua và tìm trong phần **'Remark'** để lấy mã số Access Code."
+        )
+        
+    # Password / Account / Mật khẩu / Email
+    if any(k in lower for k in ["pass", "password", "mật khẩu", "email", "tài khoản", "account"]):
+        return (
+            "🔒 **Chính sách bảo mật Access Code:**\n\n"
+            "Website sử dụng công nghệ đăng nhập tự động qua **Access Code**, hoàn toàn **KHÔNG CẦN và KHÔNG CUNG CẤP mật khẩu hay email** của tài khoản Netflix. Bạn chỉ cần nhập Access Code và bấm các nút mở Netflix tương ứng với thiết bị của bạn."
+        )
+
+    # PC / Mobile
+    if any(k in lower for k in ["pc", "máy tính", "laptop", "mobile", "điện thoại", "phone", "safari", "chrome"]):
+        return (
+            "💻📱 **Hướng dẫn đăng nhập PC / Điện thoại:**\n\n"
+            "1. Nhập mã Access Code và bấm **LOGIN NOW**.\n"
+            "2. **Trên PC/Laptop**: Bấm nút **PC** để tự động mở Netflix đã đăng nhập.\n"
+            "3. **Trên Điện thoại**: Dùng trình duyệt **Chrome** hoặc **Brave** (không dùng Safari) rồi bấm nút **Mobile**.\n\n"
+            "🔗 Xem video hướng dẫn: https://drive.google.com/file/d/1ucnKCVw1qPh--ruQWC3iDKyLDct6ERqJ/view?usp=sharing"
+        )
+        
+    # Default fallback
+    return (
+        "👋 Xin chào! Tôi là trợ lý ảo hỗ trợ dịch vụ Netflix Access Code.\n\n"
+        "• **Đăng nhập**: Nhập mã Access Code, bấm **LOGIN NOW** rồi chọn thiết bị (PC, Mobile hoặc TV).\n"
+        "• **Báo lỗi & Đổi mã**: Bấm nút **REPORT ERROR** và tải ảnh chụp màn hình lỗi lên để được đổi tài khoản.\n"
+        "• **Xem video hướng dẫn**: https://drive.google.com/file/d/1ucnKCVw1qPh--ruQWC3iDKyLDct6ERqJ/view?usp=sharing\n\n"
+        "Nếu bạn cần thêm hỗ trợ chuyên sâu, vui lòng nhắn tin trực tiếp qua **U7BUY Chat**!"
+    )
+
 @app.route("/api/chat", methods=["POST"])
 def api_chat():
+    user_message = ""
     try:
         data = request.get_json(silent=True) or {}
         user_message = data.get("message", "").strip()
         if not user_message:
             return jsonify({"success": False, "error": "Message is empty"})
 
-        mistral_api_key = os.environ.get("MISTRAL_API_KEY", "KKGaQ" + "pdMpvJq45" + "tumMFhH" + "cghr1dkNOb9")
+        mistral_api_key = os.environ.get("MISTRAL_API_KEY", "KKGaQ" + "pdMpvJq45" + "tumMFhH" + "cghr1dkNOb9").strip()
         headers = {
             "Authorization": f"Bearer {mistral_api_key}",
             "Content-Type": "application/json"
@@ -3301,23 +3385,42 @@ def api_chat():
             "5. Testing and Support: If the user wants to test or needs further support, tell them to contact us via u7buy chat. "
             "6. STRICT SECURITY RULE: Absolutely DO NOT ask for, discuss, process, or provide any user's Netflix account email, password, or payment information. If a user asks about passwords or account details, firmly decline and state that the system uses Access Codes and no passwords are required or provided."
         )
-        
-        payload = {
-            "model": "mistral-small-latest",
-            "messages": [
-                {"role": "system", "content": prompt},
-                {"role": "user", "content": user_message}
-            ]
-        }
-        
-        r = requests.post("https://api.mistral.ai/v1/chat/completions", headers=headers, json=payload, timeout=30)
-        r.raise_for_status()
-        ai_response = r.json()["choices"][0]["message"]["content"].strip()
-        
-        return jsonify({"success": True, "reply": ai_response})
+
+        preferred_model = os.environ.get("MISTRAL_MODEL", "ministral-8b-latest").strip()
+        candidates = [preferred_model, "ministral-8b-latest", "open-mistral-nemo", "ministral-3b-latest", "codestral-latest", "mistral-small-latest"]
+        candidate_models = list(dict.fromkeys(candidates))
+
+        ai_response = None
+        for model_name in candidate_models:
+            try:
+                payload = {
+                    "model": model_name,
+                    "messages": [
+                        {"role": "system", "content": prompt},
+                        {"role": "user", "content": user_message}
+                    ],
+                    "max_tokens": 400
+                }
+                r = requests.post("https://api.mistral.ai/v1/chat/completions", headers=headers, json=payload, timeout=15)
+                if r.status_code == 200:
+                    ai_response = r.json()["choices"][0]["message"]["content"].strip()
+                    break
+                else:
+                    print(f"Mistral Chat model {model_name} returned status {r.status_code}: {r.text[:100]}")
+            except Exception as e_model:
+                print(f"Mistral Chat model {model_name} failed: {e_model}")
+
+        if ai_response:
+            return jsonify({"success": True, "reply": ai_response})
+
+        # Smart fallback if AI models are temporarily down or rate-limited
+        fallback_reply = get_ai_chat_fallback_reply(user_message)
+        return jsonify({"success": True, "reply": fallback_reply})
+
     except Exception as e:
-        print(f"Mistral Chat API error: {e}")
-        return jsonify({"success": False, "error": "AI is temporarily unavailable."})
+        print(f"Mistral Chat API unexpected error: {e}")
+        fallback_reply = get_ai_chat_fallback_reply(user_message)
+        return jsonify({"success": True, "reply": fallback_reply})
 
 @app.route("/api/translate_page", methods=["POST"])
 def api_translate_page():
@@ -3328,7 +3431,7 @@ def api_translate_page():
         if not target_lang or not texts:
             return jsonify({"success": False, "error": "Missing target language or texts"}), 400
 
-        mistral_api_key = os.environ.get("MISTRAL_API_KEY", "KKGaQ" + "pdMpvJq45" + "tumMFhH" + "cghr1dkNOb9")
+        mistral_api_key = os.environ.get("MISTRAL_API_KEY", "KKGaQ" + "pdMpvJq45" + "tumMFhH" + "cghr1dkNOb9").strip()
         headers = {
             "Authorization": f"Bearer {mistral_api_key}",
             "Content-Type": "application/json"
@@ -3339,21 +3442,35 @@ def api_translate_page():
             "Keep the exact same JSON keys and HTML tags (like <strong>, •). "
             "Output ONLY a valid JSON object without markdown fences or extra explanations."
         )
-        
-        payload = {
-            "model": "mistral-small-latest",
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": json.dumps(texts, ensure_ascii=False)}
-            ],
-            "response_format": {"type": "json_object"}
-        }
-        
-        r = requests.post("https://api.mistral.ai/v1/chat/completions", headers=headers, json=payload, timeout=25)
-        r.raise_for_status()
-        res_text = r.json()["choices"][0]["message"]["content"].strip()
-        translated_json = json.loads(res_text)
-        return jsonify({"success": True, "translations": translated_json})
+
+        preferred_model = os.environ.get("MISTRAL_MODEL", "ministral-8b-latest").strip()
+        candidates = [preferred_model, "ministral-8b-latest", "open-mistral-nemo", "mistral-small-latest"]
+        candidate_models = list(dict.fromkeys(candidates))
+
+        translated_json = None
+        for model_name in candidate_models:
+            try:
+                payload = {
+                    "model": model_name,
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": json.dumps(texts, ensure_ascii=False)}
+                    ],
+                    "response_format": {"type": "json_object"}
+                }
+                r = requests.post("https://api.mistral.ai/v1/chat/completions", headers=headers, json=payload, timeout=20)
+                if r.status_code == 200:
+                    res_text = r.json()["choices"][0]["message"]["content"].strip()
+                    translated_json = json.loads(res_text)
+                    break
+                else:
+                    print(f"Translation model {model_name} returned status {r.status_code}")
+            except Exception as e_model:
+                print(f"Translation model {model_name} error: {e_model}")
+
+        if translated_json:
+            return jsonify({"success": True, "translations": translated_json})
+        return jsonify({"success": False, "error": "AI Translation failed"}), 500
     except Exception as e:
         print(f"Translation API error: {e}")
         return jsonify({"success": False, "error": f"AI Translation failed: {str(e)}"}), 500
