@@ -3093,7 +3093,7 @@ def api_generate_nftoken():
             else:
                 expected_plan = "Premium"
             # Auto-rotation loop
-            max_attempts = 4
+            max_attempts = 3
             last_error_msg = ""
             for attempt in range(max_attempts):
                 acc = database.get_account_by_email(assigned_email)
@@ -3165,7 +3165,8 @@ def api_generate_nftoken():
                     print(f"Lỗi không xác định với tài khoản {assigned_email}: {e}")
                     continue
                     
-            return jsonify({"success": False, "error": f"Failed to generate link after {max_attempts} attempts. Last error: {last_error_msg}"}), 500
+            clean_err = "Kết nối mạng hoặc Proxy bị gián đoạn. Vui lòng bấm LOGIN NOW thử lại sau vài giây!" if "Proxy error" in last_error_msg else f"Lỗi tạo link ({last_error_msg[:120]}). Vui lòng thử lại!"
+            return jsonify({"success": False, "error": clean_err}), 500
 
         # If it was an access code but we didn't find it in the DB
         if is_access_code and not acc_key_row:

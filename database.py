@@ -22,17 +22,18 @@ import json
 CONFIG_FILE = "config.json"
 
 def get_config(key, default=None):
-    # 1. Thử lấy từ Supabase DB để lưu vĩnh viễn (không bị mất khi Render khởi động lại/ngủ)
-    try:
-        res = get_supabase().table("system_config").select("value").eq("key", key).limit(1).execute()
-        if res.data and len(res.data) > 0:
-            val = res.data[0].get("value")
-            if val is not None:
-                if str(val).lower() == 'true': return True
-                if str(val).lower() == 'false': return False
-                return val
-    except Exception:
-        pass
+    # 1. Thử lấy từ Supabase DB để lưu vĩnh viễn (nếu có SUPABASE_KEY)
+    if SUPABASE_KEY:
+        try:
+            res = get_supabase().table("system_config").select("value").eq("key", key).limit(1).execute()
+            if res.data and len(res.data) > 0:
+                val = res.data[0].get("value")
+                if val is not None:
+                    if str(val).lower() == 'true': return True
+                    if str(val).lower() == 'false': return False
+                    return val
+        except Exception:
+            pass
 
     # 2. Fallback lấy từ config.json local
     try:
@@ -55,10 +56,11 @@ def set_config(key, value):
         pass
         
     # 2. Lưu vào Supabase DB (nếu có bảng system_config) để giữ cấu hình vĩnh viễn
-    try:
-        get_supabase().table("system_config").upsert({"key": key, "value": str(value)}).execute()
-    except Exception as e:
-        print(f"Supabase set_config notice: {e}")
+    if SUPABASE_KEY:
+        try:
+            get_supabase().table("system_config").upsert({"key": key, "value": str(value)}).execute()
+        except Exception as e:
+            print(f"Supabase set_config notice: {e}")
 
 def init_db():
     try:
