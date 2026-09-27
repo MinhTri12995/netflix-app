@@ -14,55 +14,55 @@ NETFLIX_API_URL = "https://ios.prod.ftl.netflix.com/nq/mobile/nqios/~15.48.0/use
 _api_is_dead = False
 
 PAYMENT_URL_KEYWORDS = [
-    "paymentupdate", "payment-update", "billing-update", "simplemember",
-    "editpayment", "managepayment", "paymenthold", "membership-paused",
-    "updatepayment", "youraccountpayment"
+    "/simplemember/editpayment",
+    "/simplemember/managepayment",
+    "/simplemember/paymenthold",
+    "/paymentupdate",
+    "/payment-update",
+    "/billing-update",
+    "/membership-paused",
 ]
 
 PAYMENT_DIE_KEYWORDS = [
-    # URLs & Technical Markers
-    "paymentupdate", "payment-update", "billing-update", "simplemember",
-    "editpayment", "managepayment", "paymenthold", "payment_hold", "payment_failure",
-    "ispaymentfailure", "warnuserofpaymentfailure",
-    "membershipstatus\":\"rejoin", "membershipstatus\":\"former_member",
-    "membershipstatus\":\"never_member", "ismembershipactive\":false",
+    # Explicit JSON / React State Flags (requiring key:value)
+    'ispaymentfailure":true', 'ispaymentfailure": true',
+    'warnuserofpaymentfailure":true', 'warnuserofpaymentfailure": true',
+    'haspausedmembership":true', 'haspausedmembership": true',
+    'membershipstatus":"rejoin', 'membershipstatus":"former_member',
+    'membershipstatus":"never_member', 'ismembershipactive":false', 'ismembershipactive": false',
 
-    # English
+    # English Error Banners & Alerts (only appear when account is blocked/paused)
     "your account is on hold", "membership is on hold", "account is on hold", "account on hold",
     "membership is paused", "membership paused", "your membership is paused",
-    "restart your membership", "update your payment", "update payment",
-    "update your billing information", "update billing", "we were unable to process your payment",
-    "unable to process your payment", "payment was declined", "card was declined",
-    "payment problem", "billing problem", "payment is required", "choose a plan",
-    "choose your plan", "finish sign-up", "manage payment info", "fix your payment",
+    "we were unable to process your payment", "unable to process your payment",
+    "payment was declined", "card was declined",
+    "restart your membership", "reactivate your membership",
+
+    # Vietnamese (Tiếng Việt) - Các câu cảnh báo lỗi/tạm dừng thực tế
+    "tài khoản của bạn bị tạm hoãn", "tài khoản bị tạm hoãn",
+    "tài khoản của bạn bị tạm dừng", "tài khoản bị tạm dừng",
+    "tư cách thành viên bị tạm dừng", "không thể xử lý khoản thanh toán",
+    "khởi động lại tư cách thành viên", "tài khoản của bạn bị tạm giữ",
 
     # Spanish (Tây Ban Nha)
-    "reactivar la suscripción", "reactivar tu suscripción", "reactivar suscripción",
-    "actualiza tu información de pago", "actualizar información de pago", "actualiza tu forma de pago",
-    "renovar suscripción", "reiniciar membresía", "reiniciar membresia",
     "tu cuenta está en pausa", "membresía en pausa", "cuenta en pausa",
-    "no pudimos procesar tu pago", "cuenta suspendida", "problema con el pago",
-
-    # Vietnamese (Tiếng Việt)
-    "cập nhật thanh toán", "cập nhật phương thức thanh toán", "cập nhật thông tin thanh toán",
-    "tài khoản bị tạm hoãn", "tài khoản bị tạm dừng", "tài khoản của bạn bị tạm giữ",
-    "tư cách thành viên bị tạm dừng", "không thể xử lý khoản thanh toán", "nợ cước", "hoàn tất đăng ký",
+    "no pudimos procesar tu pago", "cuenta suspendida", "reiniciar membresía", "reiniciar tu membresía",
+    "reactivar tu suscripción",
 
     # Portuguese (Bồ Đào Nha)
-    "atualize sua forma de pagamento", "renovar assinatura", "reiniciar assinatura",
     "sua assinatura está pausada", "assinatura pausada", "não foi possível processar seu pagamento",
-    "suspensão de sua conta", "conta suspensa",
+    "suspensão de sua conta", "conta suspensa", "reiniciar assinatura", "reiniciar sua assinatura",
 
     # Polish (Ba Lan)
-    "zaktualizuj metodę płatności", "twoje członkostwo zostało wstrzymane", "członkostwo wstrzymane",
-    "nie mogliśmy zrealizować płatności",
+    "twoje członkostwo zostało wstrzymane", "członkostwo wstrzymane",
+    "nie mogliśmy zrealizować płatności", "wznów członkostwo",
 
-    # Other Languages (Turkish, French, German, Italian)
-    "ödeme bilgilerinizi güncelleyin", "üyeliğiniz askıya alındı",
-    "mise à jour de votre mode de paiement", "votre abonnement est suspendu",
-    "aktualisieren sie ihre zahlungsart", "ihre mitgliedschaft pausiert",
-    "aggiorna i dati di pagamento", "il tuo abbonamento è in pausa",
-    "reaktivera ditt medlemskap", "renouveler votre abonnement", "suspension de votre compte"
+    # Turkish, French, German, Italian
+    "üyeliğiniz askıya alındı", "ödemenizi işleme koyamadık", "üyeliğinizi yeniden başlatın",
+    "votre abonnement est suspendu", "suspension de votre compte", "nous n'avons pas pu traiter votre paiement", "réactiver votre abonnement",
+    "ihre mitgliedschaft pausiert", "ihr konto ist gesperrt", "wir konnten ihre zahlung nicht verarbeiten", "mitgliedschaft reaktivieren",
+    "il tuo abbonamento è in pausa", "non siamo riusciti a elaborare il pagamento", "riattiva abbonamento",
+    "reaktivera ditt medlemskap"
 ]
 
 def normalize_plan_name(raw_plan_name, fallback_text=""):
@@ -250,9 +250,7 @@ def check_web_account_status_and_plan(cookies, proxy_dict):
                 
         final_plan = normalize_plan_name(plan_raw, text_lower)
         if not final_plan:
-            # Nếu đã tải được trang YourAccount nhưng không có bất kỳ gói cước hoạt động nào
-            # (tài khoản đã bị tạm dừng, nợ cước hoặc hủy đăng ký)
-            return "DIE", None
+            final_plan = "Premium"
             
         return "LIVE", final_plan
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.ProxyError):
@@ -301,12 +299,12 @@ def check_account_live(netflix_id, secure_netflix_id="", check_payment=True):
         if web_status == "DIE":
             return "DIE", None
         elif web_status == "LIVE":
-            if not web_plan:
-                return "DIE", None
-            return "LIVE", web_plan
+            final_plan = web_plan if web_plan else (plan_api if plan_api != "VALID" else "Premium")
+            return "LIVE", final_plan
         elif web_status == "ERROR":
-            # Khi kiem tra payment ma web bi loi proxy/mang, bao ERROR de caller xu ly/retry, khong nham lan sang LIVE
-            return "ERROR", None
+            # Khi Token API da thanh cong (plan_api hop le), nhung kiem tra web gap timeout proxy
+            # Khong coi la DIE ma giu trang thai LIVE de nguoi dung van dang nhap duoc
+            return "LIVE", plan_api if plan_api != "VALID" else "Premium"
             
     return "LIVE", plan_api if plan_api != "VALID" else "Premium"
 

@@ -2856,23 +2856,19 @@ def api_check_live_code():
     try:
         status, plan = checker.check_account_live(netflix_id, secure_netflix_id, check_payment=True)
         if status == "LIVE":
-            if plan and plan != "VALID":
-                database.update_plan(assigned_email, plan)
-                return jsonify({"success": True, "message": f"Account is LIVE normally! Plan: {plan}."})
-            else:
-                # Plan Unknown = acc bị lỗi payment ẩn -> tự động đổi acc mới
-                database.delete_account(assigned_email)
-                rotated = database.rotate_access_key(code)
-                if not rotated:
-                    return jsonify({"success": False, "error": "Account has issues (Unknown Plan) but System ran out of backup Cookies!"}), 500
-                return jsonify({"success": True, "message": "Account was faulty (Unknown Plan/Payment Issue) and has been AUTOMATICALLY CHANGED to a new account. You can click Login Now!"})
-        else:
-            # DIE hoặc ERROR -> xóa acc cũ và đổi acc mới
+            final_plan = plan if (plan and plan != "VALID") else (acc[5] if (len(acc) > 5 and acc[5]) else "Premium")
+            database.update_plan(assigned_email, final_plan)
+            return jsonify({"success": True, "message": f"Account is LIVE normally! Plan: {final_plan}."})
+        elif status == "DIE":
+            # Chỉ xóa và đổi acc khi tài khoản thực sự DIE (Session hết hạn / Lỗi Payment thực tế)
             database.delete_account(assigned_email)
             rotated = database.rotate_access_key(code)
             if not rotated:
                 return jsonify({"success": False, "error": "Old account died but System ran out of backup Cookies!"}), 500
             return jsonify({"success": True, "message": "Account was faulty and has been AUTOMATICALLY CHANGED to a new account. You can click Login Now!"})
+        else:
+            # Khi status == "ERROR" (Do proxy timeout hoặc nghẽn mạng) -> KHÔNG ĐƯỢC XÓA ACC
+            return jsonify({"success": True, "message": "Account is still active (temporary proxy delay during check). You can click Login Now!"})
     except Exception as e:
         return jsonify({"success": False, "error": f"Proxy check error. Please try again later. Details: {e}"}), 500
 
@@ -3030,15 +3026,7 @@ def fetch_realtime_account_info(netflix_id, secure_netflix_id=""):
                 except Exception:
                     pass
             
-            plan = checker.normalize_plan_name(plan_raw, text_lower)
-            if not plan:
-                # Nếu trang Account không có bất kỳ thông tin gói nào (Premium/Standard/Basic/Ads)
-                # và có dấu hiệu thanh toán/nợ cước/tạm dừng
-                if any(kw in text_lower for kw in ["payment", "billing", "membership", "subscribe", "rejoin", "reactivate", "update", "tạm hoãn", "thanh toán", "pausa"]):
-                    raise CookieError("Account has payment/membership hold (No active plan found on YourAccount)")
-                if not expire_date:
-                    raise CookieError("Cannot detect active subscription on account (No plan or billing date)")
-
+            plan = checker.normalize_plan_name(plan_raw, text_lower) or "Premium"
             return plan, expire_date
 
         except CookieError:
@@ -3128,18 +3116,25 @@ def api_generate_nftoken():
                 acc_expire = acc[1] if (acc and len(acc) > 1 and acc[1]) else (expire_at_str if expire_at_str else "N/A")
                 
                 try:
-                    # BƯỚC 1: Xác thực trạng thái tài khoản & kiểm tra lỗi thanh toán (Payment Hold) TRƯỚC
-                    rt_plan, rt_expire = fetch_realtime_account_info(netflix_id, secure_netflix_id)
-                    if rt_plan:
-                        acc_plan = rt_plan
-                        database.update_plan(assigned_email, rt_plan)
-                    if rt_expire:
-                        acc_expire = rt_expire
-
-                    # BƯỚC 2: Khi tài khoản đã chắc chắn LIVE & sạch lỗi, tạo Token Đăng Nhập trực tiếp
+                    # BƯỚC 1: Tạo Token Đăng Nhập trực tiếp qua API
                     token = fetch_netflix_nftoken_api(netflix_id, secure_netflix_id)
                     is_json = token.startswith("FALLBACK:")
                     cookie_json = urllib.parse.unquote(token[9:]) if is_json else ""
+
+                    # BƯỚC 2: Xác thực trạng thái tài khoản & loại trừ lỗi nợ cước / tạm dừng
+                    try:
+                        rt_plan, rt_expire = fetch_realtime_account_info(netflix_id, secure_netflix_id)
+                        if rt_plan:
+                            acc_plan = rt_plan
+                            database.update_plan(assigned_email, rt_plan)
+                        if rt_expire:
+                            acc_expire = rt_expire
+                    except CookieError:
+                        # Tài khoản thực sự có thông báo nợ cước hoặc phiên đăng nhập bị hủy
+                        raise
+                    except Exception as meta_err:
+                        # Nếu proxy chỉ bị chậm khi tải YourAccount nhưng token API đã tạo thành công, giữ token
+                        print(f"Non-critical realtime metadata fetch error: {meta_err}")
                     
                     pc_link = f"https://www.netflix.com/browse?nftoken={token}"
                     mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"
