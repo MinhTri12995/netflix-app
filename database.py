@@ -329,13 +329,17 @@ def get_random_available_account(plan_type=None):
                 return True
         return False
 
+    invalid_plan_markers = ["die", "error", "expired", "payment_error", "hold", "paused", "susp"]
+
     def is_acc_premium(plan_str):
         if not plan_str or plan_str in ["none", "n/a"]:
             return True
+        if any(marker in plan_str for marker in invalid_plan_markers):
+            return False
         return has_any_kw(plan_str, premium_kws) or "premium" in plan_str
 
     def is_acc_standard_no_ads(plan_str):
-        if not plan_str:
+        if not plan_str or any(marker in plan_str for marker in invalid_plan_markers):
             return False
         # Nếu có bất kỳ dấu hiệu nào của quảng cáo (Ads) -> Loại bỏ ngay lập tức 100%
         if has_any_kw(plan_str, ads_kws) or "standard_ads" in plan_str:
@@ -344,12 +348,12 @@ def get_random_available_account(plan_type=None):
         return has_any_kw(plan_str, standard_kws) or "standard" in plan_str
 
     def is_acc_standard_ads(plan_str):
-        if not plan_str:
+        if not plan_str or any(marker in plan_str for marker in invalid_plan_markers):
             return False
         return (has_any_kw(plan_str, standard_kws) and has_any_kw(plan_str, ads_kws)) or "standard_ads" in plan_str or "with ads" in plan_str
 
     def is_acc_basic(plan_str):
-        if not plan_str:
+        if not plan_str or any(marker in plan_str for marker in invalid_plan_markers):
             return False
         return has_any_kw(plan_str, basic_kws) or "basic" in plan_str
 

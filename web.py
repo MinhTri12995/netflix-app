@@ -2975,69 +2975,84 @@ def fetch_realtime_account_info(netflix_id, secure_netflix_id=""):
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.9"
     }
-    proxy_dict = proxies_list.get_random_proxy()
-    try:
-        r = requests.get("https://www.netflix.com/YourAccount", cookies=cookies, headers=headers, proxies=proxy_dict, timeout=8, allow_redirects=True)
-        url_lower = r.url.lower()
-        html = r.text
-        text_lower = html.lower()
-        
-        # 1. Kiểm tra nếu bị chuyển hướng sang trang Login / Clear Cookies
-        if "netflix.com/login" in url_lower or "/clearcookies" in url_lower or "signup" in url_lower:
-            raise CookieError("Cookie session expired or invalid (Redirected to login)")
-            
-        # 2. Kiểm tra nếu bị chuyển hướng sang trang lỗi thanh toán (Update Payment / Billing Update)
-        if any(kw in url_lower for kw in ["paymentupdate", "payment-update", "billing-update", "simplemember"]):
-            raise CookieError("Account requires Payment Update (Payment Hold URL detected)")
-            
-        # 3. Kiểm tra nội dung trang có báo lỗi thanh toán / tạm hoãn không
-        payment_die_keywords = [
-            "paymentupdate", "payment-update", "your account is on hold", "membership is on hold", 
-            "reactivar la suscripción", "reactivar tu suscripción", "cập nhật thanh toán", "tài khoản bị tạm hoãn", 
-            "zaktualizuj metodę płatności", "restart your membership", "update your payment", "actualiza tu información de pago",
-            "atualize sua forma de pagamento", "renovar assinatura", "reiniciar membresía", "reiniciar membresia",
-            "aggiorna i dati di pagamento", "mise à jour de votre mode de paiement", "ödeme bilgilerinizi güncelleyin", 
-            "aktualisieren sie ihre zahlungsart", "reaktivera ditt medlemskap", "renouveler votre abonnement",
-            "suspension de votre compte", "cuenta suspendida", "payment is required", "thanh toán của bạn", 
-            "cập nhật phương thức thanh toán", "membershipstatus\":\"rejoin", "membershipstatus\":\"former_member",
-            "membershipstatus\":\"never_member", "ismembershipactive\":false", "finish sign-up", "hoàn tất đăng ký"
-        ]
-        if any(kw in text_lower for kw in payment_die_keywords):
-            raise CookieError("Account requires Payment Update (Payment Hold text detected)")
-        
-        plan = None
-        plan_m = re.search(r'(?:localizedPlanName|planName)"\s*:\s*\{"fieldType":"String","value":"([^"]+)"\}', html)
-        if plan_m:
-            plan_raw = plan_m.group(1).replace(r'\x20', ' ').strip()
-            import codecs
-            try:
-                plan = codecs.decode(plan_raw, 'unicode_escape')
-            except Exception:
-                plan = plan_raw
-        else:
-            if "premium" in text_lower or "ultra" in text_lower:
-                plan = "Premium"
-            elif "standard with ads" in text_lower or "standard_ads" in text_lower:
-                plan = "Standard with Ads"
-            elif "standard" in text_lower:
-                plan = "Standard"
-            elif "basic" in text_lower:
-                plan = "Basic"
 
-        expire_date = None
-        date_m = re.search(r'nextBillingDate"\s*:\s*\{"fieldType":"String","value":"([^"]+)"\}', html)
-        if date_m:
-            expire_date = date_m.group(1).replace(r'\x20', ' ').strip()
+    last_network_err = None
+    for attempt in range(2):
+        proxy_dict = proxies_list.get_random_proxy()
+        try:
+            r = requests.get(
+                "https://www.netflix.com/YourAccount",
+                cookies=cookies,
+                headers=headers,
+                proxies=proxy_dict,
+                timeout=12,
+                allow_redirects=True,
+                verify=False
+            )
+            url_lower = r.url.lower()
+            html = r.text
+            text_lower = html.lower()
+            
+            # 1. Kiểm tra nếu bị chuyển hướng sang trang Login / Clear Cookies / Signup
+            if "netflix.com/login" in url_lower or "/clearcookies" in url_lower or "signup" in url_lower:
+                raise CookieError("Cookie session expired or invalid (Redirected to login)")
+                
+            # 2. Kiểm tra nếu bị chuyển hướng sang trang lỗi thanh toán (Update Payment / Billing Update / SimpleMember)
+            payment_urls = getattr(checker, 'PAYMENT_URL_KEYWORDS', [
+                "paymentupdate", "payment-update", "billing-update", "simplemember",
+                "editpayment", "managepayment", "paymenthold", "membership-paused",
+                "updatepayment", "youraccountpayment"
+            ])
+            if any(kw in url_lower for kw in payment_urls):
+                raise CookieError("Account requires Payment Update (Payment Hold URL detected)")
+                
+            # 3. Kiểm tra nội dung trang có báo lỗi thanh toán / tạm hoãn không
+            die_kws = getattr(checker, 'PAYMENT_DIE_KEYWORDS', [])
+            if any(kw in text_lower for kw in die_kws):
+                raise CookieError("Account requires Payment Update (Payment Hold text detected)")
+            
+            # 4. Kiểm tra ngày hết hạn
+            expire_date = None
+            date_m = re.search(r'nextBillingDate"\s*:\s*\{"fieldType":"String","value":"([^"]+)"\}', html)
+            if date_m:
+                expire_date = date_m.group(1).replace(r'\x20', ' ').strip()
+                if is_date_expired(expire_date):
+                    raise CookieError(f"Account next billing date ({expire_date}) has expired.")
 
-        return plan, expire_date
-    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.ProxyError) as e:
-        print(f"Realtime fetch proxy/network error: {e}")
-        return None, None
-    except CookieError:
-        raise
-    except Exception as e:
-        print(f"Realtime fetch error: {e}")
-        return None, None
+            # 5. Kiểm tra gói cước nếu còn sống (LIVE)
+            plan_raw = None
+            plan_m = re.search(r'(?:localizedPlanName|planName)"\s*:\s*\{"fieldType":"String","value":"([^"]+)"\}', html)
+            if plan_m:
+                plan_raw = plan_m.group(1).replace(r'\x20', ' ').strip()
+                import codecs
+                try:
+                    plan_raw = codecs.decode(plan_raw, 'unicode_escape')
+                except Exception:
+                    pass
+            
+            plan = checker.normalize_plan_name(plan_raw, text_lower)
+            if not plan:
+                # Nếu trang Account không có bất kỳ thông tin gói nào (Premium/Standard/Basic/Ads)
+                # và có dấu hiệu thanh toán/nợ cước/tạm dừng
+                if any(kw in text_lower for kw in ["payment", "billing", "membership", "subscribe", "rejoin", "reactivate", "update", "tạm hoãn", "thanh toán", "pausa"]):
+                    raise CookieError("Account has payment/membership hold (No active plan found on YourAccount)")
+                if not expire_date:
+                    raise CookieError("Cannot detect active subscription on account (No plan or billing date)")
+
+            return plan, expire_date
+
+        except CookieError:
+            raise
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.ProxyError) as e:
+            last_network_err = e
+            print(f"Fetch realtime info attempt {attempt + 1} proxy/network error: {e}")
+            continue
+        except Exception as e:
+            print(f"Realtime fetch error: {e}")
+            raise CookieError(f"Error checking account status: {e}")
+
+    # Nếu sau 2 lần thử proxy đều bị lỗi mạng/timeout -> raise ProxyError để vòng lặp ngoài thử proxy khác
+    raise ProxyError(f"Network / Proxy error connecting to Netflix Account page: {last_network_err}")
 
 @app.route("/api/generate_nftoken", methods=["POST"])
 def api_generate_nftoken():
@@ -3056,14 +3071,15 @@ def api_generate_nftoken():
         import checker
         from datetime import datetime
         
-        # 1. Lookup as access key
+        # 1. Lookup as access key (hỗ trợ mã bất kỳ độ dài nếu có trong database)
         acc_key_row = None
-        is_access_code = len(cookie_value) in [5, 8, 10, 15] and not cookie_value.startswith("FALLBACK:") and "NetflixId" not in cookie_value
-        if is_access_code:
+        if "NetflixId" not in cookie_value and not cookie_value.startswith("FALLBACK:") and not cookie_value.startswith("[") and not cookie_value.startswith("{"):
             try:
                 acc_key_row = database.get_access_key(cookie_value)
             except Exception as e:
                 print(f"Error querying access key: {e}")
+
+        is_access_code = acc_key_row is not None or (len(cookie_value) in [5, 6, 7, 8, 9, 10, 12, 15, 16] and "NetflixId" not in cookie_value and not cookie_value.startswith("FALLBACK:"))
     
         if acc_key_row:
             code = acc_key_row[0]
@@ -3092,8 +3108,9 @@ def api_generate_nftoken():
                 expected_plan = "Basic"
             else:
                 expected_plan = "Premium"
+
             # Auto-rotation loop
-            max_attempts = 3
+            max_attempts = 4
             last_error_msg = ""
             for attempt in range(max_attempts):
                 acc = database.get_account_by_email(assigned_email)
@@ -3101,7 +3118,7 @@ def api_generate_nftoken():
                 if not acc:
                     rotated = database.rotate_access_key(code)
                     if not rotated:
-                        return jsonify({"success": False, "error": f"System ran out of backup accounts for {expected_plan} plan!"}), 500
+                        return jsonify({"success": False, "error": f"Hệ thống đã hết tài khoản dự phòng cho gói {expected_plan}!"}), 500
                     assigned_email = database.get_access_key(code)[1]
                     continue
                     
@@ -3111,25 +3128,18 @@ def api_generate_nftoken():
                 acc_expire = acc[1] if (acc and len(acc) > 1 and acc[1]) else (expire_at_str if expire_at_str else "N/A")
                 
                 try:
-                    # BƯỚC 1: Tạo Token Đăng Nhập trực tiếp qua API
+                    # BƯỚC 1: Xác thực trạng thái tài khoản & kiểm tra lỗi thanh toán (Payment Hold) TRƯỚC
+                    rt_plan, rt_expire = fetch_realtime_account_info(netflix_id, secure_netflix_id)
+                    if rt_plan:
+                        acc_plan = rt_plan
+                        database.update_plan(assigned_email, rt_plan)
+                    if rt_expire:
+                        acc_expire = rt_expire
+
+                    # BƯỚC 2: Khi tài khoản đã chắc chắn LIVE & sạch lỗi, tạo Token Đăng Nhập trực tiếp
                     token = fetch_netflix_nftoken_api(netflix_id, secure_netflix_id)
                     is_json = token.startswith("FALLBACK:")
                     cookie_json = urllib.parse.unquote(token[9:]) if is_json else ""
-                    
-                    # BƯỚC 2: Cập nhật thông tin gói & hạn nếu có thể (Non-blocking fallback)
-                    try:
-                        rt_plan, rt_expire = fetch_realtime_account_info(netflix_id, secure_netflix_id)
-                        if rt_plan:
-                            acc_plan = rt_plan
-                            database.update_plan(assigned_email, rt_plan)
-                        if rt_expire:
-                            acc_expire = rt_expire
-                            if is_date_expired(rt_expire):
-                                raise CookieError(f"Account next billing date ({rt_expire}) has expired.")
-                    except CookieError:
-                        raise
-                    except Exception as meta_err:
-                        print(f"Non-critical realtime metadata fetch error: {meta_err}")
                     
                     pc_link = f"https://www.netflix.com/browse?nftoken={token}"
                     mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"
@@ -3152,12 +3162,12 @@ def api_generate_nftoken():
                     print(f"Proxy error ({e}), retrying with another proxy...")
                     continue
                 except CookieError as e:
-                    last_error_msg = f"Cookie died: {str(e)}"
-                    print(f"Cookie {assigned_email} DIE, rotating to a new account... (Error: {e})")
+                    last_error_msg = f"Tài khoản lỗi: {str(e)}"
+                    print(f"Cookie {assigned_email} DIE / PAYMENT ERROR, rotating to a new account... (Error: {e})")
                     database.delete_account(assigned_email)
                     rotated = database.rotate_access_key(code)
                     if not rotated:
-                        return jsonify({"success": False, "error": "Cookie is broken and system ran out of backup accounts!"}), 500
+                        return jsonify({"success": False, "error": f"Tài khoản lỗi ({e}) và hệ thống đã hết tài khoản dự phòng!"}), 500
                     assigned_email = database.get_access_key(code)[1]
                     continue
                 except Exception as e:

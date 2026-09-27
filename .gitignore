@@ -18,3 +18,6 @@ ENV/
 # Scratch and test files
 scratch/
 test_input.txt
+*.bak
+live_accounts.txt
+live_accounts.json

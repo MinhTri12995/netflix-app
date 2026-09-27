@@ -13,23 +13,56 @@ NETFLIX_API_URL = "https://ios.prod.ftl.netflix.com/nq/mobile/nqios/~15.48.0/use
 # Global flag: once we know API is dead, skip it entirely to save time
 _api_is_dead = False
 
+PAYMENT_URL_KEYWORDS = [
+    "paymentupdate", "payment-update", "billing-update", "simplemember",
+    "editpayment", "managepayment", "paymenthold", "membership-paused",
+    "updatepayment", "youraccountpayment"
+]
+
 PAYMENT_DIE_KEYWORDS = [
-    "paymentupdate", "payment-update", "billing-update",
-    "your account is on hold", "membership is on hold", "account is on hold",
-    "reactivar la suscripción", "reactivar tu suscripción", "reactivar suscripción",
-    "cập nhật thanh toán", "cập nhật phương thức thanh toán", "cập nhật thông tin thanh toán",
-    "tài khoản bị tạm hoãn", "tài khoản bị tạm dừng", "không thể xử lý khoản thanh toán",
-    "zaktualizuj metodę płatności", "restart your membership", "update your payment",
-    "update your billing information", "update billing", "we were unable to process your payment",
-    "actualiza tu información de pago", "actualizar información de pago",
-    "atualize sua forma de pagamento", "renovar assinatura", "reiniciar membresía", "reiniciar membresia",
-    "aggiorna i dati di pagamento", "mise à jour de votre mode de paiement", "ödeme bilgilerinizi güncelleyin", 
-    "aktualisieren sie ihre zahlungsart", "reaktivera ditt medlemskap", "renouveler votre abonnement",
-    "suspension de votre compte", "cuenta suspendida", "payment is required",
+    # URLs & Technical Markers
+    "paymentupdate", "payment-update", "billing-update", "simplemember",
+    "editpayment", "managepayment", "paymenthold", "payment_hold", "payment_failure",
+    "ispaymentfailure", "warnuserofpaymentfailure",
     "membershipstatus\":\"rejoin", "membershipstatus\":\"former_member",
-    "membershipstatus\":\"never_member", "ismembershipactive\":false", "finish sign-up", "hoàn tất đăng ký",
-    "choose a plan", "choose your plan", "membership paused", "membership is paused",
-    "warnuserofpaymentfailure", "ispaymentfailure", "payment_failure", "payment_hold", "paymenthold"
+    "membershipstatus\":\"never_member", "ismembershipactive\":false",
+
+    # English
+    "your account is on hold", "membership is on hold", "account is on hold", "account on hold",
+    "membership is paused", "membership paused", "your membership is paused",
+    "restart your membership", "update your payment", "update payment",
+    "update your billing information", "update billing", "we were unable to process your payment",
+    "unable to process your payment", "payment was declined", "card was declined",
+    "payment problem", "billing problem", "payment is required", "choose a plan",
+    "choose your plan", "finish sign-up", "manage payment info", "fix your payment",
+
+    # Spanish (Tây Ban Nha)
+    "reactivar la suscripción", "reactivar tu suscripción", "reactivar suscripción",
+    "actualiza tu información de pago", "actualizar información de pago", "actualiza tu forma de pago",
+    "renovar suscripción", "reiniciar membresía", "reiniciar membresia",
+    "tu cuenta está en pausa", "membresía en pausa", "cuenta en pausa",
+    "no pudimos procesar tu pago", "cuenta suspendida", "problema con el pago",
+
+    # Vietnamese (Tiếng Việt)
+    "cập nhật thanh toán", "cập nhật phương thức thanh toán", "cập nhật thông tin thanh toán",
+    "tài khoản bị tạm hoãn", "tài khoản bị tạm dừng", "tài khoản của bạn bị tạm giữ",
+    "tư cách thành viên bị tạm dừng", "không thể xử lý khoản thanh toán", "nợ cước", "hoàn tất đăng ký",
+
+    # Portuguese (Bồ Đào Nha)
+    "atualize sua forma de pagamento", "renovar assinatura", "reiniciar assinatura",
+    "sua assinatura está pausada", "assinatura pausada", "não foi possível processar seu pagamento",
+    "suspensão de sua conta", "conta suspensa",
+
+    # Polish (Ba Lan)
+    "zaktualizuj metodę płatności", "twoje członkostwo zostało wstrzymane", "członkostwo wstrzymane",
+    "nie mogliśmy zrealizować płatności",
+
+    # Other Languages (Turkish, French, German, Italian)
+    "ödeme bilgilerinizi güncelleyin", "üyeliğiniz askıya alındı",
+    "mise à jour de votre mode de paiement", "votre abonnement est suspendu",
+    "aktualisieren sie ihre zahlungsart", "ihre mitgliedschaft pausiert",
+    "aggiorna i dati di pagamento", "il tuo abbonamento è in pausa",
+    "reaktivera ditt medlemskap", "renouveler votre abonnement", "suspension de votre compte"
 ]
 
 def normalize_plan_name(raw_plan_name, fallback_text=""):
@@ -190,7 +223,7 @@ def check_web_account_status_and_plan(cookies, proxy_dict):
             return "DIE", None
             
         # 2. URL chứa trang cập nhật thanh toán -> DIE (Lỗi Payment)
-        if any(kw in url_lower for kw in ["paymentupdate", "payment-update", "billing-update", "simplemember"]):
+        if any(kw in url_lower for kw in PAYMENT_URL_KEYWORDS):
             return "DIE", None
             
         # 3. Nội dung HTML chứa thông báo lỗi thanh toán / tạm hoãn / hết hạn -> DIE
@@ -216,6 +249,11 @@ def check_web_account_status_and_plan(cookies, proxy_dict):
                 pass
                 
         final_plan = normalize_plan_name(plan_raw, text_lower)
+        if not final_plan:
+            # Nếu đã tải được trang YourAccount nhưng không có bất kỳ gói cước hoạt động nào
+            # (tài khoản đã bị tạm dừng, nợ cước hoặc hủy đăng ký)
+            return "DIE", None
+            
         return "LIVE", final_plan
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.ProxyError):
         return "ERROR", None
@@ -245,8 +283,8 @@ def check_account_live(netflix_id, secure_netflix_id="", check_payment=True):
         
     if plan_api is None:
         return "DIE", None
-    elif plan_api == "API_DEAD" or plan_api == "ERROR":
-        # API khong phan hoi, thu kiem tra qua Web
+    elif plan_api == "API_DEAD":
+        # API khong phan hoi, kiem tra qua Web
         web_status, web_plan = check_web_account_status_and_plan(cookies, proxy_dict)
         if web_status == "ERROR":
             proxy_dict = proxies_list.get_random_proxy()
@@ -263,11 +301,12 @@ def check_account_live(netflix_id, secure_netflix_id="", check_payment=True):
         if web_status == "DIE":
             return "DIE", None
         elif web_status == "LIVE":
-            final_plan = web_plan if web_plan else (plan_api if plan_api != "VALID" else "Premium")
-            return "LIVE", final_plan
+            if not web_plan:
+                return "DIE", None
+            return "LIVE", web_plan
         elif web_status == "ERROR":
-            # Neu web gap loi mang sau khi da co Token tu API, coi nhu van co the dung duoc hoac bao ERROR
-            return "LIVE", plan_api if plan_api != "VALID" else "Premium"
+            # Khi kiem tra payment ma web bi loi proxy/mang, bao ERROR de caller xu ly/retry, khong nham lan sang LIVE
+            return "ERROR", None
             
     return "LIVE", plan_api if plan_api != "VALID" else "Premium"
 
