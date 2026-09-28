@@ -352,6 +352,13 @@ PUBLIC_TEMPLATE = r"""
                 "modal_title": "⚠️ Request Account Replacement",
                 "modal_desc": "Please provide your U7BUY Purchase ID, Access Code, and error screenshot. Admin will check it in 1-10 hours. After checking, admin will notify you!",
                 "modal_submit": "Submit Change Request",
+                "replace_modal_title": "🔄 Account Replaced Successfully!",
+                "replace_modal_logout_title": "⚠️ MANDATORY STEP: LOG OUT OLD ACCOUNT",
+                "replace_modal_logout_desc": "You MUST log out of Netflix completely on all browsers and devices before using the new account. Leaving the old account logged in will cause conflict or session lock.",
+                "replace_modal_clear_btn": "🚪 Click to Log Out Old Netflix Session (netflix.com/clearcookies)",
+                "replace_modal_timer_desc": "Session Synchronization Wait Time",
+                "replace_modal_timer_hint": "⏳ Please wait 5 minutes for Netflix to synchronize your new session before logging in.",
+                "replace_modal_login_btn": "🚀 Login to New Account Now",
                 "chat_btn": "💬 24/7 Support Assistant",
                 "chat_header": "🤖 Support Assistant",
                 "chat_welcome": "Hello! How can I help you with your Netflix access today?",
@@ -402,6 +409,13 @@ PUBLIC_TEMPLATE = r"""
                 "modal_title": "⚠️ Yêu Cầu Đổi Tài Khoản Mới",
                 "modal_desc": "Vui lòng nhập U7BUY Purchase ID, mã Access Code và ảnh chụp màn hình lỗi. Admin sẽ kiểm tra trong 1-10 giờ và thông báo cho bạn sau khi duyệt xong!",
                 "modal_submit": "Gửi Yêu Cầu Đổi Acc",
+                "replace_modal_title": "🔄 Đổi Tài Khoản Thành Công!",
+                "replace_modal_logout_title": "⚠️ BƯỚC BẮT BUỘC: ĐĂNG XUẤT TÀI KHOẢN CŨ",
+                "replace_modal_logout_desc": "Bạn BẮT BUỘC phải đăng xuất Netflix hoàn toàn trên tất cả trình duyệt và ứng dụng trước khi vào tài khoản mới. Nếu để session cũ sẽ gây xung đột hoặc lỗi khóa tài khoản.",
+                "replace_modal_clear_btn": "🚪 Bấm Vào Đây Để Đăng Xuất (netflix.com/clearcookies)",
+                "replace_modal_timer_desc": "Thời Gian Đồng Bộ Phiên Đăng Nhập",
+                "replace_modal_timer_hint": "⏳ Vui lòng đợi 5 phút để hệ thống Netflix đồng bộ phiên mới trước khi đăng nhập.",
+                "replace_modal_login_btn": "🚀 Đăng Nhập Tài Khoản Mới Ngay",
                 "chat_btn": "💬 Trợ Lý Hỗ Trợ 24/7",
                 "chat_header": "🤖 Trợ Lý Hỗ Trợ",
                 "chat_welcome": "Xin chào! Tôi có thể giúp gì cho bạn về tài khoản Netflix hôm nay?",
@@ -452,6 +466,13 @@ PUBLIC_TEMPLATE = r"""
                 "modal_title": "⚠️ Reporte de Error y Reemplazo Automático",
                 "modal_desc": "Sube una captura de pantalla del error. ¡El sistema verificará y cambiará tu cuenta automáticamente!",
                 "modal_submit": "Enviar Reporte y Cambiar Cuenta",
+                "replace_modal_title": "🔄 ¡Cuenta Reemplazada con Éxito!",
+                "replace_modal_logout_title": "⚠️ PASO OBLIGATORIO: CERRAR SESIÓN DE LA CUENTA ANTERIOR",
+                "replace_modal_logout_desc": "Debes cerrar sesión en Netflix completamente en todos los navegadores y dispositivos antes de ingresar a la nueva cuenta para evitar conflictos.",
+                "replace_modal_clear_btn": "🚪 Clic para Cerrar Sesión (netflix.com/clearcookies)",
+                "replace_modal_timer_desc": "Tiempo de Sincronización de Sesión",
+                "replace_modal_timer_hint": "⏳ Espera 5 minutos para que Netflix sincronice tu nueva sesión antes de iniciar.",
+                "replace_modal_login_btn": "🚀 Iniciar Sesión en Nueva Cuenta",
                 "chat_btn": "💬 Asistente de Soporte IA 24/7",
                 "chat_header": "🤖 Asistente IA",
                 "chat_welcome": "¡Hola! ¿Cómo puedo ayudarte hoy con tu acceso a Netflix?",
@@ -502,6 +523,13 @@ PUBLIC_TEMPLATE = r"""
                 "modal_title": "⚠️ Relatório de Erro e Troca Automática",
                 "modal_desc": "Envie uma captura de tela do erro. O sistema verificará e atualizará sua conta automaticamente!",
                 "modal_submit": "Enviar e Obter Troca",
+                "replace_modal_title": "🔄 Conta Substituída com Sucesso!",
+                "replace_modal_logout_title": "⚠️ PASSO OBRIGATÓRIO: SAIR DA CONTA ANTIGA",
+                "replace_modal_logout_desc": "Você DEVE sair completamente da Netflix em todos os navegadores e dispositivos antes de entrar na nova conta para evitar conflitos de sessão.",
+                "replace_modal_clear_btn": "🚪 Clique para Sair da Netflix (netflix.com/clearcookies)",
+                "replace_modal_timer_desc": "Tempo de Espera para Sincronização",
+                "replace_modal_timer_hint": "⏳ Aguarde 5 minutos para sincronizar a nova sessão antes de entrar.",
+                "replace_modal_login_btn": "🚀 Entrar na Nova Conta Agora",
                 "chat_btn": "💬 Assistente de Suporte IA 24/7",
                 "chat_header": "🤖 Suporte IA",
                 "chat_welcome": "Olá! Como posso ajudar você hoje com seu acesso à Netflix?",
@@ -552,6 +580,13 @@ PUBLIC_TEMPLATE = r"""
                 "modal_title": "⚠️ Zgłoszenie Błędu i Wymiana Konta",
                 "modal_desc": "Prześlij zrzut ekranu z widocznym błędem. System automatycznie zweryfikuje i wymieni konto!",
                 "modal_submit": "Wyślij Zgłoszenie i Wymień",
+                "replace_modal_title": "🔄 Konto Wymienione Pomyślnie!",
+                "replace_modal_logout_title": "⚠️ KROK OBOWIĄZKOWY: WYLOGUJ SIĘ ZE STAREGO KONTA",
+                "replace_modal_logout_desc": "Musisz całkowicie wylogować się z serwisu Netflix na wszystkich urządzeniach i przeglądarkach przed wejściem na nowe konto.",
+                "replace_modal_clear_btn": "🚪 Kliknij, aby Wylogować (netflix.com/clearcookies)",
+                "replace_modal_timer_desc": "Czas Oczekiwania na Synchronizację",
+                "replace_modal_timer_hint": "⏳ Poczekaj 5 minut na synchronizację nowej sesji przed zalogowaniem.",
+                "replace_modal_login_btn": "🚀 Zaloguj się na Nowe Konto",
                 "chat_btn": "💬 Asystent Wsparcia AI 24/7",
                 "chat_header": "🤖 Asystent AI",
                 "chat_welcome": "Cześć! W czym mogę Ci dzisiaj pomóc w dostępie do Netflix?",
@@ -795,11 +830,15 @@ PUBLIC_TEMPLATE = r"""
             .then(res => res.json())
             .then(data => {
                 btn.disabled = false;
-                btn.innerHTML = "Submit Change Request";
+                btn.innerHTML = (I18N_DICTS[currentLang]?.modal_submit || "Submit Change Request");
                 if (data.success) {
-                    statusText.innerText = "✅ " + (data.message || "Your request has been submitted! Admin will check it in 1-10 hours. After checking, admin will notify you.");
-                    statusText.style.color = "#2ecc71";
-                    setTimeout(closeReportModal, 5000);
+                    if (data.replaced) {
+                        showReplaceSuccessModal(code, data.message, data.cooldown_seconds || 300);
+                    } else {
+                        statusText.innerText = "✅ " + (data.message || "Your request has been submitted! Admin will check it in 1-10 hours. After checking, admin will notify you.");
+                        statusText.style.color = "#2ecc71";
+                        setTimeout(closeReportModal, 5000);
+                    }
                 } else {
                     statusText.innerText = "❌ " + data.error;
                     statusText.style.color = "#ff4757";
@@ -807,10 +846,89 @@ PUBLIC_TEMPLATE = r"""
             })
             .catch(err => {
                 btn.disabled = false;
-                btn.innerHTML = "Submit Change Request";
+                btn.innerHTML = (I18N_DICTS[currentLang]?.modal_submit || "Submit Change Request");
                 statusText.innerText = "Connection error while submitting request!";
                 statusText.style.color = "#ff4757";
             });
+        }
+
+        var replaceCountdownInterval = null;
+        var replaceRemainingSeconds = 300;
+        var replacedCode = "";
+
+        function showReplaceSuccessModal(code, message, cooldownSeconds) {
+            closeReportModal();
+            replacedCode = code || document.getElementById("reportCodeInput").value.trim();
+            replaceRemainingSeconds = cooldownSeconds || 300;
+            
+            var modal = document.getElementById("replaceSuccessModal");
+            var desc = document.getElementById("replaceSuccessDesc");
+            var btn = document.getElementById("replaceLoginNowBtn");
+            var timerEl = document.getElementById("replaceCountdownTimer");
+            var bar = document.getElementById("replaceTimerProgressBar");
+            
+            desc.innerText = message || "Your account has been replaced with a fresh account!";
+            modal.style.display = "flex";
+            
+            btn.disabled = true;
+            btn.style.background = "#555";
+            btn.style.color = "#888";
+            btn.style.cursor = "not-allowed";
+            bar.style.width = "0%";
+            
+            if (replaceCountdownInterval) {
+                clearInterval(replaceCountdownInterval);
+            }
+            
+            var totalDuration = replaceRemainingSeconds;
+            
+            function updateTimer() {
+                var m = Math.floor(replaceRemainingSeconds / 60);
+                var s = replaceRemainingSeconds % 60;
+                var formatted = (m < 10 ? "0" + m : m) + ":" + (s < 10 ? "0" + s : s);
+                timerEl.innerText = formatted;
+                
+                var percent = Math.min(100, Math.round(((totalDuration - replaceRemainingSeconds) / totalDuration) * 100));
+                bar.style.width = percent + "%";
+                
+                if (replaceRemainingSeconds <= 0) {
+                    clearInterval(replaceCountdownInterval);
+                    timerEl.innerText = "READY!";
+                    timerEl.style.color = "#2ecc71";
+                    bar.style.width = "100%";
+                    btn.disabled = false;
+                    btn.style.background = "linear-gradient(135deg, #2ecc71, #27ae60)";
+                    btn.style.color = "#fff";
+                    btn.style.cursor = "pointer";
+                    btn.style.boxShadow = "0 8px 25px rgba(46, 204, 113, 0.4)";
+                    var readyText = (I18N_DICTS[currentLang] && I18N_DICTS[currentLang]["replace_modal_login_btn"]) ? I18N_DICTS[currentLang]["replace_modal_login_btn"] : "🚀 Login to New Account Now";
+                    btn.innerHTML = readyText;
+                } else {
+                    btn.innerText = "⏳ " + formatted;
+                    replaceRemainingSeconds--;
+                }
+            }
+            
+            updateTimer();
+            replaceCountdownInterval = setInterval(updateTimer, 1000);
+        }
+
+        function proceedToNewAccount() {
+            var modal = document.getElementById("replaceSuccessModal");
+            modal.style.display = "none";
+            if (replaceCountdownInterval) {
+                clearInterval(replaceCountdownInterval);
+            }
+            if (replacedCode) {
+                var input = document.getElementById("rawTokenInput");
+                if (input) {
+                    input.value = replacedCode;
+                }
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                generateQuickLinks();
+            } else {
+                window.location.reload();
+            }
         }
         
         function toggleChat() {
@@ -1129,6 +1247,50 @@ PUBLIC_TEMPLATE = r"""
                 <button type="submit" id="submitReportBtn" class="btn-danger" style="width: 100%; font-weight: bold; padding: 14px;" data-i18n="modal_submit">Submit Change Request</button>
             </form>
             <p id="reportStatus" style="text-align: center; font-weight: bold; margin-top: 15px; margin-bottom: 0; font-size: 0.92rem; line-height: 1.4;"></p>
+        </div>
+    </div>
+    
+    <!-- Replace Success Modal with 5-Minute Waiting Timer & Logout Notice -->
+    <div id="replaceSuccessModal" class="modal" style="display: none; align-items: center; justify-content: center; z-index: 10001;">
+        <div class="modal-content" style="max-width: 520px; text-align: center; border-radius: 20px; border: 1px solid rgba(46, 204, 113, 0.4); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7), 0 0 30px rgba(46, 204, 113, 0.2); position: relative; padding: 28px 24px; background: rgba(18, 22, 34, 0.96);">
+            <div style="font-size: 3rem; margin-bottom: 8px;">🔄</div>
+            <h2 id="replaceSuccessTitle" style="color: #2ecc71; margin-top: 0; margin-bottom: 12px; font-size: 1.45rem;" data-i18n="replace_modal_title">🔄 Account Replaced Successfully!</h2>
+            
+            <p id="replaceSuccessDesc" style="color: #ddd; font-size: 0.95rem; margin-bottom: 18px; line-height: 1.5;"></p>
+
+            <!-- Mandatory Logout Warning Box -->
+            <div style="background: rgba(231, 76, 60, 0.15); border: 2px solid #e74c3c; border-radius: 12px; padding: 14px 16px; margin-bottom: 20px; text-align: left;">
+                <div style="color: #ff6b6b; font-weight: 800; font-size: 0.95rem; display: flex; align-items: center; gap: 8px; margin-bottom: 6px;" data-i18n="replace_modal_logout_title">
+                    ⚠️ MANDATORY STEP: LOG OUT OLD ACCOUNT
+                </div>
+                <div style="color: #eee; font-size: 0.85rem; line-height: 1.45; margin-bottom: 10px;" data-i18n="replace_modal_logout_desc">
+                    You MUST log out of Netflix completely on all browsers and devices before using the new account. Leaving the old account logged in will cause conflict or session lock.
+                </div>
+                <a href="https://www.netflix.com/clearcookies" target="_blank" rel="noopener noreferrer" style="display: block; text-align: center; background: #e74c3c; color: #fff; font-weight: 700; font-size: 0.88rem; padding: 10px 14px; border-radius: 8px; text-decoration: none; transition: 0.2s;" data-i18n="replace_modal_clear_btn">
+                    🚪 Click to Log Out Old Netflix Session (netflix.com/clearcookies)
+                </a>
+            </div>
+
+            <!-- 5-Minute Waiting Countdown Box -->
+            <div style="background: rgba(0, 168, 255, 0.1); border: 1px solid rgba(0, 168, 255, 0.3); border-radius: 14px; padding: 16px; margin-bottom: 20px;">
+                <div style="font-size: 0.85rem; color: #74b9ff; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;" data-i18n="replace_modal_timer_desc">
+                    Session Synchronization Wait Time
+                </div>
+                <div id="replaceCountdownTimer" style="font-size: 2.8rem; font-weight: 900; font-family: monospace; color: #00d2d3; letter-spacing: 2px; text-shadow: 0 0 15px rgba(0, 210, 211, 0.5); margin: 4px 0;">
+                    05:00
+                </div>
+                <div style="width: 100%; background: rgba(255, 255, 255, 0.1); height: 6px; border-radius: 3px; overflow: hidden; margin-top: 8px;">
+                    <div id="replaceTimerProgressBar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #00d2d3, #2ecc71); transition: width 1s linear;"></div>
+                </div>
+                <div style="font-size: 0.8rem; color: #aaa; margin-top: 8px;" data-i18n="replace_modal_timer_hint">
+                    ⏳ Please wait 5 minutes for Netflix to synchronize your new session before logging in.
+                </div>
+            </div>
+
+            <!-- Login Action Button -->
+            <button id="replaceLoginNowBtn" disabled onclick="proceedToNewAccount()" style="width: 100%; padding: 14px; font-size: 1.05rem; font-weight: 800; border-radius: 12px; border: none; background: #555; color: #888; cursor: not-allowed; transition: all 0.3s ease;">
+                ⏳ 05:00
+            </button>
         </div>
     </div>
     
@@ -2579,6 +2741,120 @@ def check_live_rate_limit(code: str):
         _code_last_live_check[code] = now
     return True, None
 
+def extract_card_info_from_netflix_html(html_text):
+    if not html_text:
+        return []
+    card_info = []
+    # 1. mopType span (e.g. •••• 8357 or 62-857••••8357 or &bull;&bull;&bull;&bull; 2158)
+    m = re.search(r'data-uia="mopType">([^<]+)</span>', html_text)
+    if m:
+        raw = m.group(1).replace('&bull;', '•').strip()
+        digits = re.findall(r'\d+', raw)
+        card_info.append({
+            "source": "mopType",
+            "raw": raw,
+            "all_digits": "".join(digits),
+            "last4": digits[-1] if digits and len(digits[-1]) >= 4 else (digits[-1] if digits else None)
+        })
+
+    # 2. growthPaymentMethods displayText
+    m_growth = re.findall(r'"growthPaymentMethods":\s*\[\s*\{[^}]*"displayText":\s*"([^"]+)"', html_text)
+    for g in m_growth:
+        digits = re.findall(r'\d+', g)
+        card_info.append({
+            "source": "growthPaymentMethods",
+            "raw": g,
+            "all_digits": "".join(digits),
+            "last4": digits[-1] if digits and len(digits[-1]) >= 4 else (digits[-1] if digits else None)
+        })
+
+    # 3. displayText fieldType
+    m_field = re.findall(r'"displayText"\s*:\s*\{"fieldType":"String","value":"([^"]+)"\}', html_text)
+    for f in m_field:
+        digits = re.findall(r'\d+', f)
+        card_info.append({
+            "source": "fieldType_displayText",
+            "raw": f,
+            "all_digits": "".join(digits),
+            "last4": digits[-1] if digits and len(digits[-1]) >= 4 else (digits[-1] if digits else None)
+        })
+
+    return card_info
+
+def scrape_netflix_account_payment_card(netflix_id, secure_netflix_id=""):
+    if not netflix_id:
+        return []
+    cookies = {"NetflixId": netflix_id}
+    if secure_netflix_id:
+        cookies["SecureNetflixId"] = secure_netflix_id
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+    }
+    
+    proxy_dict = proxies_list.get_random_proxy()
+    html_text = ""
+    for attempt in range(2):
+        try:
+            curr_proxy = proxy_dict if attempt == 0 else None
+            r = requests.get(
+                "https://www.netflix.com/YourAccount",
+                cookies=cookies,
+                headers=headers,
+                proxies=curr_proxy,
+                timeout=12,
+                allow_redirects=True,
+                verify=False
+            )
+            if "/login" in r.url or "/clearcookies" in r.url:
+                print(f"[Card Scraper] Account redirected to login/clearcookies: {r.url}")
+                return []
+            html_text = r.text
+            break
+        except Exception as e:
+            print(f"[Card Scraper] Attempt {attempt} error: {e}")
+            if attempt == 0:
+                proxy_dict = proxies_list.get_random_proxy()
+
+    return extract_card_info_from_netflix_html(html_text)
+
+def verify_payment_card_match(buyer_card_last4, buyer_card_digits, scraped_cards):
+    """
+    Verifies if buyer's screenshot card details match the scraped card info.
+    Returns (is_match, reason)
+    """
+    if not scraped_cards:
+        return True, "SCRAPE_UNAVAILABLE"
+    
+    scraped_last4_set = set()
+    scraped_all_digits = set()
+    for c in scraped_cards:
+        if c.get("last4"):
+            scraped_last4_set.add(c["last4"])
+        if c.get("all_digits"):
+            scraped_all_digits.add(c["all_digits"])
+
+    if not buyer_card_last4 and not buyer_card_digits:
+        return True, "NO_CARD_IN_SCREENSHOT"
+
+    clean_buyer_last4 = str(buyer_card_last4).strip() if buyer_card_last4 else ""
+    clean_buyer_digits = "".join(re.findall(r'\d+', str(buyer_card_digits))) if buyer_card_digits else ""
+
+    # Check 1: direct last4 match
+    if clean_buyer_last4 and clean_buyer_last4 in scraped_last4_set:
+        return True, f"MATCH_LAST4_{clean_buyer_last4}"
+
+    # Check 2: digits overlap
+    for s_dig in scraped_all_digits:
+        if clean_buyer_last4 and clean_buyer_last4 in s_dig:
+            return True, f"MATCH_LAST4_IN_DIGITS_{clean_buyer_last4}"
+        if clean_buyer_digits and (clean_buyer_digits in s_dig or s_dig in clean_buyer_digits):
+            return True, "MATCH_DIGITS_SUBSTRING"
+
+    return False, f"MISMATCH_BUYER_{clean_buyer_last4}_VS_SCRAPED_{list(scraped_last4_set)}"
+
 @app.route("/api/submit_request", methods=["POST"])
 def api_submit_request():
     u7buy_order_id = request.form.get("u7buy_order_id", "").strip()
@@ -2649,14 +2925,31 @@ def api_submit_request():
             "Content-Type": "application/json"
         }
 
-        prompt = """You are an AI assistant analyzing Netflix error screenshots.
+        prompt = """You are an AI analyzing a Netflix error screenshot uploaded by a buyer requesting a replacement.
 The screenshot can be in ANY LANGUAGE (English, Spanish, Vietnamese, Polish, Portuguese, German, French, etc.).
 
-Analyze the image carefully. Reply with ONLY ONE WORD from the following options:
-- TOO_MANY_PEOPLE: If the image shows a Netflix error about too many people watching, screen limit reached, or device limit reached (for example: 'Too many people are using your account right now', 'Demasiadas personas están usando tu cuenta en este momento', 'Quá nhiều người đang sử dụng tài khoản của bạn', 'Za dużo osób korzysta z Twojego konta', 'Trop de personnes utilisent votre compte', 'Too many people', 'Screen limit', etc.).
-- OTHER: If the image shows ANY other error (membership expired, account canceled, on hold, payment update, household, etc.) or any other screen."""
+Analyze the image carefully and return a STRICT JSON object with these EXACT keys:
+1. "error_type": One of ["PAYMENT_ERROR", "TOO_MANY_PEOPLE", "OTHER"]
+   - "PAYMENT_ERROR": Payment failure, payment declined, update payment method, account on hold due to billing/payment, membership paused due to payment, 'we were unable to process your last payment', 'update your payment information', etc.
+   - "TOO_MANY_PEOPLE": Screen limit reached, device limit reached, too many people watching ('Too many people are using your account right now', 'Demasiadas personas están usando tu cuenta', 'Quá nhiều người đang sử dụng tài khoản', etc.).
+   - "OTHER": Household issue, account canceled, expired, login prompt, or other issues.
+2. "is_netflix": true if this is genuine Netflix interface/page, false otherwise.
+3. "card_digits": Any visible payment card digits or masked card text shown on the page (e.g., "8357", "62-857••••8357", "•••• 2158"). If none visible, null.
+4. "card_last4": The last 4 digits of the payment card shown (e.g. "8357"). If none visible, null.
+5. "visible_email": Any visible account email on the screen. If none, null.
+6. "error_description": A short English summary of the issue shown.
 
-        ai_response = "OTHER"
+Reply ONLY with the valid raw JSON object. No explanation, no markdown ticks."""
+
+        ai_data = {
+            "error_type": "OTHER",
+            "is_netflix": True,
+            "card_digits": None,
+            "card_last4": None,
+            "visible_email": None,
+            "error_description": ""
+        }
+        content = ""
         try:
             payload = {
                 "model": "pixtral-12b-2409",
@@ -2669,21 +2962,113 @@ Analyze the image carefully. Reply with ONLY ONE WORD from the following options
                         ]
                     }
                 ],
-                "max_tokens": 50,
+                "max_tokens": 250,
                 "temperature": 0.1
             }
             r = requests.post("https://api.mistral.ai/v1/chat/completions", headers=headers, json=payload, timeout=30)
             r.raise_for_status()
-            ai_response = r.json()["choices"][0]["message"]["content"].strip().upper()
-            print(f"Mistral AI Vision Response for code {code}: {ai_response}")
+            content = r.json()["choices"][0]["message"]["content"].strip()
+            print(f"Mistral AI Vision Raw Response for code {code}: {content}")
+            
+            clean_content = content
+            if "```" in clean_content:
+                clean_content = re.sub(r"^```(?:json)?\s*", "", clean_content)
+                clean_content = re.sub(r"\s*```$", "", clean_content)
+            ai_data = json.loads(clean_content)
         except Exception as ai_e:
             print(f"Mistral Vision API notice: {ai_e}")
-            ai_response = "OTHER"
+            raw_upper = str(content).upper()
+            if any(kw in raw_upper for kw in ["TOO_MANY", "PEOPLE", "LIMIT", "SCREEN"]):
+                ai_data["error_type"] = "TOO_MANY_PEOPLE"
+            elif any(kw in raw_upper for kw in ["PAYMENT", "UPDATE_PAYMENT", "UNABLE TO PROCESS", "PAYMENT_ERROR"]):
+                ai_data["error_type"] = "PAYMENT_ERROR"
+            else:
+                ai_data["error_type"] = "OTHER"
 
+        error_type = ai_data.get("error_type", "OTHER")
+        card_last4 = ai_data.get("card_last4")
+        card_digits = ai_data.get("card_digits")
+        visible_email = ai_data.get("visible_email")
         assigned_email = acc_key_row[1] if len(acc_key_row) > 1 else None
 
-        # 1. Với lỗi TOO_MANY_PEOPLE: Tự động báo replaced thành công và xóa acc bị đánh dấu ra database
-        if any(kw in ai_response for kw in ["TOO_MANY", "PEOPLE", "LIMIT", "SCREEN", "QUÁ NHIỀU", "DEMASIADAS"]):
+        # 1. Với lỗi PAYMENT_ERROR: Đối chiếu số đuôi thẻ cào được từ Netflix & kiểm tra email
+        if error_type == "PAYMENT_ERROR":
+            # Check 1: Nếu trong ảnh có hiện email rõ ràng thì phải khớp với email đã cấp
+            if visible_email and assigned_email:
+                if visible_email.strip().lower() != assigned_email.strip().lower():
+                    database.create_request(
+                        code=code,
+                        image_url=image_url,
+                        u7buy_order_id=u7buy_order_id,
+                        reason=reason or f"Payment Error (Email mismatch: {visible_email} vs {assigned_email})",
+                        status="rejected_email_mismatch"
+                    )
+                    return jsonify({
+                        "success": False,
+                        "error": f"Security verification failed: The email on your screenshot ({visible_email}) does not match the account assigned to your Access Code ({assigned_email}). Auto-replacement is rejected to prevent fraud."
+                    }), 400
+
+            # Check 2: Cào dữ liệu số đuôi thẻ trực tiếp từ trang netflix.com/account của acc này
+            acc_row = database.get_account_by_email(assigned_email) if assigned_email else None
+            scraped_cards = []
+            if acc_row:
+                acc_nid, acc_snid = acc_row[2], acc_row[3]
+                scraped_cards = scrape_netflix_account_payment_card(acc_nid, acc_snid)
+                print(f"[Payment Verification] Code {code} - Scraped Cards: {scraped_cards} | Buyer Card in Screenshot: last4={card_last4}, digits={card_digits}")
+
+            is_card_match, match_reason = verify_payment_card_match(card_last4, card_digits, scraped_cards)
+            print(f"[Payment Verification] Match result: {is_card_match}, Reason: {match_reason}")
+
+            if not is_card_match:
+                database.create_request(
+                    code=code,
+                    image_url=image_url,
+                    u7buy_order_id=u7buy_order_id,
+                    reason=reason or f"Payment Error (Card mismatch: {card_last4 or card_digits} vs scraped)",
+                    status="rejected_card_mismatch"
+                )
+                return jsonify({
+                    "success": False,
+                    "error": f"Security verification failed: The payment card digits ({card_last4 or card_digits}) in your screenshot do not match the payment method on file for this account. Your request has been queued for Admin manual review."
+                }), 400
+
+            # Đối chiếu chuẩn xác -> Tự động xóa acc lỗi và cấp acc mới
+            if assigned_email:
+                database.delete_account(assigned_email)
+
+            rotated = database.rotate_access_key(code)
+            mark_code_request_success(code)
+
+            if rotated:
+                database.create_request(
+                    code=code,
+                    image_url=image_url,
+                    u7buy_order_id=u7buy_order_id,
+                    reason=reason or f"Payment Error Verified (Card match: {card_last4 or match_reason})",
+                    status="accepted_payment_error"
+                )
+                return jsonify({
+                    "success": True,
+                    "replaced": True,
+                    "error_type": "PAYMENT_ERROR",
+                    "cooldown_seconds": 300,
+                    "message": "Payment Error Verified! The faulty account has been removed and your code has been REPLACED with a fresh account! Please log out of old account and wait 5 minutes before logging in."
+                })
+            else:
+                database.create_request(
+                    code=code,
+                    image_url=image_url,
+                    u7buy_order_id=u7buy_order_id,
+                    reason=reason or "Payment Error Verified (Out of stock)",
+                    status="pending_out_of_stock"
+                )
+                return jsonify({
+                    "success": False,
+                    "error": "Payment Error Verified! The faulty account was removed, but backup vault is temporarily out of cookies. Your request has been queued for admin restocking shortly!"
+                }), 500
+
+        # 2. Với lỗi TOO_MANY_PEOPLE: Tự động đổi acc và yêu cầu đợi 5 phút + logout acc cũ
+        elif error_type == "TOO_MANY_PEOPLE" or any(kw in str(error_type) for kw in ["TOO_MANY", "PEOPLE", "LIMIT", "SCREEN"]):
             if assigned_email:
                 database.delete_account(assigned_email)
 
@@ -2701,7 +3086,9 @@ Analyze the image carefully. Reply with ONLY ONE WORD from the following options
                 return jsonify({
                     "success": True,
                     "replaced": True,
-                    "message": "Report confirmed: 'Too many people watching' error verified. The faulty account has been removed and your code has been REPLACED with a new account! Please return to homepage and click 'LOGIN NOW'."
+                    "error_type": "TOO_MANY_PEOPLE",
+                    "cooldown_seconds": 300,
+                    "message": "Report confirmed: 'Too many people watching' error verified. The faulty account has been removed and your code has been REPLACED with a new account! Please log out of old account and wait 5 minutes before logging in."
                 })
             else:
                 database.create_request(
@@ -2716,7 +3103,7 @@ Analyze the image carefully. Reply with ONLY ONE WORD from the following options
                     "error": "Error verified (Too many people watching). The faulty account was removed, but backup vault is temporarily out of cookies. Your request has been queued for admin restocking shortly!"
                 }), 500
 
-        # 2. Còn mấy lỗi khác thì manual duyệt bởi Admin
+        # 3. Còn các lỗi khác (Household, Canceled, Expired, etc.) -> Manual duyệt bởi Admin
         else:
             database.create_request(
                 code=code,

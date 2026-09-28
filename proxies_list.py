@@ -7,7 +7,7 @@ import time
 WEBSHARE_USERNAME = "gssazpnr-rotate"
 WEBSHARE_PASSWORD = "7tsf50ryio03"
 WEBSHARE_HOST = "p.webshare.io"
-WEBSHARE_PORT = "80"
+WEBSHARE_PORT = os.environ.get("WEBSHARE_PORT", "9999")
 
 # Gateway xoay IP tự động của Webshare
 ROTATING_PROXY_URL = f"http://{WEBSHARE_USERNAME}:{WEBSHARE_PASSWORD}@{WEBSHARE_HOST}:{WEBSHARE_PORT}"
