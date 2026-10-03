@@ -18,6 +18,17 @@ def get_supabase() -> Client:
     return _local.client
 
 import json
+import sqlite3
+
+def get_sqlite_conn(db_path="accounts.db"):
+    conn = sqlite3.connect(db_path, timeout=15)
+    try:
+        conn.execute("PRAGMA journal_mode = WAL;")
+        conn.execute("PRAGMA busy_timeout = 5000;")
+        conn.execute("PRAGMA synchronous = NORMAL;")
+    except Exception:
+        pass
+    return conn
 
 CONFIG_FILE = "config.json"
 
@@ -65,7 +76,7 @@ def set_config(key, value):
 def init_db():
     try:
         import sqlite3
-        conn = sqlite3.connect("accounts.db")
+        conn = get_sqlite_conn("accounts.db")
         c = conn.cursor()
         c.execute("""CREATE TABLE IF NOT EXISTS netflix_accounts (
             email TEXT PRIMARY KEY,
@@ -128,7 +139,7 @@ def save_account(email, expire_date, netflix_id, secure_netflix_id="", plan=None
         print(f"Supabase save_account error: {e}")
     try:
         import sqlite3
-        conn = sqlite3.connect("accounts.db")
+        conn = get_sqlite_conn("accounts.db")
         c = conn.cursor()
         c.execute("""CREATE TABLE IF NOT EXISTS netflix_accounts (
             email TEXT PRIMARY KEY,
@@ -158,7 +169,7 @@ def delete_account(email):
     try:
         import sqlite3
         if os.path.exists("accounts.db"):
-            conn = sqlite3.connect("accounts.db")
+            conn = get_sqlite_conn("accounts.db")
             c = conn.cursor()
             c.execute("DELETE FROM netflix_accounts WHERE email = ?", (email,))
             conn.commit()
@@ -176,7 +187,7 @@ def update_plan(email, plan):
     try:
         import sqlite3
         if os.path.exists("accounts.db"):
-            conn = sqlite3.connect("accounts.db")
+            conn = get_sqlite_conn("accounts.db")
             c = conn.cursor()
             c.execute("UPDATE netflix_accounts SET plan = ? WHERE email = ?", (plan, email))
             conn.commit()
@@ -209,7 +220,7 @@ def fetch_all_rows(table_name, columns="*"):
         import sqlite3
         db_path = "accounts.db" if os.path.exists("accounts.db") else ("netflix.db" if os.path.exists("netflix.db") else None)
         if db_path:
-            conn = sqlite3.connect(db_path)
+            conn = get_sqlite_conn(db_path)
             c = conn.cursor()
             if table_name == "netflix_accounts":
                 c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='netflix_accounts'")
@@ -268,7 +279,7 @@ def get_account_by_email(email):
     try:
         import sqlite3
         if os.path.exists("accounts.db"):
-            conn = sqlite3.connect("accounts.db")
+            conn = get_sqlite_conn("accounts.db")
             c = conn.cursor()
             c.execute("SELECT email, expire_date, netflix_id, secure_netflix_id, created_at, plan FROM netflix_accounts WHERE email = ?", (email,))
             r = c.fetchone()
@@ -293,7 +304,7 @@ def get_account_by_netflix_id(netflix_id):
     try:
         import sqlite3
         if os.path.exists("accounts.db"):
-            conn = sqlite3.connect("accounts.db")
+            conn = get_sqlite_conn("accounts.db")
             c = conn.cursor()
             c.execute("SELECT email, expire_date, netflix_id, secure_netflix_id, created_at, plan FROM netflix_accounts WHERE netflix_id = ? LIMIT 1", (netflix_id,))
             r = c.fetchone()
@@ -483,7 +494,7 @@ def create_request(code, image_url, u7buy_order_id="", reason="", status="pendin
     try:
         import sqlite3
         if os.path.exists("accounts.db"):
-            conn = sqlite3.connect("accounts.db")
+            conn = get_sqlite_conn("accounts.db")
             c = conn.cursor()
             c.execute("INSERT INTO requests (code, u7buy_order_id, image_url, reason, status) VALUES (?, ?, ?, ?, ?)",
                       (code, u7buy_order_id, image_url, reason, status))
@@ -505,7 +516,7 @@ def has_recent_request(code, minutes=5):
     try:
         import sqlite3
         if os.path.exists("accounts.db"):
-            conn = sqlite3.connect("accounts.db")
+            conn = get_sqlite_conn("accounts.db")
             c = conn.cursor()
             c.execute("SELECT id FROM requests WHERE code = ? AND datetime(created_at) > datetime('now', ?) LIMIT 1", (code, f"-{minutes} minutes"))
             r = c.fetchone()
@@ -534,7 +545,7 @@ def get_today_rotation_count(code):
     try:
         import sqlite3
         if os.path.exists("accounts.db"):
-            conn = sqlite3.connect("accounts.db")
+            conn = get_sqlite_conn("accounts.db")
             c = conn.cursor()
             c.execute("SELECT COUNT(*) FROM requests WHERE code = ? AND status LIKE 'accepted%' AND datetime(created_at) > datetime('now', '-24 hours')", (code,))
             r = c.fetchone()
@@ -556,7 +567,7 @@ def get_pending_requests():
     try:
         import sqlite3
         if os.path.exists("accounts.db"):
-            conn = sqlite3.connect("accounts.db")
+            conn = get_sqlite_conn("accounts.db")
             c = conn.cursor()
             c.execute("SELECT id, code, u7buy_order_id, image_url, reason, status, created_at FROM requests WHERE status = 'pending' ORDER BY created_at DESC")
             rows = c.fetchall()
@@ -594,7 +605,7 @@ def update_request_status(req_id, status, code=None):
     try:
         import sqlite3
         if os.path.exists("accounts.db"):
-            conn = sqlite3.connect("accounts.db")
+            conn = get_sqlite_conn("accounts.db")
             c = conn.cursor()
             c.execute("UPDATE requests SET status = ? WHERE id = ? OR id = ? OR (code = ? AND status = 'pending')",
                       (status, req_id_str, int(req_id_str) if req_id_str.isdigit() else -1, code or ""))
@@ -617,7 +628,7 @@ def delete_request(req_id, code=None):
     try:
         import sqlite3
         if os.path.exists("accounts.db"):
-            conn = sqlite3.connect("accounts.db")
+            conn = get_sqlite_conn("accounts.db")
             c = conn.cursor()
             c.execute("DELETE FROM requests WHERE id = ? OR id = ? OR (code = ? AND ? != '')",
                       (req_id_str, int(req_id_str) if req_id_str.isdigit() else -1, code or "", code or ""))
@@ -642,7 +653,7 @@ def get_request_by_id(req_id):
     try:
         import sqlite3
         if os.path.exists("accounts.db"):
-            conn = sqlite3.connect("accounts.db")
+            conn = get_sqlite_conn("accounts.db")
             c = conn.cursor()
             c.execute("SELECT id, code, u7buy_order_id, image_url, reason, status, created_at FROM requests WHERE id = ? OR id = ?",
                       (req_id_str, int(req_id_str) if req_id_str.isdigit() else -1))
@@ -719,7 +730,7 @@ def create_access_key(code, expire_at=None):
     try:
         import sqlite3
         if os.path.exists("accounts.db"):
-            conn = sqlite3.connect("accounts.db")
+            conn = get_sqlite_conn("accounts.db")
             c = conn.cursor()
             c.execute("INSERT OR REPLACE INTO access_keys (code, assigned_email, expire_at) VALUES (?, ?, ?)",
                       (code, email, expire_at))
@@ -745,7 +756,7 @@ def get_access_key(code):
     try:
         import sqlite3
         if os.path.exists("accounts.db"):
-            conn = sqlite3.connect("accounts.db")
+            conn = get_sqlite_conn("accounts.db")
             c = conn.cursor()
             c.execute("SELECT code, assigned_email, expire_at FROM access_keys WHERE code = ?", (code,))
             r = c.fetchone()
@@ -794,7 +805,7 @@ def rotate_access_key(code):
     try:
         import sqlite3
         if os.path.exists("accounts.db"):
-            conn = sqlite3.connect("accounts.db")
+            conn = get_sqlite_conn("accounts.db")
             c = conn.cursor()
             c.execute("UPDATE access_keys SET assigned_email = ? WHERE code = ?", (new_email, code))
             conn.commit()
@@ -814,7 +825,7 @@ def delete_access_key(code):
     try:
         import sqlite3
         if os.path.exists("accounts.db"):
-            conn = sqlite3.connect("accounts.db")
+            conn = get_sqlite_conn("accounts.db")
             c = conn.cursor()
             c.execute("DELETE FROM access_keys WHERE code = ?", (code,))
             conn.commit()
@@ -837,7 +848,7 @@ def delete_all_lifetime_keys():
     try:
         import sqlite3
         if os.path.exists("accounts.db"):
-            conn = sqlite3.connect("accounts.db")
+            conn = get_sqlite_conn("accounts.db")
             c = conn.cursor()
             c.execute("DELETE FROM access_keys WHERE expire_at IS NULL OR expire_at = '' OR expire_at = 'Lifetime' OR expire_at = 'None'")
             deleted_count = c.rowcount
@@ -863,7 +874,7 @@ def cleanup_expired_keys():
     try:
         import sqlite3
         if os.path.exists("accounts.db"):
-            conn = sqlite3.connect("accounts.db")
+            conn = get_sqlite_conn("accounts.db")
             c = conn.cursor()
             c.execute("DELETE FROM access_keys WHERE expire_at IS NOT NULL AND expire_at != '' AND expire_at != 'Lifetime' AND expire_at != 'None' AND expire_at < ?", (today_str,))
             if deleted_count == 0:

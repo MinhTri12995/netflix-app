@@ -1,0 +1,1020 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    
+<style>
+    :root {
+        --bg-color: #08090f;
+        --card-bg: rgba(22, 26, 42, 0.85);
+        --card-border: rgba(255, 255, 255, 0.1);
+        --primary: #E50914;
+        --primary-hover: #f40612;
+        --success: #2ecc71;
+        --success-hover: #27ae60;
+        --accent-blue: #00a8ff;
+        --accent-gold: #f1c40f;
+        --accent-purple: #a55eea;
+        --danger: #e74c3c;
+        --text-main: #ffffff;
+        --text-sub: #a0a5b8;
+    }
+    
+    * { box-sizing: border-box; }
+    
+    body {
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        background: radial-gradient(circle at 50% 0%, #1a1f36 0%, #08090f 70%);
+        color: var(--text-main);
+        margin: 0; padding: 0; min-height: 100vh;
+        display: flex; flex-direction: column; align-items: center;
+        line-height: 1.5;
+    }
+    
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #08090f; }
+    ::-webkit-scrollbar-thumb { background: #2a2f45; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #3d4463; }
+    
+    .container {
+        position: relative; width: 95%; max-width: 980px;
+        margin-top: 40px; margin-bottom: 60px; z-index: 1;
+    }
+    
+    .header { text-align: center; margin-bottom: 30px; }
+    .header h1 {
+        font-size: 2.6rem; font-weight: 900; margin: 0 0 8px 0;
+        background: linear-gradient(135deg, #ffffff 0%, #d1d5db 100%);
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        letter-spacing: -0.5px;
+    }
+    .header p { color: var(--text-sub); font-size: 1.05rem; margin: 0; }
+    
+    .glass-panel {
+        background: var(--card-bg);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid var(--card-border);
+        border-radius: 20px; padding: 28px; margin-bottom: 25px;
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+    
+    /* Steps Box */
+    .steps-container {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        gap: 12px; margin-bottom: 25px;
+    }
+    .step-card {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 14px; padding: 16px; text-align: left;
+    }
+    .step-num {
+        display: inline-block; font-size: 0.75rem; font-weight: 800;
+        padding: 3px 8px; border-radius: 6px; background: rgba(229, 9, 20, 0.25);
+        color: #ff5252; margin-bottom: 8px; text-transform: uppercase;
+    }
+    .step-title { font-weight: 700; font-size: 0.95rem; margin-bottom: 4px; color: #fff; }
+    .step-desc { font-size: 0.82rem; color: var(--text-sub); line-height: 1.4; }
+    
+    /* Inputs & Forms */
+    .search-box {
+        width: 100%; padding: 14px 18px; border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.15); background: rgba(0, 0, 0, 0.4);
+        color: #fff; font-family: inherit; font-size: 1.1rem;
+        transition: all 0.2s ease; box-sizing: border-box;
+    }
+    .search-box:focus {
+        outline: none; border-color: var(--primary);
+        background: rgba(0, 0, 0, 0.6);
+        box-shadow: 0 0 15px rgba(229, 9, 20, 0.3);
+    }
+    
+    /* Buttons */
+    button, .btn {
+        font-family: inherit; font-weight: 700; border: none; border-radius: 12px;
+        padding: 14px 24px; cursor: pointer; transition: all 0.2s ease;
+        display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+        text-decoration: none; font-size: 1rem;
+    }
+    button:active, .btn:active { transform: scale(0.98); }
+    
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); box-shadow: 0 6px 20px rgba(229, 9, 20, 0.4); }
+    
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-success:hover { background: var(--success-hover); box-shadow: 0 6px 20px rgba(46, 204, 113, 0.4); }
+    
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-danger:hover { background: #c0392b; box-shadow: 0 6px 20px rgba(231, 76, 60, 0.4); }
+    
+    .btn-blue { background: var(--accent-blue); color: #fff; }
+    .btn-blue:hover { background: #0097e6; box-shadow: 0 6px 20px rgba(0, 168, 255, 0.4); }
+    
+    /* 4 Device Cards Grid */
+    .device-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+        gap: 16px;
+        margin-top: 15px;
+        width: 100%;
+    }
+    
+    .device-card {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 18px;
+        padding: 22px 16px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        text-decoration: none !important;
+        color: #fff !important;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+        cursor: pointer;
+        backdrop-filter: blur(10px);
+    }
+    
+    .device-card:hover {
+        transform: translateY(-5px);
+        background: rgba(255, 255, 255, 0.08);
+    }
+    
+    .card-pc:hover { border-color: #00a8ff; box-shadow: 0 12px 30px rgba(0, 168, 255, 0.25); }
+    .card-mobile:hover { border-color: #2ecc71; box-shadow: 0 12px 30px rgba(46, 204, 113, 0.25); }
+    .card-tv:hover { border-color: #a55eea; box-shadow: 0 12px 30px rgba(165, 94, 234, 0.25); }
+    .card-general:hover { border-color: #f1c40f; box-shadow: 0 12px 30px rgba(241, 196, 15, 0.25); }
+    
+    .device-icon-box {
+        width: 56px;
+        height: 56px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        margin-bottom: 12px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    
+    .device-name {
+        font-size: 1.05rem;
+        font-weight: 800;
+        margin-bottom: 6px;
+        color: #fff;
+    }
+    
+    .device-hint {
+        font-size: 0.82rem;
+        color: var(--text-sub);
+        line-height: 1.4;
+        margin-bottom: 16px;
+        flex-grow: 1;
+    }
+    
+    .device-btn-action {
+        width: 100%;
+        padding: 11px 14px;
+        border-radius: 10px;
+        font-size: 0.9rem;
+        font-weight: 800;
+        border: none;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        transition: opacity 0.2s;
+    }
+    .device-btn-action:hover { opacity: 0.92; }
+    
+    /* Flash messages */
+    .flash-message {
+        background: rgba(46, 213, 115, 0.15); border: 1px solid rgba(46, 213, 115, 0.4);
+        color: #2ed573; padding: 14px; border-radius: 12px; margin-bottom: 20px; text-align: center;
+        font-weight: 600; font-size: 0.95rem;
+    }
+    .flash-error { background: rgba(255, 71, 87, 0.15); border-color: rgba(255, 71, 87, 0.4); color: #ff4757; }
+    .flash-warning { background: rgba(255, 159, 67, 0.15); border-color: rgba(255, 159, 67, 0.4); color: #ff9f43; }
+    
+    /* Table Styling */
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.95rem; }
+    th, td { padding: 14px 16px; text-align: left; border-bottom: 1px solid var(--card-border); }
+    th { color: var(--text-sub); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+    tr:hover td { background: rgba(255, 255, 255, 0.03); }
+    
+    /* Modals & Popups */
+    .modal {
+        display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%;
+        background-color: rgba(0,0,0,0.85); backdrop-filter: blur(8px);
+        justify-content: center; align-items: center; padding: 20px;
+    }
+    .modal-content {
+        background: #161a2b; padding: 28px; border-radius: 20px; width: 100%; max-width: 440px;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.7); border: 1px solid rgba(255, 255, 255, 0.15);
+        position: relative; animation: modalFade 0.3s ease;
+    }
+    @keyframes modalFade { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+    .close-btn { position: absolute; right: 20px; top: 18px; color: #888; font-size: 24px; cursor: pointer; }
+    .close-btn:hover { color: #fff; }
+</style>
+<script>
+    function copyCookie(text, btn) {
+        let originalText = btn.innerHTML;
+        btn.innerHTML = '✔ Copied Cookie';
+        btn.style.background = '#20bf6b';
+        setTimeout(() => { btn.innerHTML = originalText; btn.style.background = 'rgba(255,255,255,0.08)'; }, 2000);
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(text).catch(err => {
+                fallbackCopy(text);
+            });
+        } else {
+            fallbackCopy(text);
+        }
+    }
+    function fallbackCopy(text) {
+        let textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-999999px";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try { document.execCommand('copy'); } catch (err) { }
+        textArea.remove();
+    }
+    function showLoading(btn) {
+        let originalText = btn.innerHTML;
+        btn.innerHTML = '⏳ Connecting...';
+        btn.style.pointerEvents = 'none';
+        btn.style.opacity = '0.7';
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.style.pointerEvents = 'auto';
+            btn.style.opacity = '1';
+        }, 4000);
+    }
+</script>
+
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Admin Dashboard</h1>
+            <p>Account & Access Key Management System</p>
+            <a href="/" style="color: #3498db; text-decoration: none; margin-right: 15px;">[Back to Home]</a>
+            <a href="/logout" style="color: #e74c3c; text-decoration: none;">[Logout]</a>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="flash-message {% if category == 'error' %}flash-error{% elif category == 'warning' %}flash-warning{% endif %}">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <div class="glass-panel" style="border: 1px solid #3498db; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                <h3 style="margin: 0; font-weight: 400; color: #3498db;">📊 System Stock & Proxy</h3>
+                <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                    <form action="/admin/toggle_mix_plan" method="POST" style="margin: 0; display: flex; align-items: center; gap: 5px;" title="Khi bật, mã 15 ký tự (Premium) sẽ ưu tiên cấp Premium, nếu hết sẽ tự động cấp Standard không ads">
+                        <span style="font-size: 0.9rem; color: #aaa;">Mix Plan (Standard + Premium):</span>
+                        <label class="switch" style="position: relative; display: inline-block; width: 40px; height: 20px;">
+                            <input type="checkbox" onChange="this.form.submit()" {% if mix_plan_enabled %}checked{% endif %} style="opacity: 0; width: 0; height: 0;">
+                            <span class="slider round" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: {% if mix_plan_enabled %}#2ecc71{% else %}#ccc{% endif %}; transition: .4s; border-radius: 20px;">
+                                <span style="position: absolute; height: 16px; width: 16px; left: {% if mix_plan_enabled %}22px{% else %}2px{% endif %}; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%;"></span>
+                            </span>
+                        </label>
+                    </form>
+                    <form action="/admin/toggle_share_mode" method="POST" style="margin: 0; display: flex; align-items: center; gap: 5px;">
+                        <span style="font-size: 0.9rem; color: #aaa;">Share Mode (1 Code = 2 Accs):</span>
+                        <label class="switch" style="position: relative; display: inline-block; width: 40px; height: 20px;">
+                            <input type="checkbox" onChange="this.form.submit()" {% if share_mode_enabled %}checked{% endif %} style="opacity: 0; width: 0; height: 0;">
+                            <span class="slider round" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: {% if share_mode_enabled %}#2ecc71{% else %}#ccc{% endif %}; transition: .4s; border-radius: 20px;">
+                                <span style="position: absolute; height: 16px; width: 16px; left: {% if share_mode_enabled %}22px{% else %}2px{% endif %}; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%;"></span>
+                            </span>
+                        </label>
+                    </form>
+                    <span style="font-size: 0.9rem; color: #aaa;">Current Proxy: <strong style="color: #2ecc71; font-family: monospace;">{{ current_proxy }}</strong></span>
+                </div>
+            </div>
+            <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                <div style="flex: 1; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; min-width: 250px;">
+                    <h4 style="margin-top: 0; color: #f1c40f; border-bottom: 1px solid #444; padding-bottom: 10px; font-weight: 400;">🔑 Access Codes (Sold)</h4>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;"><span>Premium (15 chars):</span> <strong style="color: #fff;">{{ stats.codes.Premium }}</strong></div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;"><span>Standard (10 chars):</span> <strong style="color: #fff;">{{ stats.codes.Standard }}</strong></div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;"><span>Standard w/ Ads (8 chars):</span> <strong style="color: #fff;">{{ stats.codes.Standard_Ads }}</strong></div>
+                    <div style="display: flex; justify-content: space-between;"><span>Basic (5 chars):</span> <strong style="color: #fff;">{{ stats.codes.Basic }}</strong></div>
+                </div>
+                <div style="flex: 1; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; min-width: 250px;">
+                    <h4 style="margin-top: 0; color: #2ecc71; border-bottom: 1px solid #444; padding-bottom: 10px; font-weight: 400;">📦 Accounts Vault (Stock)</h4>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;"><span>Premium:</span> <strong style="color: #fff;">{{ stats.accounts.Premium }}</strong></div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;"><span>Standard:</span> <strong style="color: #fff;">{{ stats.accounts.Standard }}</strong></div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;"><span>Standard w/ Ads:</span> <strong style="color: #fff;">{{ stats.accounts.Standard_Ads }}</strong></div>
+                    <div style="display: flex; justify-content: space-between;"><span>Basic:</span> <strong style="color: #fff;">{{ stats.accounts.Basic }}</strong></div>
+                </div>
+                <div style="flex: 1; background: rgba(0,0,0,0.25); padding: 15px; border-radius: 12px; min-width: 260px; text-align: center; border: 1px solid rgba(255,255,255,0.08);">
+                    <h4 style="margin-top: 0; color: #00a8ff; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; font-weight: 500;">📊 Phân Bổ Gói Kho (Real-time)</h4>
+                    <div style="max-height: 140px; position: relative; display: flex; justify-content: center; align-items: center;">
+                        <canvas id="planChart" style="max-height: 140px; max-width: 220px;"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="glass-panel" style="border: 1px solid #c0392b;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                <h3 style="margin: 0; font-weight: 400; color: #ff7675;">⚠️ Pending Buyer Replacement Requests</h3>
+                <span style="font-size: 0.85rem; color: #2ecc71; background: rgba(46, 204, 113, 0.15); border: 1px solid rgba(46, 204, 113, 0.3); padding: 5px 12px; border-radius: 6px;">🤖 Auto-Replace: Too Many People | Manual: Other Errors</span>
+            </div>
+            
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>U7BUY Purchase ID</th>
+                            <th>Access Code</th>
+                            <th>Reason / Note</th>
+                            <th>Proof Screenshot</th>
+                            <th>Time</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for req in pending_requests %}
+                        <tr>
+                            <td style="font-weight: bold; font-family: monospace; font-size: 1.1rem; color: #3498db;">{{ req.u7buy_order_id if req.u7buy_order_id else 'N/A' }}</td>
+                            <td style="font-weight: bold; font-family: monospace; font-size: 1.25rem; color: #f1c40f; letter-spacing: 1px;">{{ req.code }}</td>
+                            <td style="font-size: 0.85rem; color: #ddd; max-width: 160px; word-break: break-word;">{{ req.reason if req.reason else 'Error Report' }}</td>
+                            <td>
+                                {% if req.image_url %}
+                                <a href="{{ req.image_url }}" target="_blank">
+                                    <img src="{{ req.image_url }}" alt="Proof" style="max-width: 100px; max-height: 50px; border-radius: 4px; border: 1px solid #555; object-fit: cover;">
+                                </a>
+                                {% else %}
+                                <span style="color: #888;">No image</span>
+                                {% endif %}
+                            </td>
+                            <td style="font-size: 0.82rem; color: #888;">{{ req.created_at }}</td>
+                            <td style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                <form action="/admin/request/{{ req.id }}/accept" method="POST" style="margin: 0;" onsubmit="return confirm('Approve & Change account for code {{ req.code }}?');">
+                                    <input type="hidden" name="code" value="{{ req.code }}">
+                                    <button type="submit" style="background: #27ae60; padding: 6px 12px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">✅ Approve & Change</button>
+                                </form>
+                                <form action="/admin/request/{{ req.id }}/reject" method="POST" style="margin: 0;" onsubmit="return confirm('Reject request for code {{ req.code }}?');">
+                                    <input type="hidden" name="code" value="{{ req.code }}">
+                                    <button type="submit" style="background: #e67e22; padding: 6px 12px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">❌ Reject</button>
+                                </form>
+                                <form action="/admin/request/{{ req.id }}/delete" method="POST" style="margin: 0;" onsubmit="return confirm('Delete this request?');">
+                                    <input type="hidden" name="code" value="{{ req.code }}">
+                                    <button type="submit" style="background: #e74c3c; padding: 6px 10px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">🗑️</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="6" style="text-align: center; color: #666; padding: 20px;">No pending replacement requests.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="glass-panel">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                <h3 style="margin: 0; font-weight: 400;">Access Code Management (License Keys)</h3>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                    <form action="/admin/keys/cleanup_expired" method="POST" style="margin: 0;" onsubmit="return confirm('🧹 Bạn có chắc muốn quét và XÓA TẤT CẢ các mã Code đã hết hạn (quá ngày sử dụng)?');">
+                        <button type="submit" style="background: linear-gradient(135deg, #f39c12, #e67e22); font-weight: 600; font-size: 0.88rem; padding: 9px 15px; white-space: nowrap; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 4px 10px rgba(243, 156, 18, 0.3); cursor: pointer;">
+                            🧹 Dọn Dẹp Code Hết Hạn
+                        </button>
+                    </form>
+                    <form action="/admin/keys/delete_lifetime" method="POST" style="margin: 0;" onsubmit="return confirm('⚠️ BẠN CÓ CHẮC CHẮN? Thao tác này sẽ XÓA VĨNH VIỄN tất cả các Code có thời hạn vĩnh viễn (Lifetime)!');">
+                        <button type="submit" style="background: linear-gradient(135deg, #c0392b, #962d22); font-weight: 600; font-size: 0.88rem; padding: 9px 15px; white-space: nowrap; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 4px 10px rgba(192, 57, 43, 0.3); cursor: pointer;">
+                            🗑️ Xóa Tất Cả Code Vĩnh Viễn
+                        </button>
+                    </form>
+                    <form action="/admin/generate_key" method="POST" style="margin: 0; display: flex; gap: 8px; align-items: center;" onsubmit="showLoading(this.querySelector('button'))">
+                        <select name="plan_type" style="padding: 8px; border-radius: 6px; background: rgba(0,0,0,0.5); color: white; border: 1px solid #555;">
+                            <option value="premium">Premium (15 Chars)</option>
+                            <option value="standard">Standard (10 Chars)</option>
+                            <option value="standard_ads">Standard Ads (8 Chars)</option>
+                            <option value="basic">Basic (5 Chars)</option>
+                        </select>
+                        <select name="duration" style="padding: 8px; border-radius: 6px; background: rgba(0,0,0,0.5); color: white; border: 1px solid #555;">
+                            <option value="1">1 Month</option>
+                            <option value="2">2 Months</option>
+                            <option value="3">3 Months</option>
+                        </select>
+                        <button type="submit" style="background: #27ae60; font-size: 0.9rem; padding: 8px 14px; white-space: nowrap; border-radius: 6px;">+ Generate</button>
+                    </form>
+                </div>
+            </div>
+            
+            <form action="/admin" method="GET" style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <input type="text" name="search_code" class="search-box" placeholder="Search by code..." value="{{ request.args.get('search_code', '') }}">
+                <button type="submit" style="background: #3498db; white-space: nowrap;">🔍 Search Code</button>
+            </form>
+            
+            <div style="overflow-x: auto;">
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Assigned Email</th>
+                            <th>Created At</th>
+                            <th>Expire At</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for key in access_keys %}
+                        <tr>
+                            <td style="font-weight: bold; font-family: monospace; font-size: 1.3rem; color: #f1c40f; letter-spacing: 2px;">{{ key[0] }}</td>
+                            <td>{{ key[1] }}</td>
+                            <td style="font-size: 0.85rem; color: #888;">{{ key[2] }}</td>
+                            <td style="font-size: 0.85rem; color: #e74c3c; font-weight: bold;">{{ key[3] if key[3] else 'Lifetime' }}</td>
+                            <td style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                <button class="btn-copy" onclick="copyCookie('{{ key[0] }}', this)">Copy Code</button>
+                                <form action="/admin/rotate_key/{{ key[0] }}" method="POST" style="margin: 0;" onsubmit="return confirm('Do you want to rotate a new account for this code?');">
+                                    <button type="submit" style="background: #f39c12; padding: 6px 12px; font-size: 0.8rem;">Change Acc</button>
+                                </form>
+                                <form action="/admin/delete_key/{{ key[0] }}" method="POST" style="margin: 0;" onsubmit="return confirm('Delete this code? Customers will no longer be able to use it.');">
+                                    <button type="submit" style="background: #e74c3c; padding: 6px 12px; font-size: 0.8rem;">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="5" style="text-align: center; color: #666; padding: 20px;">No access codes generated yet.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            {% if key_total_pages > 1 %}
+            <div style="display: flex; justify-content: center; gap: 5px; margin-top: 15px;">
+                {% if key_page > 1 %}
+                <a href="?key_page={{ key_page - 1 }}&acc_page={{ acc_page }}&search_code={{ search_code }}&search_email={{ search_email }}" style="padding: 5px 10px; background: rgba(255,255,255,0.1); color: white; text-decoration: none; border-radius: 4px;">&laquo; Prev</a>
+                {% endif %}
+                <span style="padding: 5px 10px; color: #888;">Page {{ key_page }} / {{ key_total_pages }}</span>
+                {% if key_page < key_total_pages %}
+                <a href="?key_page={{ key_page + 1 }}&acc_page={{ acc_page }}&search_code={{ search_code }}&search_email={{ search_email }}" style="padding: 5px 10px; background: rgba(255,255,255,0.1); color: white; text-decoration: none; border-radius: 4px;">Next &raquo;</a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="glass-panel">
+            <h3 style="margin-top: 0; margin-bottom: 20px; font-weight: 400;">Import Cookies Database (Single File)</h3>
+            <form style="display: flex; gap: 15px; align-items: center;" action="/upload" method="POST" enctype="multipart/form-data" onsubmit="showLoading(this.querySelector('button'))">
+                <input type="file" name="account_file" accept=".txt" required style="padding: 10px; background: rgba(0,0,0,0.2); border: 1px dashed var(--border-color); color: #ccc;">
+                <button type="submit">Upload Database</button>
+            </form>
+        </div>
+        
+        <div class="glass-panel" style="border-left: 4px solid #3498db;">
+            <h3 style="margin-top: 0; margin-bottom: 10px; font-weight: 400; color: #3498db;">🚀 Smart Bulk Folder Scanner</h3>
+            <p style="font-size: 0.9rem; color: #aaa; margin-bottom: 20px;">Upload an entire folder containing multiple subfolders and text files. The browser will automatically extract cookies and check them LIVE one by one to prevent server overload.</p>
+            
+            <div style="display: flex; gap: 15px; align-items: center; margin-bottom: 15px; flex-wrap: wrap;">
+                <input type="file" id="bulkFolderInput" webkitdirectory directory multiple style="padding: 10px; background: rgba(0,0,0,0.2); border: 1px dashed #3498db; color: #ccc; flex: 1; min-width: 250px;">
+                <button id="startScanBtn" onclick="startBulkScan()" style="background: #3498db; padding: 12px 20px;">Start Scanning</button>
+                <button id="pauseScanBtn" onclick="togglePauseScan()" style="background: #f39c12; padding: 12px 20px; display: none;">⏸ Tạm dừng</button>
+                <button id="stopScanBtn" onclick="stopBulkScan()" style="background: #e74c3c; padding: 12px 20px; display: none;">⏹ Dừng quét</button>
+            </div>
+            
+            <div id="scanProgressArea" style="display: none; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.9rem;">
+                    <span id="scanStatusText" style="color: #f39c12; font-weight: bold;">Parsing files...</span>
+                    <span id="scanCountText">0 / 0</span>
+                </div>
+                <div style="width: 100%; background: #222; border-radius: 4px; overflow: hidden; height: 10px; margin-bottom: 15px;">
+                    <div id="scanProgressBar" style="height: 100%; width: 0%; background: #2ecc71; transition: width 0.3s;"></div>
+                </div>
+                
+                <div style="display: flex; gap: 15px; font-size: 0.85rem; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 4px; margin-bottom: 10px;">
+                    <div style="flex: 1; text-align: center;"><span style="color: #2ecc71; font-weight: bold; font-size: 1.2rem;" id="scanLiveCount">0</span><br>LIVE Added</div>
+                    <div style="flex: 1; text-align: center;"><span style="color: #e74c3c; font-weight: bold; font-size: 1.2rem;" id="scanDieCount">0</span><br>DIE</div>
+                    <div style="flex: 1; text-align: center;"><span style="color: #f39c12; font-weight: bold; font-size: 1.2rem;" id="scanErrorCount">0</span><br>LỖI MẠNG / PROXY</div>
+                </div>
+
+                <div id="scanActionArea" style="display: none; text-align: center; margin-top: 15px;">
+                    <button onclick="window.location.reload()" style="background: #2ecc71; padding: 10px 20px; font-size: 0.95rem; font-weight: bold; cursor: pointer; border: none; border-radius: 6px; color: #fff;">🔄 Tải lại trang để xem danh sách tài khoản mới</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="glass-panel">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin: 0; font-weight: 400;">Original Cookie Vault <span style="font-size: 0.9rem; color: #888;">({{ total_accounts }} accounts)</span></h3>
+                <div style="display: flex; gap: 10px;">
+                    <form action="/filter_duplicates" method="POST" onsubmit="showLoading(this.querySelector('button'))" style="margin: 0;">
+                        <button type="submit" style="background: #f39c12; padding: 8px 15px; font-size: 0.9rem;" title="Filter and delete duplicates with same NetflixId">🧹 FILTER DUPLICATES</button>
+                    </form>
+                    <form action="/check_payment" method="POST" onsubmit="showLoading(this.querySelector('button'))" style="margin: 0;">
+                        <button type="submit" style="background: #c0392b; padding: 8px 15px; font-size: 0.9rem;" title="Scan full DB to delete accounts with Update Payment errors">🚫 SCAN PAYMENT ERRORS</button>
+                    </form>
+                    <form action="/force_check_all" method="POST" onsubmit="showLoading(this.querySelector('button'))" style="margin: 0;">
+                        <button type="submit" style="background: #e74c3c; padding: 8px 15px; font-size: 0.9rem;" title="Force check all accounts regardless of plan (Costs Proxy)">🔥 FORCE FULL SCAN</button>
+                    </form>
+                    <form action="/check_all" method="POST" onsubmit="showLoading(this.querySelector('button'))" style="margin: 0;">
+                        <button type="submit" style="background: #10ac84; padding: 8px 15px; font-size: 0.9rem;" title="Only scan accounts without a known Plan (Saves Proxy)">⚡ UPDATE MISSING PLANS</button>
+                    </form>
+                </div>
+            </div>
+            
+            <form action="/admin" method="GET" style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <input type="text" name="search_email" class="search-box" placeholder="Search by Email..." value="{{ request.args.get('search_email', '') }}">
+                <button type="submit" style="background: #3498db; white-space: nowrap;">🔍 Search Email</button>
+            </form>
+            
+            <div style="overflow-x: auto; max-height: 500px; overflow-y: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Email</th>
+                            <th>Plan</th>
+                            <th>Cookie</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for acc in accounts %}
+                        <tr>
+                            <td style="font-weight: 600;">{{ acc[0] }}</td>
+                            <td style="font-weight: bold; color: {% if 'Premium' in (acc[5] or '') %}#f1c40f{% else %}#bdc3c7{% endif %};">{{ acc[5] if acc[5] else 'Unknown' }}</td>
+                            <td style="font-size: 0.8rem; color: #666; font-family: monospace; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ acc[2] }}">{{ acc[2] }}</td>
+                            <td style="display: flex; gap: 8px;">
+                                <form action="/delete/{{ acc[0] }}" method="POST" style="margin: 0;" onsubmit="return confirm('Delete this cookie?');">
+                                    <button type="submit" style="background: #e74c3c; padding: 6px 12px; font-size: 0.8rem;">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="4" style="text-align: center; color: #666; padding: 20px;">No accounts in database. Please upload a file!</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            {% if acc_total_pages > 1 %}
+            <div style="display: flex; justify-content: center; gap: 5px; margin-top: 15px;">
+                {% if acc_page > 1 %}
+                <a href="?key_page={{ key_page }}&acc_page={{ acc_page - 1 }}&search_code={{ search_code }}&search_email={{ search_email }}" style="padding: 5px 10px; background: rgba(255,255,255,0.1); color: white; text-decoration: none; border-radius: 4px;">&laquo; Prev</a>
+                {% endif %}
+                <span style="padding: 5px 10px; color: #888;">Page {{ acc_page }} / {{ acc_total_pages }}</span>
+                {% if acc_page < acc_total_pages %}
+                <a href="?key_page={{ key_page }}&acc_page={{ acc_page + 1 }}&search_code={{ search_code }}&search_email={{ search_email }}" style="padding: 5px 10px; background: rgba(255,255,255,0.1); color: white; text-decoration: none; border-radius: 4px;">Next &raquo;</a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <script>
+        function copyCookie(text, btn) {
+            let originalText = btn.innerHTML;
+            btn.innerHTML = '✔ Copied';
+            btn.style.background = '#20bf6b';
+            setTimeout(() => { btn.innerHTML = originalText; btn.style.background = '#2d98da'; }, 2000);
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).catch(err => {
+                    fallbackCopy(text);
+                });
+            } else {
+                fallbackCopy(text);
+            }
+        }
+        function fallbackCopy(text) {
+            let textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-999999px";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try { document.execCommand('copy'); } catch (err) { }
+            textArea.remove();
+        }
+        function showLoading(btn) {
+            btn.innerHTML = '⏳ Processing...';
+            btn.style.pointerEvents = 'none';
+            btn.style.opacity = '0.7';
+        }
+
+        let isScanPaused = false;
+        let isScanStopped = false;
+
+        function togglePauseScan() {
+            const pauseBtn = document.getElementById('pauseScanBtn');
+            if (!isScanPaused) {
+                isScanPaused = true;
+                pauseBtn.innerHTML = "▶ Tiếp tục";
+                pauseBtn.style.background = "#2ecc71";
+                document.getElementById('scanStatusText').innerText = "ĐÃ TẠM DỪNG";
+                document.getElementById('scanStatusText').style.color = "#f39c12";
+            } else {
+                isScanPaused = false;
+                pauseBtn.innerHTML = "⏸ Tạm dừng";
+                pauseBtn.style.background = "#f39c12";
+                document.getElementById('scanStatusText').innerText = "Đang kiểm tra LIVE qua Proxy...";
+                document.getElementById('scanStatusText').style.color = "#3498db";
+            }
+        }
+
+        function stopBulkScan() {
+            isScanStopped = true;
+            document.getElementById('scanStatusText').innerText = "ĐÃ DỪNG QUÉT!";
+            document.getElementById('scanStatusText').style.color = "#e74c3c";
+            const btn = document.getElementById('startScanBtn');
+            btn.disabled = false;
+            btn.innerHTML = "Quét thư mục khác";
+            document.getElementById('pauseScanBtn').style.display = "none";
+            document.getElementById('stopScanBtn').style.display = "none";
+            document.getElementById('scanActionArea').style.display = "block";
+        }
+
+        // Helper giải mã an toàn tránh lỗi URIError
+        const safeDecode = (str) => {
+            if (!str) return "";
+            try {
+                return decodeURIComponent(str);
+            } catch(e) {
+                try {
+                    return unescape(str);
+                } catch(err) {
+                    return str;
+                }
+            }
+        };
+
+        // Bulk Scan Logic
+        async function startBulkScan() {
+            const fileInput = document.getElementById('bulkFolderInput');
+            if (!fileInput.files || fileInput.files.length === 0) {
+                alert("Vui lòng chọn một thư mục chứa cookies trước!");
+                return;
+            }
+
+            const btn = document.getElementById('startScanBtn');
+            const pauseBtn = document.getElementById('pauseScanBtn');
+            const stopBtn = document.getElementById('stopScanBtn');
+
+            btn.disabled = true;
+            btn.innerHTML = "⏳ Đang phân tích files...";
+            pauseBtn.style.display = "inline-block";
+            pauseBtn.innerHTML = "⏸ Tạm dừng";
+            pauseBtn.style.background = "#f39c12";
+            stopBtn.style.display = "inline-block";
+            document.getElementById('scanActionArea').style.display = "none";
+
+            document.getElementById('scanProgressArea').style.display = "block";
+            document.getElementById('scanLiveCount').innerText = "0";
+            document.getElementById('scanDieCount').innerText = "0";
+            document.getElementById('scanErrorCount').innerText = "0";
+            document.getElementById('scanProgressBar').style.width = "0%";
+            document.getElementById('scanStatusText').innerText = "Đang đọc và lọc file...";
+            document.getElementById('scanStatusText').style.color = "#f39c12";
+            
+            isScanPaused = false;
+            isScanStopped = false;
+            
+            let allCookies = [];
+
+            // 1. Lọc và Đọc File Cục Bộ (Client-side)
+            for (let i = 0; i < fileInput.files.length; i++) {
+                if (isScanStopped) break;
+                const file = fileInput.files[i];
+                const fname = file.name.toLowerCase();
+                
+                // Hỗ trợ .txt, .json, .log, .cookie, .cookies hoặc file không có đuôi
+                if (fname.endsWith('.txt') || fname.endsWith('.json') || fname.endsWith('.log') || fname.endsWith('.cookie') || fname.endsWith('.cookies') || !fname.includes('.')) {
+                    try {
+                        const text = await file.text();
+                        const trimmedText = text.trim();
+                        if (!trimmedText) continue;
+
+                        // Lấy email gợi ý từ tên file (e.g. user@gmail.com_India_0001.txt hoặc user@gmail.com.txt)
+                        let fname_email = null;
+                        const fname_clean = file.name.replace(/\.[^/.]+$/, "");
+                        const email_match_fname = fname_clean.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+                        if (email_match_fname) {
+                            fname_email = email_match_fname[1];
+                        }
+
+                        // Xử lý định dạng JSON Cookie
+                        if (trimmedText.startsWith('[') || trimmedText.startsWith('{')) {
+                            try {
+                                const parsedJson = JSON.parse(trimmedText);
+                                let cookieArray = null;
+                                if (Array.isArray(parsedJson)) {
+                                    cookieArray = parsedJson;
+                                } else if (parsedJson && Array.isArray(parsedJson.cookies)) {
+                                    cookieArray = parsedJson.cookies;
+                                }
+                                
+                                if (cookieArray) {
+                                    let j_nid = null, j_snid = "";
+                                    for (let c of cookieArray) {
+                                        if (c && c.name === 'NetflixId') j_nid = safeDecode(c.value);
+                                        if (c && c.name === 'SecureNetflixId') j_snid = safeDecode(c.value);
+                                    }
+                                    if (j_nid) {
+                                        allCookies.push({
+                                            email: fname_email || (fname_clean + "@cookie.com"),
+                                            expire: 'N/A',
+                                            plan: 'Premium',
+                                            netflix_id: j_nid,
+                                            secure_netflix_id: j_snid
+                                        });
+                                        continue;
+                                    }
+                                }
+                            } catch(jsonErr) {}
+                        }
+
+                        const lines = text.split('\n');
+                        let current_email = null;
+                        let current_expire = null;
+                        let current_plan = null;
+                        let current_netflix_id = null;
+                        let current_secure_netflix_id = "";
+
+                        const push_account = () => {
+                            if (current_netflix_id) {
+                                const acc_email = current_email || fname_email || ("auto_" + Math.random().toString(36).substr(2, 8) + "@netflix.com");
+                                let acc_plan = current_plan;
+                                if (acc_plan && ['none found', 'none', 'unknown', 'n/a', 'null', ''].includes(acc_plan.trim().toLowerCase())) {
+                                    acc_plan = null;
+                                }
+                                allCookies.push({
+                                    email: acc_email,
+                                    expire: current_expire,
+                                    plan: acc_plan,
+                                    netflix_id: current_netflix_id,
+                                    secure_netflix_id: current_secure_netflix_id
+                                });
+                            }
+                            current_email = null;
+                            current_expire = null;
+                            current_plan = null;
+                            current_netflix_id = null;
+                            current_secure_netflix_id = "";
+                        };
+
+                        for (let line of lines) {
+                            line = line.trim();
+                            if (!line) continue;
+                            
+                            const lower_line = line.toLowerCase();
+                            
+                            // A. Single-line formatted accounts containing '|'
+                            if (line.includes('|')) {
+                                if (lower_line.includes('netflixid=') || lower_line.includes('cookie') || lower_line.includes('membership') || lower_line.includes('memberplan')) {
+                                    if (current_netflix_id) push_account();
+                                    
+                                    const email_match = line.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+                                    if (email_match) current_email = email_match[1].trim();
+                                    else if (line.includes(':')) {
+                                        const p0 = line.split(':')[0].trim();
+                                        if (p0.includes('@')) current_email = p0;
+                                    }
+                                    
+                                    const plan_match = line.match(/(?:memberPlan|Membership|Plan)\s*[=:]\s*([^|]+)/i);
+                                    if (plan_match) current_plan = plan_match[1].trim();
+                                    
+                                    const exp_match = line.match(/(?:Nextbillingdate|nextBillingDate|Next Billing|Expire)\s*[=:]\s*([^|]+)/i);
+                                    if (exp_match) current_expire = exp_match[1].trim();
+                                    
+                                    const n_id = line.match(/(?<!Secure)NetflixId=([^;|\s]+)/i);
+                                    const s_n_id = line.match(/SecureNetflixId=([^;|\s]+)/i);
+                                    if (n_id) current_netflix_id = safeDecode(n_id[1].trim());
+                                    if (s_n_id) current_secure_netflix_id = safeDecode(s_n_id[1].trim());
+                                    
+                                    if (current_netflix_id) push_account();
+                                    continue;
+                                }
+                            }
+                            
+                            if (line.toUpperCase().startsWith("NETFLIX ACCOUNT DETAILS")) { 
+                                if (current_netflix_id) push_account(); 
+                                continue; 
+                            }
+                            
+                            let e_match = line.match(/^(?:–|-|#)?\s*Email:\s*(.+)/i);
+                            if (e_match) { 
+                                if (current_netflix_id && current_email) push_account();
+                                current_email = e_match[1].trim(); 
+                                continue; 
+                            }
+                            
+                            let ex_match = line.match(/^(?:–|-|#)?\s*(?:Next Billing|Expire):\s*(.+)/i);
+                            if (ex_match) { current_expire = ex_match[1].trim(); continue; }
+                            
+                            let p_match = line.match(/^(?:–|-|#)?\s*(?:Plan|Membership):\s*(.+)/i);
+                            if (p_match) { current_plan = p_match[1].trim(); continue; }
+                            
+                            let id_match = line.match(/^(?:–|-|#)?\s*NetflixId:\s*(.+)/i);
+                            if (id_match) { 
+                                if (current_netflix_id && current_email) push_account();
+                                current_netflix_id = safeDecode(id_match[1].trim()); 
+                                continue; 
+                            }
+                            
+                            let sid_match = line.match(/^(?:–|-|#)?\s*SecureNetflixId:\s*(.+)/i);
+                            if (sid_match) { current_secure_netflix_id = safeDecode(sid_match[1].trim()); continue; }
+                            
+                            if (line.startsWith("# ===") || line.startsWith("===") || line.startsWith("---")) {
+                                if (current_netflix_id && (current_email || current_secure_netflix_id)) {
+                                    push_account();
+                                }
+                                continue;
+                            }
+
+                            if (line.includes('.netflix.com')) {
+                                let parts = line.trim().split(/\s+/);
+                                if (parts.length >= 3) {
+                                    let c_name = parts[parts.length - 2];
+                                    let c_val = safeDecode(parts[parts.length - 1]);
+                                    if (c_name === 'NetflixId') current_netflix_id = c_val;
+                                    if (c_name === 'SecureNetflixId') current_secure_netflix_id = c_val;
+                                }
+                                continue;
+                            }
+                        }
+                        push_account(); // push last
+                        
+                    } catch (e) {
+                        console.error("Error reading file:", file.name, e);
+                    }
+                }
+            }
+            
+            // Lọc trùng lặp
+            let uniqueCookies = [];
+            let seenIds = new Set();
+            for (let c of allCookies) {
+                if (c.netflix_id && !seenIds.has(c.netflix_id)) {
+                    seenIds.add(c.netflix_id);
+                    uniqueCookies.push(c);
+                }
+            }
+            
+            const total = uniqueCookies.length;
+            if (total === 0) {
+                alert("Không tìm thấy cookies hợp lệ nào trong thư mục đã chọn!");
+                btn.disabled = false;
+                btn.innerHTML = "Start Scanning";
+                pauseBtn.style.display = "none";
+                stopBtn.style.display = "none";
+                return;
+            }
+
+            document.getElementById('scanStatusText').innerText = "Đang kiểm tra LIVE qua Proxy...";
+            document.getElementById('scanStatusText').style.color = "#3498db";
+            btn.innerHTML = "⏳ Đang quét...";
+            
+            let processed = 0;
+            let liveCount = 0;
+            let dieCount = 0;
+            let errorCount = 0;
+            
+            // 2. Gửi API Check từng cái (Concurrency = 3 để không sập proxy/server)
+            const CONCURRENCY = 3;
+            let index = 0;
+            
+            async function worker() {
+                while (index < total && !isScanStopped) {
+                    while (isScanPaused && !isScanStopped) {
+                        await new Promise(r => setTimeout(r, 500));
+                    }
+                    if (isScanStopped) break;
+
+                    const currentIndex = index++;
+                    if (currentIndex >= total) break;
+                    const acc = uniqueCookies[currentIndex];
+                    
+                    let successChecked = false;
+                    let retries = 0;
+
+                    while (!successChecked && retries < 2 && !isScanStopped) {
+                        try {
+                            const res = await fetch('/api/check_and_import', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(acc)
+                            });
+
+                            if (res.status === 401 || res.redirected) {
+                                alert("Phiên đăng nhập đã hết hạn! Vui lòng đăng nhập lại để tiếp tục.");
+                                stopBulkScan();
+                                return;
+                            }
+
+                            const data = await res.json();
+                            
+                            if (data.status === 'LIVE') {
+                                liveCount++;
+                                document.getElementById('scanLiveCount').innerText = liveCount;
+                                successChecked = true;
+                            } else if (data.status === 'ERROR') {
+                                retries++;
+                                if (retries < 2) {
+                                    await new Promise(r => setTimeout(r, 1000));
+                                } else {
+                                    errorCount++;
+                                    document.getElementById('scanErrorCount').innerText = errorCount;
+                                    successChecked = true;
+                                }
+                            } else {
+                                dieCount++;
+                                document.getElementById('scanDieCount').innerText = dieCount;
+                                successChecked = true;
+                            }
+                        } catch (e) {
+                            retries++;
+                            if (retries >= 2) {
+                                errorCount++;
+                                document.getElementById('scanErrorCount').innerText = errorCount;
+                                successChecked = true;
+                            } else {
+                                await new Promise(r => setTimeout(r, 1000));
+                            }
+                        }
+                    }
+                    
+                    processed++;
+                    document.getElementById('scanCountText').innerText = `${processed} / ${total}`;
+                    document.getElementById('scanProgressBar').style.width = `${(processed / total) * 100}%`;
+                }
+            }
+            
+            const workers = [];
+            for (let i = 0; i < Math.min(CONCURRENCY, total); i++) {
+                workers.push(worker());
+            }
+            
+            await Promise.all(workers);
+            
+            if (!isScanStopped) {
+                document.getElementById('scanStatusText').innerText = "HOÀN TẤT QUÉT!";
+                document.getElementById('scanStatusText').style.color = "#2ecc71";
+                btn.disabled = false;
+                btn.innerHTML = "Quét thư mục khác";
+                pauseBtn.style.display = "none";
+                stopBtn.style.display = "none";
+                document.getElementById('scanActionArea').style.display = "block";
+            }
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const chartCanvas = document.getElementById('planChart');
+            if (chartCanvas && typeof Chart !== 'undefined') {
+                new Chart(chartCanvas, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Premium', 'Standard', 'Ads', 'Basic'],
+                        datasets: [{
+                            data: [
+                                {{ stats.accounts.Premium or 0 }},
+                                {{ stats.accounts.Standard or 0 }},
+                                {{ stats.accounts.Standard_Ads or 0 }},
+                                {{ stats.accounts.Basic or 0 }}
+                            ],
+                            backgroundColor: ['#E50914', '#00a8ff', '#f1c40f', '#a55eea'],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '65%',
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    color: '#a0a5b8',
+                                    boxWidth: 10,
+                                    font: { size: 10 }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
