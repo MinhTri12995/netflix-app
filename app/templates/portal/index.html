@@ -625,6 +625,19 @@
                     </div>
                     <a id="tvLaunchLink" href="#" target="_blank" class="btn btn-secondary" style="padding: 10px 18px; font-size: 0.88rem;">Pair TV Screen →</a>
                 </div>
+
+                <div class="device-card">
+                    <div class="device-info">
+                        <div class="device-icon-box">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                        </div>
+                        <div class="device-meta">
+                            <h4>Account Info / General</h4>
+                            <p>Direct access to Account settings, Membership plan & expiration details</p>
+                        </div>
+                    </div>
+                    <a id="generalLaunchLink" href="#" target="_blank" class="btn btn-secondary" style="padding: 10px 18px; font-size: 0.88rem;">View Account →</a>
+                </div>
             </div>
         </div>
 
@@ -755,6 +768,7 @@
                     document.getElementById('pcLaunchLink').href = data.pc_link;
                     document.getElementById('mobileLaunchLink').href = data.mobile_link;
                     document.getElementById('tvLaunchLink').href = data.tv_link;
+                    if (data.general_link) document.getElementById('generalLaunchLink').href = data.general_link;
                     if (data.plan) document.getElementById('planBadge').innerText = `Plan: ${data.plan}`;
                     if (data.expire_date) document.getElementById('expireBadge').innerText = `Valid until: ${data.expire_date}`;
                     currentCookieJson = data.cookie_json || "";
