@@ -4,8 +4,8 @@ import requests
 import time
 
 # Cấu hình Webshare Rotating Proxy chuẩn từ Dashboard / Environment
-WEBSHARE_USERNAME = os.environ.get("WEBSHARE_USERNAME", "gssazpnr-rotate").strip()
-WEBSHARE_PASSWORD = os.environ.get("WEBSHARE_PASSWORD", "7tsf50ryio03").strip()
+WEBSHARE_USERNAME = os.environ.get("WEBSHARE_USERNAME", "qizklnon-rotate").strip()
+WEBSHARE_PASSWORD = os.environ.get("WEBSHARE_PASSWORD", "e8y63lmvp8v3").strip()
 WEBSHARE_HOST = os.environ.get("WEBSHARE_HOST", "p.webshare.io").strip()
 WEBSHARE_PORT = os.environ.get("WEBSHARE_PORT", "80").strip()
 
