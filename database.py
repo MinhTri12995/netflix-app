@@ -540,7 +540,7 @@ def get_today_rotation_count(code):
                 .gt("created_at", twenty_four_hours_ago) \
                 .execute()
             rows = response.data if response.data else []
-            accepted_count = sum(1 for r in rows if str(r.get("status", "")).startswith("accepted"))
+            accepted_count = sum(1 for r in rows if "accepted" in str(r.get("status", "")))
             return accepted_count
     except Exception as e:
         pass
@@ -550,7 +550,7 @@ def get_today_rotation_count(code):
         if os.path.exists("accounts.db"):
             conn = get_sqlite_conn("accounts.db")
             c = conn.cursor()
-            c.execute("SELECT COUNT(*) FROM requests WHERE code = ? AND status LIKE 'accepted%' AND datetime(created_at) > datetime('now', '-24 hours')", (code,))
+            c.execute("SELECT COUNT(*) FROM requests WHERE code = ? AND (status LIKE '%accepted%' OR status = 'auto_accepted') AND datetime(created_at) > datetime('now', '-24 hours')", (code,))
             r = c.fetchone()
             conn.close()
             if r:

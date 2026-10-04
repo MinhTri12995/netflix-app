@@ -68,7 +68,7 @@ def scrape_netflix_account_payment_card(netflix_id, secure_netflix_id=""):
                 proxies=curr_proxy,
                 timeout=12,
                 allow_redirects=True,
-                verify=False
+                verify=True
             )
             if "/login" in r.url or "/clearcookies" in r.url:
                 print(f"[Card Scraper] Account redirected to login/clearcookies: {r.url}")

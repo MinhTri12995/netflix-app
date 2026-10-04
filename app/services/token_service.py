@@ -65,7 +65,7 @@ def fetch_netflix_nftoken_api(netflix_id, secure_netflix_id=""):
         try:
             response = requests.get(
                 url, params=params, headers=headers,
-                proxies=proxy_dict, timeout=7, verify=False
+                proxies=proxy_dict, timeout=7, verify=True
             )
             # Nếu Proxy hết hạn băng thông (402) hoặc lỗi xác thực (407)
             if response.status_code in [402, 407]:
@@ -80,7 +80,7 @@ def fetch_netflix_nftoken_api(netflix_id, secure_netflix_id=""):
         try:
             response = requests.get(
                 url, params=params, headers=headers,
-                proxies=None, timeout=7, verify=False
+                proxies=None, timeout=7, verify=True
             )
         except requests.exceptions.RequestException as e:
             print(f"Network error connecting to Netflix: {e}")
@@ -92,8 +92,11 @@ def fetch_netflix_nftoken_api(netflix_id, secure_netflix_id=""):
     if response.status_code >= 500:
         raise ProxyError(f"Netflix Server Error ({response.status_code})")
 
-    if response.status_code in [401, 404]:
-        raise CookieError(f"Cookie invalid (HTTP {response.status_code})")
+    if response.status_code == 404:
+        raise ProxyError("Netflix API endpoint returned 404 (Endpoint route changed / temporary outage)")
+
+    if response.status_code == 401:
+        raise CookieError(f"Cookie invalid or unauthorized (HTTP {response.status_code})")
 
     try:
         response.raise_for_status()

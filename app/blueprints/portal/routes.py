@@ -244,28 +244,6 @@ def api_check_live_code():
     except Exception as e:
         return jsonify({"success": False, "error": f"Proxy check error. Please try again later. Details: {e}"}), 500
 
-@portal_bp.route("/api/force_rotate_code", methods=["POST"])
-def api_force_rotate_code():
-    data = request.get_json(silent=True) or {}
-    cookie_value = data.get("cookie", "").strip()
-    if not cookie_value:
-        return jsonify({"success": False, "error": "Please enter Access Code"}), 400
-
-    database.init_db()
-    acc_key_row = database.get_access_key(cookie_value)
-
-    if not acc_key_row:
-        return jsonify({"success": False, "error": "Invalid or non-existent access code."}), 400
-
-    code = acc_key_row[0]
-    assigned_email = acc_key_row[1]
-
-    database.delete_account(assigned_email)
-    rotated = database.rotate_access_key(code)
-    if not rotated:
-        return jsonify({"success": False, "error": "System ran out of backup Cookies!"}), 500
-
-    return jsonify({"success": True, "message": "Successfully changed to a new account! Please Check & Fix again."})
 
 @portal_bp.route("/api/submit_request", methods=["POST"])
 def api_submit_request():
@@ -302,11 +280,20 @@ def api_submit_request():
         return jsonify({"success": False, "error": err_msg}), 429
 
     try:
-        file_ext = image.filename.rsplit('.', 1)[1].lower() if '.' in image.filename else 'png'
-        filename = f"{uuid.uuid4()}.{file_ext}"
-
         file_bytes = image.read()
-        content_type = image.content_type or "image/png"
+        if len(file_bytes) < 16:
+            return jsonify({"success": False, "error": "Invalid or empty image file uploaded."}), 400
+
+        # Validate genuine image headers (PNG, JPEG, WEBP)
+        is_png = file_bytes.startswith(b'\x89PNG\r\n\x1a\n')
+        is_jpeg = file_bytes.startswith(b'\xff\xd8\xff')
+        is_webp = file_bytes.startswith(b'RIFF') and b'WEBP' in file_bytes[:16]
+        if not (is_png or is_jpeg or is_webp):
+            return jsonify({"success": False, "error": "Unsupported image format. Please upload a real screenshot (PNG, JPG, or WEBP)."}), 400
+
+        file_ext = 'png' if is_png else ('jpg' if is_jpeg else 'webp')
+        filename = f"{uuid.uuid4()}.{file_ext}"
+        content_type = image.content_type or f"image/{file_ext}"
 
         image_url = ""
         if database.SUPABASE_KEY:
@@ -328,7 +315,7 @@ def api_submit_request():
         # AI Vision Check
         ai_data = {
             "error_type": "OTHER",
-            "is_netflix": True,
+            "is_netflix": False,
             "card_digits": None,
             "card_last4": None,
             "visible_email": None,
@@ -363,23 +350,31 @@ def api_submit_request():
             except Exception as ocr_err:
                 print(f"OCR Vision check notice: {ocr_err}")
 
-        # Tự động duyệt nếu là lỗi màn hình (TOO_MANY_PEOPLE)
+        # Tự động duyệt NẾU là lỗi màn hình (TOO_MANY_PEOPLE) VÀ đúng là màn hình Netflix
         error_type = ai_data.get("error_type", "OTHER")
-        if error_type == "TOO_MANY_PEOPLE":
-            assigned_email = acc_key_row[1]
-            database.delete_account(assigned_email)
-            database.rotate_access_key(code)
-            mark_code_request_success(code)
-            database.save_request(code, u7buy_order_id, image_url, f"Auto-approved: {ai_data.get('error_description')}", "auto_accepted")
-            
-            # Gửi thông báo Telegram
-            send_telegram_alert(f"⚡ <b>Tự động đổi tài khoản thành công!</b>\n- Mã: <code>{code}</code>\n- U7BUY: <code>{u7buy_order_id}</code>\n- Lỗi: Quá số lượng màn hình")
+        is_netflix = ai_data.get("is_netflix", False)
 
-            return jsonify({
-                "success": True,
-                "auto_rotated": True,
-                "message": "AI Verified! Screen limit error detected. The system has automatically changed to a new account for you. Click Login Now!"
-            })
+        if error_type == "TOO_MANY_PEOPLE" and is_netflix:
+            assigned_email = acc_key_row[1]
+
+            # Kiểm tra và thực hiện xoay mã sang tài khoản dự phòng mới TRƯỚC
+            rotated = database.rotate_access_key(code)
+            if rotated:
+                # Xoay thành công mới xóa tài khoản cũ khỏi DB
+                database.delete_account(assigned_email)
+                mark_code_request_success(code)
+                database.save_request(code, u7buy_order_id, image_url, f"Auto-approved: {ai_data.get('error_description')}", "auto_accepted")
+                
+                # Gửi thông báo Telegram
+                send_telegram_alert(f"⚡ <b>Tự động đổi tài khoản thành công!</b>\n- Mã: <code>{code}</code>\n- U7BUY: <code>{u7buy_order_id}</code>\n- Lỗi: Quá số lượng màn hình")
+
+                return jsonify({
+                    "success": True,
+                    "auto_rotated": True,
+                    "message": "AI Verified! Screen limit error detected. The system has automatically changed to a new account for you. Click Login Now!"
+                })
+            else:
+                print(f"[Auto-Rotate Warning] Kho hết tài khoản dự phòng cho mã {code}, chuyển sang hàng đợi Admin duyệt.")
 
         # Lưu yêu cầu chờ Admin duyệt
         database.save_request(code, u7buy_order_id, image_url, reason or ai_data.get("error_description", ""), "pending")

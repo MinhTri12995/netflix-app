@@ -3,9 +3,13 @@ import random
 import requests
 import time
 
-# Cấu hình Webshare Rotating Proxy chuẩn từ Dashboard / Environment
-WEBSHARE_USERNAME = os.environ.get("WEBSHARE_USERNAME", "qizklnon-rotate").strip()
-WEBSHARE_PASSWORD = os.environ.get("WEBSHARE_PASSWORD", "e8y63lmvp8v3").strip()
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Cấu hình Webshare Rotating Proxy chuẩn từ Dashboard / Environment (.env)
+WEBSHARE_USERNAME = os.environ.get("WEBSHARE_USERNAME", "").strip()
+WEBSHARE_PASSWORD = os.environ.get("WEBSHARE_PASSWORD", "").strip()
 WEBSHARE_HOST = os.environ.get("WEBSHARE_HOST", "p.webshare.io").strip()
 WEBSHARE_PORT = os.environ.get("WEBSHARE_PORT", "80").strip()
 

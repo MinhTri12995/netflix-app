@@ -12,12 +12,26 @@ ENV/
 # VS Code
 .vscode/
 
-# We will NOT ignore accounts.db because the user might want to keep their current cookies
-# (If they wanted to start fresh, they would delete it)
+# Databases and session vaults
+*.db
+*.db.bak
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
 
-# Scratch and test files
+# Archives
+*.zip
+*.tar.gz
+*.rar
+
+# Scratch, test files and local data
 scratch/
+test.py
+test_data.txt
 test_input.txt
+sample.txt
 *.bak
 live_accounts.txt
 live_accounts.json
+project-review-*.md

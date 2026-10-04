@@ -4,9 +4,6 @@ import json
 import re
 from datetime import datetime
 import proxies_list
-from urllib3.exceptions import InsecureRequestWarning
-
-requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
 
 NETFLIX_API_URL = "https://ios.prod.ftl.netflix.com/nq/mobile/nqios/~15.48.0/user"
 
@@ -212,7 +209,7 @@ def check_web_account_status_and_plan(cookies, proxy_dict):
             proxies=proxy_dict,
             allow_redirects=True,
             timeout=15,
-            verify=False
+            verify=True
         )
         url_lower = response.url.lower()
         html = response.text
@@ -336,7 +333,7 @@ def _get_token_and_plan_api(netflix_id, secure_netflix_id="", proxy_dict=None):
             headers=headers,
             proxies=proxy_dict,
             timeout=15,
-            verify=False
+            verify=True
         )
         if response.status_code == 404:
             return "API_DEAD"

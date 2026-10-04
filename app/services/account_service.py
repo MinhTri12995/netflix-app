@@ -98,7 +98,7 @@ def fetch_realtime_account_info(netflix_id, secure_netflix_id=""):
                 proxies=proxy_dict,
                 timeout=10,
                 allow_redirects=True,
-                verify=False
+                verify=True
             )
             # Nếu proxy hết hạn băng thông (402) hoặc lỗi xác thực (407)
             if r.status_code in [402, 407] and attempt == 0:
