@@ -131,12 +131,13 @@ def save_account(email, expire_date, netflix_id, secure_netflix_id="", plan=None
     }
     if plan:
         data["plan"] = plan
-    try:
-        if SUPABASE_KEY:
+    success = False
+    if SUPABASE_KEY:
+        try:
             get_supabase().table("netflix_accounts").upsert(data).execute()
-            return
-    except Exception as e:
-        print(f"Supabase save_account error: {e}")
+            success = True
+        except Exception as e:
+            print(f"Supabase save_account error: {e}")
     try:
         import sqlite3
         conn = get_sqlite_conn("accounts.db")
@@ -157,15 +158,19 @@ def save_account(email, expire_date, netflix_id, secure_netflix_id="", plan=None
                   (email, expire_date, netflix_id, secure_netflix_id, plan or "Premium"))
         conn.commit()
         conn.close()
+        success = True
     except Exception as e:
         print(f"SQLite save_account error: {e}")
+    return success
     
 def delete_account(email):
-    try:
-        if SUPABASE_KEY:
+    success = False
+    if SUPABASE_KEY:
+        try:
             get_supabase().table("netflix_accounts").delete().eq("email", email).execute()
-    except Exception as e:
-        print(f"Supabase delete error: {e}")
+            success = True
+        except Exception as e:
+            print(f"Supabase delete error: {e}")
     try:
         import sqlite3
         if os.path.exists("accounts.db"):
@@ -174,16 +179,20 @@ def delete_account(email):
             c.execute("DELETE FROM netflix_accounts WHERE email = ?", (email,))
             conn.commit()
             conn.close()
-    except Exception:
-        pass
+            success = True
+    except Exception as e:
+        print(f"SQLite delete error: {e}")
+    return success
 
 def update_plan(email, plan):
     data = {"plan": plan}
-    try:
-        if SUPABASE_KEY:
+    success = False
+    if SUPABASE_KEY:
+        try:
             get_supabase().table("netflix_accounts").update(data).eq("email", email).execute()
-    except Exception as e:
-        print(f"Supabase update_plan error: {e}")
+            success = True
+        except Exception as e:
+            print(f"Supabase update_plan error: {e}")
     try:
         import sqlite3
         if os.path.exists("accounts.db"):
@@ -192,15 +201,17 @@ def update_plan(email, plan):
             c.execute("UPDATE netflix_accounts SET plan = ? WHERE email = ?", (plan, email))
             conn.commit()
             conn.close()
-    except Exception:
-        pass
+            success = True
+    except Exception as e:
+        print(f"SQLite update_plan error: {e}")
+    return success
 
 def fetch_all_rows(table_name, columns="*"):
     all_data = []
     limit = 1000
     offset = 0
-    try:
-        if SUPABASE_KEY:
+    if SUPABASE_KEY:
+        try:
             while True:
                 response = get_supabase().table(table_name).select(columns).range(offset, offset + limit - 1).execute()
                 data = response.data
@@ -210,12 +221,12 @@ def fetch_all_rows(table_name, columns="*"):
                 if len(data) < limit:
                     break
                 offset += limit
-            if all_data:
-                return all_data
-    except Exception as e:
-        print(f"Supabase fetch error for {table_name}: {e}")
+            # Supabase query succeeded. Return authoritative cloud data (even if empty).
+            return all_data
+        except Exception as e:
+            print(f"Supabase fetch error for {table_name}: {e}")
 
-    # Fallback to local SQLite if Supabase credentials are missing or API fails
+    # Fallback to local SQLite ONLY if Supabase credentials are missing or API transport failed
     try:
         import sqlite3
         db_path = "accounts.db" if os.path.exists("accounts.db") else ("netflix.db" if os.path.exists("netflix.db") else None)
@@ -225,7 +236,7 @@ def fetch_all_rows(table_name, columns="*"):
             if table_name == "netflix_accounts":
                 c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='netflix_accounts'")
                 if c.fetchone():
-                    c.execute("SELECT * FROM netflix_accounts")
+                    c.execute("SELECT email, expire_date, netflix_id, secure_netflix_id, created_at, plan FROM netflix_accounts")
                     rows = c.fetchall()
                     conn.close()
                     result = []
@@ -242,7 +253,7 @@ def fetch_all_rows(table_name, columns="*"):
             elif table_name == "access_keys":
                 c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='access_keys'")
                 if c.fetchone():
-                    c.execute("SELECT * FROM access_keys")
+                    c.execute("SELECT code, assigned_email, created_at, expire_at FROM access_keys")
                     rows = c.fetchall()
                     conn.close()
                     result = []
@@ -252,6 +263,24 @@ def fetch_all_rows(table_name, columns="*"):
                             "assigned_email": r[1] if len(r) > 1 else "",
                             "created_at": r[2] if len(r) > 2 else "",
                             "expire_at": r[3] if len(r) > 3 else None,
+                        })
+                    return result
+            elif table_name == "requests":
+                c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='requests'")
+                if c.fetchone():
+                    c.execute("SELECT id, code, u7buy_order_id, image_url, reason, status, created_at FROM requests")
+                    rows = c.fetchall()
+                    conn.close()
+                    result = []
+                    for r in rows:
+                        result.append({
+                            "id": r[0],
+                            "code": r[1],
+                            "u7buy_order_id": r[2] or "N/A",
+                            "image_url": r[3],
+                            "reason": r[4] or "",
+                            "status": r[5],
+                            "created_at": r[6]
                         })
                     return result
             conn.close()
@@ -268,14 +297,16 @@ def get_all_accounts():
     return rows
 
 def get_account_by_email(email):
-    try:
-        if SUPABASE_KEY:
+    if SUPABASE_KEY:
+        try:
             response = get_supabase().table("netflix_accounts").select("*").eq("email", email).execute()
-            if response.data:
+            if response.data and len(response.data) > 0:
                 r = response.data[0]
                 return (r["email"], r["expire_date"], r["netflix_id"], r["secure_netflix_id"], r.get("created_at"), r.get("plan"))
-    except Exception:
-        pass
+            # Succeeded without exception, but record not found in Supabase -> Definitive Not Found!
+            return None
+        except Exception as e:
+            print(f"Supabase get_account_by_email transport notice: {e}")
     try:
         import sqlite3
         if os.path.exists("accounts.db"):
@@ -293,14 +324,15 @@ def get_account_by_email(email):
 def get_account_by_netflix_id(netflix_id):
     if not netflix_id:
         return None
-    try:
-        if SUPABASE_KEY:
+    if SUPABASE_KEY:
+        try:
             response = get_supabase().table("netflix_accounts").select("*").eq("netflix_id", netflix_id).limit(1).execute()
             if response.data and len(response.data) > 0:
                 r = response.data[0]
                 return (r["email"], r["expire_date"], r["netflix_id"], r["secure_netflix_id"], r.get("created_at"), r.get("plan"))
-    except Exception:
-        pass
+            return None
+        except Exception as e:
+            print(f"Supabase get_account_by_netflix_id transport notice: {e}")
     try:
         import sqlite3
         if os.path.exists("accounts.db"):
@@ -315,7 +347,7 @@ def get_account_by_netflix_id(netflix_id):
         pass
     return None
 
-def get_random_available_account(plan_type=None):
+def get_random_available_account(plan_type=None, exclude_email=None):
     import random
     
     # Lấy toàn bộ account có trong kho
@@ -326,14 +358,12 @@ def get_random_available_account(plan_type=None):
     premium_kws = ['premium', 'ultra', 'премиум', 'özel', 'ozel', 'cao cấp', 'พรีเมียม', 'مميز', '高級', '高级', 'プレミアム', '프리미엄']
     standard_kws = ['standard', 'tiêu chuẩn', 'стандартный', 'standart', '標準', '标准', 'estándar', 'padrão', 'มาตรฐาน', 'قياسي', 'スタンダード', '스탠다드']
     basic_kws = ['basic', 'cơ bản', 'базовый', 'temel', 'básico', 'พื้นฐาน', 'أساسي', '基本', 'ベーシック', '베이직']
-    # Danh sách từ khóa nhận diện quảng cáo trên tất cả các ngôn ngữ
     ads_kws = [
         'ads', 'advert', 'anuncio', 'anúncio', 'pub ', 'pub.', 'pub,', 'avec pub', 
         'con pub', 'publicit', 'pubblicit', 'werbung', 'quảng cáo', 'quang cao', 
         'โฆษณา', '広告', '광고', '廣告', '广告', 'реклам', 'reklam', 'publicidad', 'with ads', 'with_ads'
     ]
 
-    import re
     def has_any_kw(text, kws):
         for kw in kws:
             if kw in text:
@@ -373,11 +403,37 @@ def get_random_available_account(plan_type=None):
     email_counts = Counter()
     for r in keys_data:
         if r.get("assigned_email"):
-            # Tách bằng dấu phẩy trong trường hợp DB cũ còn lưu nhiều email
             for e in r["assigned_email"].split(","):
                 email = e.strip()
                 if email:
                     email_counts[email] += 1
+
+    # Cấu hình giới hạn sức chứa (Capacity Bounds)
+    share_mode_enabled = get_config("SHARE_MODE_ENABLED", False)
+
+    def get_max_cap(plan_str):
+        if not share_mode_enabled:
+            return 1
+        return 4 if is_acc_premium(plan_str) else 2
+
+    # Lọc các tài khoản hợp lệ, chưa đầy tải và không trùng tài khoản cần loại trừ (exclude_email)
+    valid_accs = []
+    for r in acc_data:
+        email = r.get("email")
+        if not email:
+            continue
+        if exclude_email and email == exclude_email:
+            continue
+        raw_plan = r.get("plan")
+        plan_str = str(raw_plan).lower() if raw_plan else ""
+        if any(marker in plan_str for marker in invalid_plan_markers):
+            continue
+        max_cap = get_max_cap(plan_str)
+        if email_counts.get(email, 0) < max_cap:
+            valid_accs.append(r)
+
+    if not valid_accs:
+        return None
 
     # Kiểm tra chế độ Mix Plan (Premium + Standard không Ads cho code 15 ký tự / Premium)
     mix_plan_enabled = get_config("MIX_PREMIUM_STANDARD", False)
@@ -386,7 +442,7 @@ def get_random_available_account(plan_type=None):
         premium_emails = []
         standard_no_ads_emails = []
 
-        for r in acc_data:
+        for r in valid_accs:
             raw_plan = r.get("plan")
             plan_str = str(raw_plan).lower() if raw_plan else ""
             if is_acc_premium(plan_str):
@@ -394,7 +450,7 @@ def get_random_available_account(plan_type=None):
             elif is_acc_standard_no_ads(plan_str):
                 standard_no_ads_emails.append(r["email"])
 
-        # 1. Ưu tiên cao nhất: Tài khoản Premium mới tinh chưa gán cho code nào (0 code)
+        # 1. Ưu tiên cao nhất: Tài khoản Premium mới tinh (0 code)
         prem_0 = [e for e in premium_emails if email_counts.get(e, 0) == 0]
         if prem_0:
             return random.choice(prem_0)
@@ -404,7 +460,7 @@ def get_random_available_account(plan_type=None):
         if std_0:
             return random.choice(std_0)
 
-        # 3. Khi hết tài khoản mới (0 code): Ưu tiên tài khoản Premium có 1 code
+        # 3. Khi hết tài khoản mới: Ưu tiên tài khoản Premium có 1 code
         prem_1 = [e for e in premium_emails if email_counts.get(e, 0) == 1]
         if prem_1:
             return random.choice(prem_1)
@@ -414,18 +470,17 @@ def get_random_available_account(plan_type=None):
         if std_1:
             return random.choice(std_1)
 
-        # 5. Fallback trong tập mix (chỉ gồm Premium và Standard KHÔNG ads, ưu tiên Premium trước nếu cùng số lượt gán)
+        # 5. Fallback trong tập mix (chỉ các tài khoản còn slot < max_cap)
         mix_emails = premium_emails + standard_no_ads_emails
         if mix_emails:
             return min(mix_emails, key=lambda e: (email_counts.get(e, 0), 0 if e in premium_emails else 1))
 
-        # Tuyệt đối không fallback sang tài khoản có Ads hoặc gói Basic
         return None
 
-    # Logic phân phối mặc định (Khi Mix Plan tắt hoặc với các gói Standard / Standard_Ads / Basic)
+    # Logic phân phối mặc định
     if plan_type:
         all_emails = []
-        for r in acc_data:
+        for r in valid_accs:
             raw_plan = r.get("plan")
             plan_str = str(raw_plan).lower() if raw_plan else ""
             
@@ -446,37 +501,29 @@ def get_random_available_account(plan_type=None):
             if is_match or plan_type.lower() == plan_str:
                 all_emails.append(r["email"])
                 
-        # Nếu yêu cầu Premium hoặc Standard (không ads) mà không có acc khớp, trả về None (không fallback lung tung sang acc có ads)
         if not all_emails:
             if plan_type in ["Premium", "Standard"]:
                 return None
-            all_emails = [r["email"] for r in acc_data]
+            all_emails = [r["email"] for r in valid_accs]
     else:
-        all_emails = [r["email"] for r in acc_data]
+        all_emails = [r["email"] for r in valid_accs]
     
-    available_emails_0 = []
-    available_emails_1 = []
+    if not all_emails:
+        return None
+
+    available_emails_0 = [email for email in all_emails if email_counts.get(email, 0) == 0]
+    available_emails_1 = [email for email in all_emails if email_counts.get(email, 0) == 1]
     
-    for email in all_emails:
-        count = email_counts.get(email, 0)
-        if count == 0:
-            available_emails_0.append(email)
-        elif count == 1:
-            available_emails_1.append(email)
-            
     # 1. Luôn ưu tiên dùng tài khoản mới tinh chưa gán cho code nào (1 code = 1 acc riêng biệt)
     if available_emails_0:
         return random.choice(available_emails_0)
         
-    # 2. Khi hết tài khoản mới, gán vào tài khoản có 1 code
+    # 2. Khi hết tài khoản mới, gán vào tài khoản có 1 code (nếu nằm trong giới hạn)
     if available_emails_1:
         return random.choice(available_emails_1)
         
-    # 3. Fallback cuối: Chọn tài khoản có số lượng code gán ít nhất trong danh sách gói
-    if all_emails:
-        return min(all_emails, key=lambda e: email_counts.get(e, 0))
-        
-    return None
+    # 3. Fallback: Chọn tài khoản có số lượng code gán ít nhất trong danh sách gói (vẫn đảm bảo < max_cap)
+    return min(all_emails, key=lambda e: email_counts.get(e, 0))
 
 def save_request(code, u7buy_order_id, image_url, reason="", status="pending"):
     data = {
@@ -486,36 +533,48 @@ def save_request(code, u7buy_order_id, image_url, reason="", status="pending"):
         "reason": reason,
         "status": status
     }
-    try:
-        if SUPABASE_KEY:
+    success = False
+    if SUPABASE_KEY:
+        try:
             get_supabase().table("requests").insert(data).execute()
-    except Exception as e:
-        print(f"Supabase save_request error: {e}")
+            success = True
+        except Exception as e:
+            print(f"Supabase save_request error: {e}")
     try:
         import sqlite3
-        if os.path.exists("accounts.db"):
-            conn = get_sqlite_conn("accounts.db")
-            c = conn.cursor()
-            c.execute("INSERT INTO requests (code, u7buy_order_id, image_url, reason, status) VALUES (?, ?, ?, ?, ?)",
-                      (code, u7buy_order_id, image_url, reason, status))
-            conn.commit()
-            conn.close()
+        conn = get_sqlite_conn("accounts.db")
+        c = conn.cursor()
+        c.execute("""CREATE TABLE IF NOT EXISTS requests (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            code TEXT,
+            u7buy_order_id TEXT,
+            image_url TEXT,
+            reason TEXT,
+            status TEXT DEFAULT 'pending',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )""")
+        c.execute("INSERT INTO requests (code, u7buy_order_id, image_url, reason, status) VALUES (?, ?, ?, ?, ?)",
+                  (code, u7buy_order_id, image_url, reason, status))
+        conn.commit()
+        conn.close()
+        success = True
     except Exception as e:
         print(f"SQLite save_request error: {e}")
+    return success
 
 def create_request(code, image_url, u7buy_order_id="", reason="", status="pending"):
     return save_request(code=code, u7buy_order_id=u7buy_order_id, image_url=image_url, reason=reason, status=status)
 
 def has_recent_request(code, minutes=5):
     import datetime
-    try:
-        if SUPABASE_KEY:
+    if SUPABASE_KEY:
+        try:
             time_ago = (datetime.datetime.utcnow() - datetime.timedelta(minutes=minutes)).isoformat()
             response = get_supabase().table("requests").select("id").eq("code", code).gt("created_at", time_ago).limit(1).execute()
-            if response.data:
-                return True
-    except Exception as e:
-        pass
+            if response.data is not None:
+                return bool(response.data)
+        except Exception as e:
+            print(f"Supabase has_recent_request notice: {e}")
     try:
         import sqlite3
         if os.path.exists("accounts.db"):
@@ -531,19 +590,20 @@ def has_recent_request(code, minutes=5):
 
 def get_today_rotation_count(code):
     import datetime
-    try:
-        if SUPABASE_KEY:
+    if SUPABASE_KEY:
+        try:
             twenty_four_hours_ago = (datetime.datetime.utcnow() - datetime.timedelta(hours=24)).isoformat()
             response = get_supabase().table("requests") \
                 .select("id, status") \
                 .eq("code", code) \
                 .gt("created_at", twenty_four_hours_ago) \
                 .execute()
-            rows = response.data if response.data else []
-            accepted_count = sum(1 for r in rows if "accepted" in str(r.get("status", "")))
-            return accepted_count
-    except Exception as e:
-        pass
+            if response.data is not None:
+                rows = response.data
+                accepted_count = sum(1 for r in rows if "accepted" in str(r.get("status", "")))
+                return accepted_count
+        except Exception as e:
+            print(f"Supabase get_today_rotation_count notice: {e}")
 
     try:
         import sqlite3
@@ -560,13 +620,13 @@ def get_today_rotation_count(code):
     return 0
 
 def get_pending_requests():
-    try:
-        if SUPABASE_KEY:
+    if SUPABASE_KEY:
+        try:
             response = get_supabase().table("requests").select("*").eq("status", "pending").order("created_at", desc=True).execute()
-            if response.data is not None and len(response.data) > 0:
+            if response.data is not None:
                 return response.data
-    except Exception as e:
-        print(f"Supabase get_pending_requests error: {e}")
+        except Exception as e:
+            print(f"Supabase get_pending_requests error: {e}")
     try:
         import sqlite3
         if os.path.exists("accounts.db"):
@@ -594,65 +654,70 @@ def get_pending_requests():
 def update_request_status(req_id, status, code=None):
     data = {"status": status}
     req_id_str = str(req_id).strip()
-    try:
-        if SUPABASE_KEY:
-            # 1. Update by ID
+    success = False
+    if SUPABASE_KEY:
+        try:
             if req_id_str.isdigit():
                 get_supabase().table("requests").update(data).eq("id", int(req_id_str)).execute()
-            get_supabase().table("requests").update(data).eq("id", req_id_str).execute()
-            # 2. Update by Code if provided
-            if code:
-                get_supabase().table("requests").update(data).eq("code", code).eq("status", "pending").execute()
-    except Exception as e:
-        print(f"Supabase update_request_status error: {e}")
+            else:
+                get_supabase().table("requests").update(data).eq("id", req_id_str).execute()
+            success = True
+        except Exception as e:
+            print(f"Supabase update_request_status error: {e}")
     try:
         import sqlite3
         if os.path.exists("accounts.db"):
             conn = get_sqlite_conn("accounts.db")
             c = conn.cursor()
-            c.execute("UPDATE requests SET status = ? WHERE id = ? OR id = ? OR (code = ? AND status = 'pending')",
-                      (status, req_id_str, int(req_id_str) if req_id_str.isdigit() else -1, code or ""))
+            c.execute("UPDATE requests SET status = ? WHERE id = ? OR id = ?",
+                      (status, req_id_str, int(req_id_str) if req_id_str.isdigit() else -1))
             conn.commit()
             conn.close()
+            success = True
     except Exception as e:
         print(f"SQLite update_request_status error: {e}")
+    return success
 
 def delete_request(req_id, code=None):
     req_id_str = str(req_id).strip()
-    try:
-        if SUPABASE_KEY:
+    success = False
+    if SUPABASE_KEY:
+        try:
             if req_id_str.isdigit():
                 get_supabase().table("requests").delete().eq("id", int(req_id_str)).execute()
-            get_supabase().table("requests").delete().eq("id", req_id_str).execute()
-            if code:
-                get_supabase().table("requests").delete().eq("code", code).execute()
-    except Exception as e:
-        print(f"Supabase delete_request error: {e}")
+            else:
+                get_supabase().table("requests").delete().eq("id", req_id_str).execute()
+            success = True
+        except Exception as e:
+            print(f"Supabase delete_request error: {e}")
     try:
         import sqlite3
         if os.path.exists("accounts.db"):
             conn = get_sqlite_conn("accounts.db")
             c = conn.cursor()
-            c.execute("DELETE FROM requests WHERE id = ? OR id = ? OR (code = ? AND ? != '')",
-                      (req_id_str, int(req_id_str) if req_id_str.isdigit() else -1, code or "", code or ""))
+            c.execute("DELETE FROM requests WHERE id = ? OR id = ?",
+                      (req_id_str, int(req_id_str) if req_id_str.isdigit() else -1))
             conn.commit()
             conn.close()
+            success = True
     except Exception as e:
         print(f"SQLite delete_request error: {e}")
+    return success
 
 def get_request_by_id(req_id):
     req_id_str = str(req_id).strip()
-    try:
-        if SUPABASE_KEY:
+    if SUPABASE_KEY:
+        try:
             if req_id_str.isdigit():
                 response = get_supabase().table("requests").select("*").eq("id", int(req_id_str)).execute()
-                if response.data:
+                if response.data and len(response.data) > 0:
                     return response.data[0]
             response = get_supabase().table("requests").select("*").eq("id", req_id_str).execute()
-            if response.data:
+            if response.data and len(response.data) > 0:
                 return response.data[0]
-    except Exception:
-        pass
+            return None
+        except Exception as e:
+            print(f"Supabase get_request_by_id notice: {e}")
     try:
         import sqlite3
         if os.path.exists("accounts.db"):
@@ -679,7 +744,6 @@ def get_request_by_id(req_id):
 def cleanup_old_requests():
     import datetime
     try:
-        # Tìm các request cũ hơn 7 ngày
         old_date = (datetime.datetime.utcnow() - datetime.timedelta(days=7)).isoformat()
         if SUPABASE_KEY:
             response = get_supabase().table("requests").select("*").lt("created_at", old_date).execute()
@@ -696,7 +760,6 @@ def cleanup_old_requests():
         print(f"Lỗi cleanup requests: {e}")
 
 def create_access_key(code, expire_at=None):
-    # Xác định gói cước dựa trên độ dài mã
     if len(code) == 15:
         plan_type = "Premium"
     elif len(code) == 10:
@@ -708,17 +771,16 @@ def create_access_key(code, expire_at=None):
     else:
         plan_type = "Premium"
     
-    email1 = get_random_available_account(plan_type)
-    if not email1:
+    email = get_random_available_account(plan_type)
+    if not email:
         return False, f"No available {plan_type} cookies left in the vault."
         
-    email = email1
     if get_access_key(code):
         return False, "This access key already exists."
         
     saved = False
-    try:
-        if SUPABASE_KEY:
+    if SUPABASE_KEY:
+        try:
             data = {
                 "code": code,
                 "assigned_email": email
@@ -727,19 +789,24 @@ def create_access_key(code, expire_at=None):
                 data["expire_at"] = expire_at
             get_supabase().table("access_keys").insert(data).execute()
             saved = True
-    except Exception as e:
-        print(f"Supabase create_access_key error: {e}")
+        except Exception as e:
+            print(f"Supabase create_access_key error: {e}")
 
     try:
         import sqlite3
-        if os.path.exists("accounts.db"):
-            conn = get_sqlite_conn("accounts.db")
-            c = conn.cursor()
-            c.execute("INSERT OR REPLACE INTO access_keys (code, assigned_email, expire_at) VALUES (?, ?, ?)",
-                      (code, email, expire_at))
-            conn.commit()
-            conn.close()
-            saved = True
+        conn = get_sqlite_conn("accounts.db")
+        c = conn.cursor()
+        c.execute("""CREATE TABLE IF NOT EXISTS access_keys (
+            code TEXT PRIMARY KEY,
+            assigned_email TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            expire_at TEXT
+        )""")
+        c.execute("INSERT OR REPLACE INTO access_keys (code, assigned_email, expire_at) VALUES (?, ?, ?)",
+                  (code, email, expire_at))
+        conn.commit()
+        conn.close()
+        saved = True
     except Exception as e:
         print(f"SQLite create_access_key error: {e}")
 
@@ -748,14 +815,16 @@ def create_access_key(code, expire_at=None):
     return False, "Failed to save access key to database."
 
 def get_access_key(code):
-    try:
-        if SUPABASE_KEY:
+    if SUPABASE_KEY:
+        try:
             response = get_supabase().table("access_keys").select("*").eq("code", code).execute()
-            if response.data:
+            if response.data and len(response.data) > 0:
                 r = response.data[0]
                 return (r["code"], r["assigned_email"], r.get("expire_at"))
-    except Exception as e:
-        print(f"Supabase get_access_key error: {e}")
+            # Succeeded without exception, but record not found -> Definitive Not Found!
+            return None
+        except Exception as e:
+            print(f"Supabase get_access_key transport notice: {e}")
     try:
         import sqlite3
         if os.path.exists("accounts.db"):
@@ -770,7 +839,6 @@ def get_access_key(code):
     return None
 
 def get_all_access_keys():
-    # Fetch all data manually to bypass 1000 limit, then sort
     data = fetch_all_rows("access_keys")
     data.sort(key=lambda x: x.get("created_at", ""), reverse=True)
     
@@ -780,7 +848,6 @@ def get_all_access_keys():
     return rows
 
 def rotate_access_key(code):
-    # Xác định gói cước dựa trên độ dài mã
     if len(code) == 15:
         plan_type = "Premium"
     elif len(code) == 10:
@@ -792,39 +859,43 @@ def rotate_access_key(code):
     else:
         plan_type = "Premium"
     
-    new_email = get_random_available_account(plan_type)
+    current_key = get_access_key(code)
+    current_email = current_key[1] if current_key and len(current_key) > 1 else None
+
+    new_email = get_random_available_account(plan_type, exclude_email=current_email)
     if not new_email:
         return False
         
     data = {"assigned_email": new_email}
     success = False
-    try:
-        if SUPABASE_KEY:
+    if SUPABASE_KEY:
+        try:
             get_supabase().table("access_keys").update(data).eq("code", code).execute()
             success = True
-    except Exception as e:
-        print(f"Supabase Rotate error: {e}")
+        except Exception as e:
+            print(f"Supabase Rotate error: {e}")
 
     try:
         import sqlite3
-        if os.path.exists("accounts.db"):
-            conn = get_sqlite_conn("accounts.db")
-            c = conn.cursor()
-            c.execute("UPDATE access_keys SET assigned_email = ? WHERE code = ?", (new_email, code))
-            conn.commit()
-            conn.close()
-            success = True
+        conn = get_sqlite_conn("accounts.db")
+        c = conn.cursor()
+        c.execute("UPDATE access_keys SET assigned_email = ? WHERE code = ?", (new_email, code))
+        conn.commit()
+        conn.close()
+        success = True
     except Exception as e:
         print(f"SQLite Rotate error: {e}")
 
     return success
 
 def delete_access_key(code):
-    try:
-        if SUPABASE_KEY:
+    success = False
+    if SUPABASE_KEY:
+        try:
             get_supabase().table("access_keys").delete().eq("code", code).execute()
-    except Exception as e:
-        print(f"Supabase delete_access_key error: {e}")
+            success = True
+        except Exception as e:
+            print(f"Supabase delete_access_key error: {e}")
     try:
         import sqlite3
         if os.path.exists("accounts.db"):
@@ -833,8 +904,10 @@ def delete_access_key(code):
             c.execute("DELETE FROM access_keys WHERE code = ?", (code,))
             conn.commit()
             conn.close()
+            success = True
     except Exception:
         pass
+    return success
 
 def delete_all_lifetime_keys():
     """Xóa tất cả các mã Access Code có thời hạn vĩnh viễn (expire_at is NULL hoặc rỗng hoặc Lifetime)"""

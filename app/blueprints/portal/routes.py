@@ -240,7 +240,7 @@ def api_check_live_code():
                 return jsonify({"success": False, "error": "Old account died but System ran out of backup Cookies!"}), 500
             return jsonify({"success": True, "message": "Account was faulty and has been AUTOMATICALLY CHANGED to a new account. You can click Login Now!"})
         else:
-            return jsonify({"success": True, "message": "Account is still active (temporary proxy delay during check). You can click Login Now!"})
+            return jsonify({"success": True, "message": "Temporary network delay during verification. Account status cannot be confirmed right now. Please try clicking Login Now or re-check in a moment!"})
     except Exception as e:
         return jsonify({"success": False, "error": f"Proxy check error. Please try again later. Details: {e}"}), 500
 
@@ -377,7 +377,10 @@ def api_submit_request():
                 print(f"[Auto-Rotate Warning] Kho hết tài khoản dự phòng cho mã {code}, chuyển sang hàng đợi Admin duyệt.")
 
         # Lưu yêu cầu chờ Admin duyệt
-        database.save_request(code, u7buy_order_id, image_url, reason or ai_data.get("error_description", ""), "pending")
+        saved = database.save_request(code, u7buy_order_id, image_url, reason or ai_data.get("error_description", ""), "pending")
+        if not saved:
+            return jsonify({"success": False, "error": "Database error: Could not record your request. Please try again later."}), 500
+
         mark_code_request_success(code)
 
         # Gửi thông báo Telegram cho Admin

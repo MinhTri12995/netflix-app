@@ -369,19 +369,39 @@ def filter_duplicates():
 @login_required
 def accept_request(req_id):
     database.init_db()
-    code = (request.form.get("code") or "").strip()
+    req = database.get_request_by_id(req_id)
+    if not req:
+        flash("Lỗi: Không tìm thấy yêu cầu khiếu nại này.", "error")
+        return redirect(url_for("admin.dashboard"))
+
+    if req.get("status") != "pending":
+        flash(f"⚠️ Yêu cầu #{req_id} đã được xử lý trước đó (Trạng thái: {req.get('status')}).", "warning")
+        return redirect(url_for("admin.dashboard"))
+
+    code = (req.get("code") or "").strip()
+    if not code:
+        flash("Lỗi: Yêu cầu không có mã Access Code hợp lệ.", "error")
+        return redirect(url_for("admin.dashboard"))
+
     acc_key_row = database.get_access_key(code)
-    if acc_key_row and acc_key_row[1]:
-        old_email = acc_key_row[1]
-        database.delete_account(old_email)
+    if not acc_key_row:
+        flash(f"Lỗi: Không tìm thấy Access Code {code} trong cơ sở dữ liệu.", "error")
+        return redirect(url_for("admin.dashboard"))
 
+    old_email = acc_key_row[1] if len(acc_key_row) > 1 else ""
+
+    # BƯỚC 1: Xoay sang tài khoản dự phòng mới TRƯỚC
     rotated = database.rotate_access_key(code)
-    database.update_request_status(req_id, "accepted", code=code)
-
     if rotated:
+        # BƯỚC 2: Xoay thành công mới xóa tài khoản lỗi cũ
+        if old_email:
+            database.delete_account(old_email)
+        # BƯỚC 3: Cập nhật duy nhất yêu cầu này
+        database.update_request_status(req_id, "accepted")
         flash(f"✅ Đã duyệt và đổi tài khoản mới thành công cho code {code}.", "success")
     else:
-        flash(f"⚠️ Đã duyệt nhưng kho hết Cookie dự phòng cho code {code}.", "warning")
+        # Kho hết tài khoản dự phòng -> Giữ nguyên trạng thái pending, KHÔNG xóa tài khoản cũ!
+        flash(f"⚠️ Kho hết Cookie dự phòng cho gói của mã {code}. Không thể đổi tài khoản lúc này!", "error")
 
     return redirect(url_for("admin.dashboard"))
 
@@ -389,8 +409,16 @@ def accept_request(req_id):
 @login_required
 def reject_request(req_id):
     database.init_db()
-    code = (request.form.get("code") or "").strip()
-    database.update_request_status(req_id, "rejected", code=code)
+    req = database.get_request_by_id(req_id)
+    if not req:
+        flash("Lỗi: Không tìm thấy yêu cầu này.", "error")
+        return redirect(url_for("admin.dashboard"))
+
+    if req.get("status") != "pending":
+        flash(f"⚠️ Yêu cầu #{req_id} đã được xử lý trước đó (Trạng thái: {req.get('status')}).", "warning")
+        return redirect(url_for("admin.dashboard"))
+
+    database.update_request_status(req_id, "rejected")
     flash("Đã từ chối yêu cầu đổi tài khoản.", "warning")
     return redirect(url_for("admin.dashboard"))
 
@@ -398,8 +426,7 @@ def reject_request(req_id):
 @login_required
 def delete_request_route(req_id):
     database.init_db()
-    code = (request.form.get("code") or "").strip()
-    database.delete_request(req_id, code=code)
+    database.delete_request(req_id)
     flash("Đã xóa yêu cầu khỏi danh sách.", "success")
     return redirect(url_for("admin.dashboard"))
 

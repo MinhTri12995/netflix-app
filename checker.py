@@ -20,14 +20,15 @@ PAYMENT_URL_KEYWORDS = [
     "/membership-paused",
 ]
 
-PAYMENT_DIE_KEYWORDS = [
-    # Explicit JSON / React State Flags (requiring key:value)
-    'ispaymentfailure":true', 'ispaymentfailure": true',
-    'warnuserofpaymentfailure":true', 'warnuserofpaymentfailure": true',
-    'haspausedmembership":true', 'haspausedmembership": true',
-    'membershipstatus":"rejoin', 'membershipstatus":"former_member',
-    'membershipstatus":"never_member', 'ismembershipactive":false', 'ismembershipactive": false',
+PAYMENT_FLAG_PATTERNS = [
+    re.compile(r'ispaymentfailure"\s*:\s*true', re.IGNORECASE),
+    re.compile(r'warnuserofpaymentfailure"\s*:\s*true', re.IGNORECASE),
+    re.compile(r'haspausedmembership"\s*:\s*true', re.IGNORECASE),
+    re.compile(r'membershipstatus"\s*:\s*"(?:rejoin|former_member|never_member|hold|canceled|cancelled|anonymous)"', re.IGNORECASE),
+    re.compile(r'ismembershipactive"\s*:\s*false', re.IGNORECASE),
+]
 
+PAYMENT_DIE_KEYWORDS = [
     # English Error Banners & Alerts (only appear when account is blocked/paused)
     "your account is on hold", "membership is on hold", "account is on hold", "account on hold",
     "membership is paused", "membership paused", "your membership is paused",
@@ -223,18 +224,22 @@ def check_web_account_status_and_plan(cookies, proxy_dict):
         if any(kw in url_lower for kw in PAYMENT_URL_KEYWORDS):
             return "DIE", None
             
-        # 3. Nội dung HTML chứa thông báo lỗi thanh toán / tạm hoãn / hết hạn -> DIE
+        # 3. Flags thanh toán / cấu trúc cờ nợ cước -> DIE
+        if any(p.search(html) for p in PAYMENT_FLAG_PATTERNS):
+            return "DIE", None
+
+        # 4. Nội dung HTML chứa thông báo lỗi thanh toán / tạm hoãn / hết hạn -> DIE
         if any(kw in text_lower for kw in PAYMENT_DIE_KEYWORDS):
             return "DIE", None
             
-        # 4. Kiểm tra ngày hết hạn
+        # 5. Kiểm tra ngày hết hạn
         date_m = re.search(r'nextBillingDate"\s*:\s*\{"fieldType":"String","value":"([^"]+)"\}', html)
         if date_m:
             expire_date = date_m.group(1).replace(r'\x20', ' ').strip()
             if is_date_expired(expire_date):
                 return "DIE", None
 
-        # 5. Kiểm tra gói cước nếu còn sống (LIVE)
+        # 6. Kiểm tra gói cước nếu còn sống (LIVE)
         plan_raw = None
         plan_m = re.search(r'(?:localizedPlanName|planName)"\s*:\s*\{"fieldType":"String","value":"([^"]+)"\}', html)
         if plan_m:
@@ -256,11 +261,36 @@ def check_web_account_status_and_plan(cookies, proxy_dict):
         print(f"Web Check Error: {e}")
         return "ERROR", None
 
+def _is_dict_dead(obj):
+    """Đệ quy kiểm tra cấu trúc JSON từ Netflix để phát hiện lỗi nợ cước / hủy thành viên."""
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            kl = str(k).lower()
+            if kl == "ispaymentfailure" and v is True:
+                return True
+            if kl == "warnuserofpaymentfailure" and v is True:
+                return True
+            if kl == "haspausedmembership" and v is True:
+                return True
+            if kl == "ismembershipactive" and v is False:
+                return True
+            if kl == "membershipstatus" and str(v).lower() in ["former_member", "never_member", "rejoin", "anonymous", "hold", "canceled", "cancelled"]:
+                return True
+            if isinstance(v, (dict, list)):
+                if _is_dict_dead(v):
+                    return True
+    elif isinstance(obj, list):
+        for item in obj:
+            if isinstance(item, (dict, list)):
+                if _is_dict_dead(item):
+                    return True
+    return False
+
 def check_account_live(netflix_id, secure_netflix_id="", check_payment=True):
     """
     Kiem tra toan dien ca Token API va Web HTML.
-    Chi tra ve LIVE khi tai khoan thuc su tao duoc Token VA khong bi loi thanh toan.
-    Co co che retry tu dong khi proxy gap loi ket noi.
+    Tra ve (status, plan) trong do status la 1 trong 3 trang thai: 'LIVE', 'DIE', 'UNKNOWN'.
+    Tuyet doi khong gan 'LIVE' khi gap loi mang/timeout/proxy.
     """
     cookies = {"NetflixId": netflix_id}
     if secure_netflix_id:
@@ -278,11 +308,25 @@ def check_account_live(netflix_id, secure_netflix_id="", check_payment=True):
     if plan_api is None:
         return "DIE", None
     elif plan_api == "API_DEAD":
-        # API khong phan hoi, kiem tra qua Web
+        # API khong phan hoi (404), kiem tra qua Web
         web_status, web_plan = check_web_account_status_and_plan(cookies, proxy_dict)
         if web_status == "ERROR":
             web_status, web_plan = check_web_account_status_and_plan(cookies, None)
+        if web_status == "ERROR":
+            return "UNKNOWN", None
         return web_status, web_plan
+    elif plan_api == "ERROR":
+        # Token API gap loi mang/5xx ca proxy va direct, thu kiem tra qua Web
+        web_status, web_plan = check_web_account_status_and_plan(cookies, proxy_dict)
+        if web_status == "ERROR":
+            web_status, web_plan = check_web_account_status_and_plan(cookies, None)
+        if web_status == "DIE":
+            return "DIE", None
+        elif web_status == "LIVE":
+            return "LIVE", web_plan or "Premium"
+        else:
+            # Ca Token API va Web deu loi mang -> UNKNOWN (khong coi la LIVE)
+            return "UNKNOWN", None
         
     # 2. Kiem tra trang Web YourAccount de tranh loi Payment Hold
     if check_payment:
@@ -297,7 +341,7 @@ def check_account_live(netflix_id, secure_netflix_id="", check_payment=True):
             return "LIVE", final_plan
         elif web_status == "ERROR":
             # Khi Token API da thanh cong (plan_api hop le), nhung kiem tra web gap timeout proxy
-            # Khong coi la DIE ma giu trang thai LIVE de nguoi dung van dang nhap duoc
+            # Giu trang thai LIVE vi token thuc te da sinh thanh cong
             return "LIVE", plan_api if plan_api != "VALID" else "Premium"
             
     return "LIVE", plan_api if plan_api != "VALID" else "Premium"
@@ -341,8 +385,17 @@ def _get_token_and_plan_api(netflix_id, secure_netflix_id="", proxy_dict=None):
             return "ERROR"
         if not response.ok:
             return None
-        data = response.json()
-        data_str = json.dumps(data).lower()
+        try:
+            data = response.json()
+        except Exception:
+            return "ERROR"
+
+        # 1. Kiem tra cau truc dict truc tiep
+        if _is_dict_dead(data):
+            return None
+
+        # 2. Kiem tra chuoi JSON compact (loai bo khoang trang quanh : va ,)
+        data_compact = json.dumps(data, separators=(',', ':')).lower()
         exact_die_indicators = [
             "\"on_hold\"", "\"canceled\"", "\"former_member\"", "\"never_member\"",
             "\"cancelled\"", "\"delinquent\"", "\"status\":\"hold\"", "\"status\":\"inactive\"",
@@ -352,8 +405,9 @@ def _get_token_and_plan_api(netflix_id, secure_netflix_id="", proxy_dict=None):
             "\"membershipstatus\":\"never_member\"", "\"ismembershipactive\":false"
         ]
         for indicator in exact_die_indicators:
-            if indicator in data_str:
+            if indicator in data_compact:
                 return None
+
         token_data = ((((data.get("value") or {}).get("account") or {}).get("token") or {}).get("default") or {})
         if isinstance(token_data, dict):
             token = token_data.get("token")
@@ -365,7 +419,7 @@ def _get_token_and_plan_api(netflix_id, secure_netflix_id="", proxy_dict=None):
         if not token:
             return None
             
-        return normalize_plan_name("", data_str)
+        return normalize_plan_name("", data_compact)
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.ProxyError):
         return "ERROR"
     except Exception as e:
