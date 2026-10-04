@@ -255,8 +255,17 @@ def api_check_live_code():
 def api_submit_request():
     u7buy_order_id = request.form.get("u7buy_order_id", "").strip()
     code = request.form.get("code", "").strip()
+    reason_category = request.form.get("reason_category", "").strip().upper()
     reason = request.form.get("reason", "").strip()
     image = request.files.get("image")
+
+    if not reason_category:
+        if "TOO_MANY" in reason.upper() or "SCREEN" in reason.upper():
+            reason_category = "TOO_MANY_PEOPLE"
+        elif "PAYMENT" in reason.upper() or "HOLD" in reason.upper():
+            reason_category = "PAYMENT_ERROR"
+        else:
+            reason_category = "OTHER"
 
     if not u7buy_order_id:
         return jsonify({"success": False, "error": "Please enter your U7BUY Purchase ID / Order ID!"}), 400
@@ -333,10 +342,13 @@ def api_submit_request():
                 "Authorization": f"Bearer {Config.MISTRAL_API_KEY}",
                 "Content-Type": "application/json"
             }
-            prompt = """Analyze this Netflix error screenshot. Reply with JSON keys:
-            error_type ("PAYMENT_ERROR", "TOO_MANY_PEOPLE", "OTHER"),
-            is_netflix (bool), card_digits (str/null), card_last4 (str/null),
-            visible_email (str/null), error_description (str)."""
+            prompt = """Analyze this Netflix error screenshot carefully. Reply with a valid JSON object with the following keys:
+            "error_type": Exactly one of "PAYMENT_ERROR", "TOO_MANY_PEOPLE", or "OTHER",
+            "is_netflix": boolean (true if this is a genuine Netflix screen, app, or website, false otherwise),
+            "card_digits": string or null (any credit/debit card numbers or partial digits visible),
+            "card_last4": string or null (last 4 digits of card visible if any),
+            "visible_email": string or null (Netflix user email visible in screenshot if any),
+            "error_description": string (brief summary of error message displayed)."""
 
             payload = {
                 "model": "pixtral-12b-2409",
@@ -352,45 +364,118 @@ def api_submit_request():
             try:
                 r = requests.post("https://api.mistral.ai/v1/chat/completions", headers=headers, json=payload, timeout=20)
                 if r.status_code == 200:
-                    ai_data = json.loads(r.json()["choices"][0]["message"]["content"])
+                    raw_content = r.json()["choices"][0]["message"]["content"].strip()
+                    if "```" in raw_content:
+                        raw_content = re.sub(r"^```(?:json)?\s*", "", raw_content)
+                        raw_content = re.sub(r"\s*```$", "", raw_content)
+                    ai_data = json.loads(raw_content)
             except Exception as ocr_err:
                 print(f"OCR Vision check notice: {ocr_err}")
 
-        # Tự động duyệt NẾU là lỗi màn hình (TOO_MANY_PEOPLE) VÀ đúng là màn hình Netflix
-        error_type = ai_data.get("error_type", "OTHER")
+        error_type = str(ai_data.get("error_type", "OTHER")).upper()
         is_netflix = ai_data.get("is_netflix", False)
+        error_desc = ai_data.get("error_description", "")
+        card_last4 = ai_data.get("card_last4")
+        card_digits = ai_data.get("card_digits")
+        visible_email = ai_data.get("visible_email")
+        assigned_email = acc_key_row[1] if len(acc_key_row) > 1 else ""
 
-        if error_type == "TOO_MANY_PEOPLE" and is_netflix:
-            assigned_email = acc_key_row[1]
+        # Fallback keyword scan if error_type is OTHER but description has clear keywords
+        upper_desc = str(error_desc).upper()
+        if error_type == "OTHER":
+            if any(kw in upper_desc for kw in ["TOO MANY", "SCREEN LIMIT", "PEOPLE", "WATCHING ON", "DEMASIADAS"]):
+                error_type = "TOO_MANY_PEOPLE"
+            elif any(kw in upper_desc for kw in ["PAYMENT", "UPDATE PAYMENT", "MEMBERSHIP ON HOLD", "HOLD", "NỢ CƯỚC"]):
+                error_type = "PAYMENT_ERROR"
 
-            # Kiểm tra và thực hiện xoay mã sang tài khoản dự phòng mới TRƯỚC
+        # -------------------------------------------------------------------------
+        # CASE 1: LỖI QUÁ MÀN HÌNH (TOO_MANY_PEOPLE) - TỰ ĐỘNG DUYỆT 24/7
+        # -------------------------------------------------------------------------
+        if (error_type == "TOO_MANY_PEOPLE" or reason_category == "TOO_MANY_PEOPLE") and is_netflix:
             rotated = database.rotate_access_key(code)
             if rotated:
-                # Xoay thành công mới xóa tài khoản cũ khỏi DB
-                database.delete_account(assigned_email)
+                if assigned_email:
+                    database.delete_account(assigned_email)
                 mark_code_request_success(code)
-                database.save_request(code, u7buy_order_id, image_url, f"Auto-approved: {ai_data.get('error_description')}", "auto_accepted")
-                
-                # Gửi thông báo Telegram
-                send_telegram_alert(f"⚡ <b>Tự động đổi tài khoản thành công!</b>\n- Mã: <code>{code}</code>\n- U7BUY: <code>{u7buy_order_id}</code>\n- Lỗi: Quá số lượng màn hình")
+                database.save_request(code, u7buy_order_id, image_url, f"[TOO_MANY_PEOPLE] Auto-approved: {error_desc or 'Screen limit verified'}", "auto_accepted")
+                send_telegram_alert(f"⚡ <b>Tự động đổi tài khoản thành công!</b>\n- Mã: <code>{code}</code>\n- U7BUY: <code>{u7buy_order_id}</code>\n- Lỗi: Quá số lượng màn hình (Screen Limit)")
 
                 return jsonify({
                     "success": True,
                     "auto_rotated": True,
-                    "message": "AI Verified! Screen limit error detected. The system has automatically changed to a new account for you. Click Login Now!"
+                    "error_type": "TOO_MANY_PEOPLE",
+                    "message": "AI Verified! Screen limit error detected. The system has automatically replaced your session with a fresh active account. Click Login Now!"
                 })
             else:
-                print(f"[Auto-Rotate Warning] Kho hết tài khoản dự phòng cho mã {code}, chuyển sang hàng đợi Admin duyệt.")
+                database.save_request(code, u7buy_order_id, image_url, f"[TOO_MANY_PEOPLE] Verified (Out of stock): {error_desc}", "pending_out_of_stock")
+                send_telegram_alert(f"⚠️ <b>Kho hết tài khoản đổi tự động (Màn hình):</b>\n- Mã: <code>{code}</code>\n- U7BUY: <code>{u7buy_order_id}</code>")
+                return jsonify({
+                    "success": True,
+                    "auto_rotated": False,
+                    "message": "Screen limit verified! The backup vault is temporarily restocking. Admin has been notified to restock and assign your account shortly."
+                })
 
-        # Lưu yêu cầu chờ Admin duyệt
-        saved = database.save_request(code, u7buy_order_id, image_url, reason or ai_data.get("error_description", ""), "pending")
+        # -------------------------------------------------------------------------
+        # CASE 2: LỖI THANH TOÁN / NỢ CƯỚC (PAYMENT_ERROR) - TỰ ĐỘNG DUYỆT 24/7
+        # -------------------------------------------------------------------------
+        elif (error_type == "PAYMENT_ERROR" or reason_category == "PAYMENT_ERROR") and is_netflix:
+            # 1. Kiểm tra an toàn: Nếu email trong ảnh hiển thị rõ, phải khớp với email tài khoản được cấp
+            if visible_email and assigned_email:
+                if visible_email.strip().lower() != assigned_email.strip().lower():
+                    database.save_request(code, u7buy_order_id, image_url, f"[PAYMENT_ERROR] Rejected email mismatch: {visible_email} vs {assigned_email}", "rejected_email_mismatch")
+                    return jsonify({
+                        "success": False,
+                        "error": f"Security verification failed: The email on your screenshot ({visible_email}) does not match the account assigned to your Access Code ({assigned_email})."
+                    }), 400
+
+            # 2. Kiểm tra an toàn thẻ thanh toán (nếu có số thẻ trên ảnh)
+            if (card_last4 or card_digits) and assigned_email:
+                acc_row = database.get_account_by_email(assigned_email)
+                if acc_row:
+                    scraped_cards = scrape_netflix_account_payment_card(acc_row[2], acc_row[3] if len(acc_row) > 3 else "")
+                    is_match, match_reason = verify_payment_card_match(card_last4, card_digits, scraped_cards)
+                    if not is_match:
+                        database.save_request(code, u7buy_order_id, image_url, f"[PAYMENT_ERROR] Card mismatch: {card_last4 or card_digits} vs scraped ({match_reason})", "pending_card_mismatch")
+                        send_telegram_alert(f"⚠️ <b>Yêu cầu đổi mã - Thẻ không khớp:</b>\n- Mã: <code>{code}</code>\n- U7BUY: <code>{u7buy_order_id}</code>\n- Thẻ: {card_last4 or card_digits}")
+                        return jsonify({
+                            "success": False,
+                            "error": "Security verification failed: The payment card shown in your screenshot does not match the card on file for this account. Your request has been queued for Admin manual review."
+                        }), 400
+
+            # Đối chiếu hợp lệ -> Tự động xoay mã và xóa tài khoản lỗi
+            rotated = database.rotate_access_key(code)
+            if rotated:
+                if assigned_email:
+                    database.delete_account(assigned_email)
+                mark_code_request_success(code)
+                database.save_request(code, u7buy_order_id, image_url, f"[PAYMENT_ERROR] Auto-approved: {error_desc or 'Payment error verified'}", "auto_accepted")
+                send_telegram_alert(f"⚡ <b>Tự động đổi tài khoản thành công!</b>\n- Mã: <code>{code}</code>\n- U7BUY: <code>{u7buy_order_id}</code>\n- Lỗi: Lỗi thanh toán / nợ cước (Payment Error)")
+
+                return jsonify({
+                    "success": True,
+                    "auto_rotated": True,
+                    "error_type": "PAYMENT_ERROR",
+                    "message": "AI Verified! Payment error detected. The faulty account has been removed and your Access Code has been replaced with a fresh account! Click Login Now!"
+                })
+            else:
+                database.save_request(code, u7buy_order_id, image_url, f"[PAYMENT_ERROR] Verified (Out of stock): {error_desc}", "pending_out_of_stock")
+                send_telegram_alert(f"⚠️ <b>Kho hết tài khoản đổi tự động (Thanh toán):</b>\n- Mã: <code>{code}</code>\n- U7BUY: <code>{u7buy_order_id}</code>")
+                return jsonify({
+                    "success": True,
+                    "auto_rotated": False,
+                    "message": "Payment error verified! The backup vault is temporarily restocking. Admin has been notified to restock and assign your account shortly."
+                })
+
+        # -------------------------------------------------------------------------
+        # CASE 3: LỖI KHÁC HOẶC CHỜ DUYỆT THỦ CÔNG (OTHER)
+        # -------------------------------------------------------------------------
+        req_reason = f"[{reason_category}] {reason or error_desc or 'Chờ duyệt thủ công'}"
+        saved = database.save_request(code, u7buy_order_id, image_url, req_reason, "pending")
         if not saved:
             return jsonify({"success": False, "error": "Database error: Could not record your request. Please try again later."}), 500
 
         mark_code_request_success(code)
-
-        # Gửi thông báo Telegram cho Admin
-        send_telegram_alert(f"🔔 <b>Có yêu cầu khiếu nại mới!</b>\n- Mã Code: <code>{code}</code>\n- U7BUY Order: <code>{u7buy_order_id}</code>\n- Lý do: {reason or 'Chờ duyệt'}")
+        send_telegram_alert(f"🔔 <b>Có yêu cầu khiếu nại mới (Chờ duyệt)!</b>\n- Mã: <code>{code}</code>\n- U7BUY: <code>{u7buy_order_id}</code>\n- Phân loại: {reason_category}\n- Lý do: {reason or 'Chờ Admin duyệt'}")
 
         return jsonify({
             "success": True,

@@ -671,21 +671,35 @@
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
             <h3 style="font-size: 1.25rem; font-weight: 700; color: #fff; margin-bottom: 6px;">Submit Replacement Request</h3>
-            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;">Provide your order details and screenshot proof. Screen limit issues are replaced automatically 24/7.</p>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;">Provide your order details and error screenshot. Screen limit and Payment error issues are verified and replaced automatically 24/7 by AI.</p>
 
             <form id="warrantyForm" onsubmit="submitWarrantyRequest(event)" style="display: flex; flex-direction: column; gap: 14px;">
                 <div>
-                    <label style="font-size: 0.82rem; font-weight: 600; color: #cbd5e1; display: block; margin-bottom: 6px;">U7BUY Order ID / Purchase ID</label>
+                    <label style="font-size: 0.82rem; font-weight: 600; color: #cbd5e1; display: block; margin-bottom: 6px;">U7BUY Order ID / Purchase ID <span style="color: #ef4444;">*</span></label>
                     <input id="u7buyOrderId" type="text" class="code-input" style="padding: 12px 14px; font-size: 0.95rem;" placeholder="e.g. 19283746" required>
                 </div>
 
                 <div>
-                    <label style="font-size: 0.82rem; font-weight: 600; color: #cbd5e1; display: block; margin-bottom: 6px;">Access Code</label>
+                    <label style="font-size: 0.82rem; font-weight: 600; color: #cbd5e1; display: block; margin-bottom: 6px;">Access Code <span style="color: #ef4444;">*</span></label>
                     <input id="modalAccessCode" type="text" class="code-input" style="padding: 12px 14px; font-size: 0.95rem;" placeholder="Your access code" required>
                 </div>
 
                 <div>
-                    <label style="font-size: 0.82rem; font-weight: 600; color: #cbd5e1; display: block; margin-bottom: 6px;">Screenshot Proof of Error</label>
+                    <label style="font-size: 0.82rem; font-weight: 600; color: #cbd5e1; display: block; margin-bottom: 6px;">Reason / Loại lỗi gặp phải <span style="color: #ef4444;">*</span></label>
+                    <select id="modalReasonCategory" class="code-input" style="padding: 12px 14px; font-size: 0.92rem; background: var(--surface-input); color: #fff; cursor: pointer;" required>
+                        <option value="TOO_MANY_PEOPLE">⚡ Too many people using screen / Screen limit (Quá số màn hình xem cùng lúc)</option>
+                        <option value="PAYMENT_ERROR">💳 Payment error / Membership on hold (Lỗi thanh toán / nợ cước)</option>
+                        <option value="OTHER">📝 Other reason / Different error (Lỗi khác / Duyệt thủ công 1-10h)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label style="font-size: 0.82rem; font-weight: 600; color: #cbd5e1; display: block; margin-bottom: 6px;">Additional Note / Ghi chú thêm (Tùy chọn)</label>
+                    <input id="modalReasonNote" type="text" class="code-input" style="padding: 10px 14px; font-size: 0.9rem;" placeholder="e.g. Error appeared while watching, or hold message">
+                </div>
+
+                <div>
+                    <label style="font-size: 0.82rem; font-weight: 600; color: #cbd5e1; display: block; margin-bottom: 6px;">Screenshot Proof of Error <span style="color: #ef4444;">*</span></label>
                     <input id="modalProofImage" type="file" accept="image/*" style="font-size: 0.85rem; color: var(--text-muted); background: var(--surface-input); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 10px; width: 100%; cursor: pointer;" required>
                 </div>
 
@@ -825,6 +839,12 @@
             e.preventDefault();
             const orderId = document.getElementById('u7buyOrderId').value.trim();
             const code = document.getElementById('modalAccessCode').value.trim();
+            const categorySelect = document.getElementById('modalReasonCategory');
+            const category = categorySelect ? categorySelect.value : 'TOO_MANY_PEOPLE';
+            const noteInput = document.getElementById('modalReasonNote');
+            const note = noteInput ? noteInput.value.trim() : '';
+            const combinedReason = note ? `[${category}] ${note}` : `[${category}]`;
+
             const fileInput = document.getElementById('modalProofImage');
             if (!fileInput.files.length) {
                 showToast('Please attach a screenshot of the error.', 'error');
@@ -834,7 +854,8 @@
             const formData = new FormData();
             formData.append('u7buy_order_id', orderId);
             formData.append('code', code);
-            formData.append('reason', 'Replacement Request via Portal');
+            formData.append('reason_category', category);
+            formData.append('reason', combinedReason);
             formData.append('image', fileInput.files[0]);
 
             const submitBtn = document.getElementById('modalSubmitBtn');
@@ -853,7 +874,8 @@
                 if (data.success) {
                     closeWarrantyModal();
                     if (data.auto_rotated) {
-                        showToast('Screen limit verified! A new active session has been assigned.', 'success');
+                        showToast(data.message || 'Error verified! A new active session has been assigned.', 'success');
+                        document.getElementById('accessCodeInput').value = code;
                         handleActivation();
                     } else {
                         showToast(data.message || 'Request queued for verification.', 'success');
