@@ -34,10 +34,14 @@ def init_csrf(app):
         if request.method not in ("POST", "PUT", "PATCH", "DELETE"):
             return
 
-        # Chỉ áp dụng kiểm tra bắt buộc CSRF cho các route Admin hoặc khi đang đăng nhập Admin
-        # Các API công khai của người dùng (submit request, live check) dùng rate-limit riêng
-        is_admin_route = request.path.startswith("/admin") or request.path in ("/login", "/logout")
-        if not is_admin_route and not session.get("logged_in"):
+        # Chỉ áp dụng kiểm tra bắt buộc CSRF cho các route Admin hoặc khi gọi các API quản trị
+        # Các API công khai của người dùng (kích hoạt mã, chat AI, báo cáo đổi mã) dùng rate-limit riêng
+        is_admin_route = (
+            request.path.startswith("/admin")
+            or request.path in ("/login", "/logout")
+            or request.path.startswith("/api/check_and_import")
+        )
+        if not is_admin_route:
             return
 
         # Trừ route API check_and_import nếu dùng token xác thực riêng (nếu có)

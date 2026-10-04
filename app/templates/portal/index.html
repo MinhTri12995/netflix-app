@@ -757,7 +757,7 @@
 
             fetch('/api/generate_nftoken', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': {{ csrf_token() | tojson }} },
                 body: JSON.stringify({ cookie: code })
             })
             .then(res => res.json())
@@ -843,6 +843,7 @@
 
             fetch('/api/submit_request', {
                 method: 'POST',
+                headers: { 'X-CSRF-Token': {{ csrf_token() | tojson }} },
                 body: formData
             })
             .then(res => res.json())
@@ -888,7 +889,7 @@
 
             fetch('/api/chat', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': {{ csrf_token() | tojson }} },
                 body: JSON.stringify({ message: msg })
             })
             .then(res => res.json())
