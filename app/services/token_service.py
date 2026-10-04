@@ -58,18 +58,36 @@ def fetch_netflix_nftoken_api(netflix_id, secure_netflix_id=""):
     }
 
     proxy_dict = proxies_list.get_random_proxy()
+    response = None
 
-    try:
-        response = requests.get(
-            url, params=params, headers=headers,
-            proxies=proxy_dict, timeout=8, verify=False
-        )
-    except requests.exceptions.RequestException as e:
-        print(f"Lỗi Proxy / Mạng: {e}")
-        raise ProxyError(f"Không thể kết nối qua Proxy: {e}")
+    # 1. Thử kết nối qua Proxy xoay vòng
+    if proxy_dict:
+        try:
+            response = requests.get(
+                url, params=params, headers=headers,
+                proxies=proxy_dict, timeout=7, verify=False
+            )
+            # Nếu Proxy hết hạn băng thông (402) hoặc lỗi xác thực (407)
+            if response.status_code in [402, 407]:
+                print(f"[Proxy] HTTP {response.status_code} (Bandwidth/Auth limit). Fallback to direct connection...")
+                response = None
+        except requests.exceptions.RequestException as e:
+            print(f"[Proxy] Proxy connection error ({e}). Fallback to direct connection...")
+            response = None
+
+    # 2. Tu dong ket noi truc tiep (Direct) neu Proxy bi loi hoac khong co proxy
+    if response is None:
+        try:
+            response = requests.get(
+                url, params=params, headers=headers,
+                proxies=None, timeout=7, verify=False
+            )
+        except requests.exceptions.RequestException as e:
+            print(f"Network error connecting to Netflix: {e}")
+            raise ProxyError(f"Cannot connect to Netflix: {e}")
 
     if response.status_code in [403, 429]:
-        raise ProxyError("Proxy bị Netflix block (403/429)")
+        raise ProxyError("IP bị Netflix giới hạn tạm thời (403/429)")
 
     if response.status_code >= 500:
         raise ProxyError(f"Netflix Server Error ({response.status_code})")

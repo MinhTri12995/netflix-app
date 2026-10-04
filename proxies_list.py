@@ -3,23 +3,27 @@ import random
 import requests
 import time
 
-# Cấu hình Webshare Rotating Proxy chuẩn từ Dashboard
-WEBSHARE_USERNAME = "gssazpnr-rotate"
-WEBSHARE_PASSWORD = "7tsf50ryio03"
-WEBSHARE_HOST = "p.webshare.io"
-WEBSHARE_PORT = os.environ.get("WEBSHARE_PORT", "9999")
+# Cấu hình Webshare Rotating Proxy chuẩn từ Dashboard / Environment
+WEBSHARE_USERNAME = os.environ.get("WEBSHARE_USERNAME", "gssazpnr-rotate").strip()
+WEBSHARE_PASSWORD = os.environ.get("WEBSHARE_PASSWORD", "7tsf50ryio03").strip()
+WEBSHARE_HOST = os.environ.get("WEBSHARE_HOST", "p.webshare.io").strip()
+WEBSHARE_PORT = os.environ.get("WEBSHARE_PORT", "80").strip()
 
 # Gateway xoay IP tự động của Webshare
-ROTATING_PROXY_URL = f"http://{WEBSHARE_USERNAME}:{WEBSHARE_PASSWORD}@{WEBSHARE_HOST}:{WEBSHARE_PORT}"
-PROXIES = [ROTATING_PROXY_URL]
+if WEBSHARE_USERNAME and WEBSHARE_PASSWORD and WEBSHARE_HOST:
+    ROTATING_PROXY_URL = f"http://{WEBSHARE_USERNAME}:{WEBSHARE_PASSWORD}@{WEBSHARE_HOST}:{WEBSHARE_PORT}"
+    ROTATING_PROXY_DICT = {
+        "http": ROTATING_PROXY_URL,
+        "https": ROTATING_PROXY_URL
+    }
+    PROXIES = [ROTATING_PROXY_URL]
+    _PROXIES_CACHE = [ROTATING_PROXY_DICT]
+else:
+    ROTATING_PROXY_URL = ""
+    ROTATING_PROXY_DICT = None
+    PROXIES = []
+    _PROXIES_CACHE = []
 
-# Đảm bảo _PROXIES_CACHE lưu đúng định dạng dict chuẩn cho requests
-ROTATING_PROXY_DICT = {
-    "http": ROTATING_PROXY_URL,
-    "https": ROTATING_PROXY_URL
-}
-
-_PROXIES_CACHE = [ROTATING_PROXY_DICT]
 _LAST_SYNC_TIME = time.time()
 _SYNC_INTERVAL = 600
 

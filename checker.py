@@ -274,10 +274,9 @@ def check_account_live(netflix_id, secure_netflix_id="", check_payment=True):
     # 1. Kiem tra kha nang tao Token dang nhap truc tiep
     plan_api = _get_token_and_plan_api(netflix_id, secure_netflix_id, proxy_dict)
     
-    # Retry voi Proxy moi neu bi loi mang/proxy
+    # Retry voi ket noi truc tiep (Direct) neu proxy bi loi
     if plan_api == "ERROR":
-        proxy_dict = proxies_list.get_random_proxy()
-        plan_api = _get_token_and_plan_api(netflix_id, secure_netflix_id, proxy_dict)
+        plan_api = _get_token_and_plan_api(netflix_id, secure_netflix_id, None)
         
     if plan_api is None:
         return "DIE", None
@@ -285,16 +284,14 @@ def check_account_live(netflix_id, secure_netflix_id="", check_payment=True):
         # API khong phan hoi, kiem tra qua Web
         web_status, web_plan = check_web_account_status_and_plan(cookies, proxy_dict)
         if web_status == "ERROR":
-            proxy_dict = proxies_list.get_random_proxy()
-            web_status, web_plan = check_web_account_status_and_plan(cookies, proxy_dict)
+            web_status, web_plan = check_web_account_status_and_plan(cookies, None)
         return web_status, web_plan
         
     # 2. Kiem tra trang Web YourAccount de tranh loi Payment Hold
     if check_payment:
         web_status, web_plan = check_web_account_status_and_plan(cookies, proxy_dict)
         if web_status == "ERROR":
-            proxy_dict = proxies_list.get_random_proxy()
-            web_status, web_plan = check_web_account_status_and_plan(cookies, proxy_dict)
+            web_status, web_plan = check_web_account_status_and_plan(cookies, None)
             
         if web_status == "DIE":
             return "DIE", None

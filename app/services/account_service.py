@@ -89,17 +89,21 @@ def fetch_realtime_account_info(netflix_id, secure_netflix_id=""):
 
     last_network_err = None
     for attempt in range(2):
-        proxy_dict = proxies_list.get_random_proxy()
+        proxy_dict = proxies_list.get_random_proxy() if attempt == 0 else None
         try:
             r = requests.get(
                 "https://www.netflix.com/YourAccount",
                 cookies=cookies,
                 headers=headers,
                 proxies=proxy_dict,
-                timeout=12,
+                timeout=10,
                 allow_redirects=True,
                 verify=False
             )
+            # Nếu proxy hết hạn băng thông (402) hoặc lỗi xác thực (407)
+            if r.status_code in [402, 407] and attempt == 0:
+                print(f"[Account Info] Proxy HTTP {r.status_code}, retrying with direct connection...")
+                continue
             url_lower = r.url.lower()
             html = r.text
             text_lower = html.lower()
