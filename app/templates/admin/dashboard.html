@@ -288,6 +288,7 @@
                 <h3 style="margin: 0; font-weight: 400; color: #3498db;">📊 System Stock & Proxy</h3>
                 <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
                     <form action="/admin/toggle_mix_plan" method="POST" style="margin: 0; display: flex; align-items: center; gap: 5px;" title="Khi bật, mã 15 ký tự (Premium) sẽ ưu tiên cấp Premium, nếu hết sẽ tự động cấp Standard không ads">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <span style="font-size: 0.9rem; color: #aaa;">Mix Plan (Standard + Premium):</span>
                         <label class="switch" style="position: relative; display: inline-block; width: 40px; height: 20px;">
                             <input type="checkbox" onChange="this.form.submit()" {% if mix_plan_enabled %}checked{% endif %} style="opacity: 0; width: 0; height: 0;">
@@ -297,6 +298,7 @@
                         </label>
                     </form>
                     <form action="/admin/toggle_share_mode" method="POST" style="margin: 0; display: flex; align-items: center; gap: 5px;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <span style="font-size: 0.9rem; color: #aaa;">Share Mode (1 Code = 2 Accs):</span>
                         <label class="switch" style="position: relative; display: inline-block; width: 40px; height: 20px;">
                             <input type="checkbox" onChange="this.form.submit()" {% if share_mode_enabled %}checked{% endif %} style="opacity: 0; width: 0; height: 0;">
@@ -368,14 +370,17 @@
                             <td style="font-size: 0.82rem; color: #888;">{{ req.created_at }}</td>
                             <td style="display: flex; gap: 8px; flex-wrap: wrap;">
                                 <form action="/admin/request/{{ req.id }}/accept" method="POST" style="margin: 0;" onsubmit="return confirm('Approve & Change account for code {{ req.code }}?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <input type="hidden" name="code" value="{{ req.code }}">
                                     <button type="submit" style="background: #27ae60; padding: 6px 12px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">✅ Approve & Change</button>
                                 </form>
                                 <form action="/admin/request/{{ req.id }}/reject" method="POST" style="margin: 0;" onsubmit="return confirm('Reject request for code {{ req.code }}?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <input type="hidden" name="code" value="{{ req.code }}">
                                     <button type="submit" style="background: #e67e22; padding: 6px 12px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">❌ Reject</button>
                                 </form>
                                 <form action="/admin/request/{{ req.id }}/delete" method="POST" style="margin: 0;" onsubmit="return confirm('Delete this request?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <input type="hidden" name="code" value="{{ req.code }}">
                                     <button type="submit" style="background: #e74c3c; padding: 6px 10px; font-size: 0.8rem; border-radius: 6px; cursor: pointer;">🗑️</button>
                                 </form>
@@ -394,16 +399,19 @@
                 <h3 style="margin: 0; font-weight: 400;">Access Code Management (License Keys)</h3>
                 <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
                     <form action="/admin/keys/cleanup_expired" method="POST" style="margin: 0;" onsubmit="return confirm('🧹 Bạn có chắc muốn quét và XÓA TẤT CẢ các mã Code đã hết hạn (quá ngày sử dụng)?');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" style="background: linear-gradient(135deg, #f39c12, #e67e22); font-weight: 600; font-size: 0.88rem; padding: 9px 15px; white-space: nowrap; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 4px 10px rgba(243, 156, 18, 0.3); cursor: pointer;">
                             🧹 Dọn Dẹp Code Hết Hạn
                         </button>
                     </form>
                     <form action="/admin/keys/delete_lifetime" method="POST" style="margin: 0;" onsubmit="return confirm('⚠️ BẠN CÓ CHẮC CHẮN? Thao tác này sẽ XÓA VĨNH VIỄN tất cả các Code có thời hạn vĩnh viễn (Lifetime)!');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" style="background: linear-gradient(135deg, #c0392b, #962d22); font-weight: 600; font-size: 0.88rem; padding: 9px 15px; white-space: nowrap; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 4px 10px rgba(192, 57, 43, 0.3); cursor: pointer;">
                             🗑️ Xóa Tất Cả Code Vĩnh Viễn
                         </button>
                     </form>
                     <form action="/admin/generate_key" method="POST" style="margin: 0; display: flex; gap: 8px; align-items: center;" onsubmit="showLoading(this.querySelector('button'))">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <select name="plan_type" style="padding: 8px; border-radius: 6px; background: rgba(0,0,0,0.5); color: white; border: 1px solid #555;">
                             <option value="premium">Premium (15 Chars)</option>
                             <option value="standard">Standard (10 Chars)</option>
@@ -447,9 +455,11 @@
                             <td style="display: flex; gap: 10px; flex-wrap: wrap;">
                                 <button class="btn-copy" onclick="copyCookie('{{ key[0] }}', this)">Copy Code</button>
                                 <form action="/admin/rotate_key/{{ key[0] }}" method="POST" style="margin: 0;" onsubmit="return confirm('Do you want to rotate a new account for this code?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" style="background: #f39c12; padding: 6px 12px; font-size: 0.8rem;">Change Acc</button>
                                 </form>
                                 <form action="/admin/delete_key/{{ key[0] }}" method="POST" style="margin: 0;" onsubmit="return confirm('Delete this code? Customers will no longer be able to use it.');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" style="background: #e74c3c; padding: 6px 12px; font-size: 0.8rem;">Delete</button>
                                 </form>
                             </td>
@@ -477,6 +487,7 @@
         <div class="glass-panel">
             <h3 style="margin-top: 0; margin-bottom: 20px; font-weight: 400;">Import Cookies Database (Single File)</h3>
             <form style="display: flex; gap: 15px; align-items: center;" action="/admin/upload" method="POST" enctype="multipart/form-data" onsubmit="showLoading(this.querySelector('button'))">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="file" name="account_file" accept=".txt" required style="padding: 10px; background: rgba(0,0,0,0.2); border: 1px dashed var(--border-color); color: #ccc;">
                 <button type="submit">Upload Database</button>
             </form>
@@ -519,15 +530,19 @@
                 <h3 style="margin: 0; font-weight: 400;">Original Cookie Vault <span style="font-size: 0.9rem; color: #888;">({{ total_accounts }} accounts)</span></h3>
                 <div style="display: flex; gap: 10px;">
                     <form action="/admin/filter_duplicates" method="POST" onsubmit="showLoading(this.querySelector('button'))" style="margin: 0;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" style="background: #f39c12; padding: 8px 15px; font-size: 0.9rem;" title="Filter and delete duplicates with same NetflixId">🧹 FILTER DUPLICATES</button>
                     </form>
                     <form action="/admin/check_payment" method="POST" onsubmit="showLoading(this.querySelector('button'))" style="margin: 0;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" style="background: #c0392b; padding: 8px 15px; font-size: 0.9rem;" title="Scan full DB to delete accounts with Update Payment errors">🚫 SCAN PAYMENT ERRORS</button>
                     </form>
                     <form action="/admin/force_check_all" method="POST" onsubmit="showLoading(this.querySelector('button'))" style="margin: 0;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" style="background: #e74c3c; padding: 8px 15px; font-size: 0.9rem;" title="Force check all accounts regardless of plan (Costs Proxy)">🔥 FORCE FULL SCAN</button>
                     </form>
                     <form action="/admin/check_all" method="POST" onsubmit="showLoading(this.querySelector('button'))" style="margin: 0;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" style="background: #10ac84; padding: 8px 15px; font-size: 0.9rem;" title="Only scan accounts without a known Plan (Saves Proxy)">⚡ UPDATE MISSING PLANS</button>
                     </form>
                 </div>
@@ -556,6 +571,7 @@
                             <td style="font-size: 0.8rem; color: #666; font-family: monospace; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ acc[2] }}">{{ acc[2] }}</td>
                             <td style="display: flex; gap: 8px;">
                                 <form action="/admin/delete/{{ acc[0] }}" method="POST" style="margin: 0;" onsubmit="return confirm('Delete this cookie?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" style="background: #e74c3c; padding: 6px 12px; font-size: 0.8rem;">Delete</button>
                                 </form>
                             </td>
@@ -911,7 +927,10 @@
                         try {
                             const res = await fetch('/api/check_and_import', {
                                 method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
+                                headers: { 
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-Token': '{{ csrf_token() }}'
+                                },
                                 body: JSON.stringify(acc)
                             });
 

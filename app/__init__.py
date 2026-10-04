@@ -22,11 +22,22 @@ def create_app(config_class=Config):
     from app.blueprints.auth.routes import auth_bp
     from app.blueprints.admin.routes import admin_bp
     from app.blueprints.api.routes import api_bp
+    from app.services.csrf import init_csrf
 
     app.register_blueprint(portal_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp, url_prefix="/admin")
     app.register_blueprint(api_bp)
+
+    # Kích hoạt bảo vệ CSRF cho toàn hệ thống
+    init_csrf(app)
+
+    @app.errorhandler(403)
+    def handle_forbidden_error(e):
+        return jsonify({
+            "success": False,
+            "error": str(e.description or "Forbidden: CSRF token missing or invalid.")
+        }), 403
 
     @app.errorhandler(413)
     def handle_file_size_error(e):

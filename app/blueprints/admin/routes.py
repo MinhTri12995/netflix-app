@@ -1,4 +1,4 @@
-import random
+import secrets
 import string
 import threading
 from datetime import datetime, timedelta
@@ -12,6 +12,9 @@ from app.blueprints.auth.routes import login_required
 from app.services.notification_service import send_telegram_alert
 
 admin_bp = Blueprint("admin", __name__)
+
+_scan_lock = threading.Lock()
+_is_scanning = False
 
 def check_single_account(acc, force=False, check_payment=False):
     email = acc[0]
@@ -150,7 +153,7 @@ def generate_key():
         length = 5
         plan_type = 'basic'
 
-    code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
+    code = ''.join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(length))
     expire_at = (datetime.now() + timedelta(days=30 * duration)).strftime("%Y-%m-%d")
 
     success, msg = database.create_access_key(code, expire_at)
@@ -246,21 +249,35 @@ def toggle_share_mode():
 @admin_bp.route("/check_all", methods=["POST"])
 @login_required
 def check_all():
+    global _is_scanning
+    with _scan_lock:
+        if _is_scanning:
+            flash("Một tiến trình quét tài khoản đang chạy. Vui lòng đợi quét xong trước khi bắt đầu quét mới.", "warning")
+            return redirect(url_for("admin.dashboard"))
+        _is_scanning = True
+
     database.init_db()
     accounts = database.get_all_accounts()
     accounts_to_check = [acc for acc in accounts if not acc[5]]
 
     if not accounts_to_check:
+        with _scan_lock:
+            _is_scanning = False
         flash("Tất cả tài khoản trong kho đều đã có Gói cước.", "warning")
         return redirect(url_for("admin.dashboard"))
 
     app_ref = current_app._get_current_object()
 
     def run_bg():
-        with app_ref.app_context():
-            with ThreadPoolExecutor(max_workers=3) as executor:
-                for acc in accounts_to_check:
-                    executor.submit(check_single_account, acc, False)
+        global _is_scanning
+        try:
+            with app_ref.app_context():
+                with ThreadPoolExecutor(max_workers=3) as executor:
+                    for acc in accounts_to_check:
+                        executor.submit(check_single_account, acc, False)
+        finally:
+            with _scan_lock:
+                _is_scanning = False
 
     t = threading.Thread(target=run_bg, daemon=True)
     t.start()
@@ -270,20 +287,34 @@ def check_all():
 @admin_bp.route("/force_check_all", methods=["POST"])
 @login_required
 def force_check_all():
+    global _is_scanning
+    with _scan_lock:
+        if _is_scanning:
+            flash("Một tiến trình quét tài khoản đang chạy. Vui lòng đợi quét xong trước khi bắt đầu quét mới.", "warning")
+            return redirect(url_for("admin.dashboard"))
+        _is_scanning = True
+
     database.init_db()
     accounts = database.get_all_accounts()
 
     if not accounts:
+        with _scan_lock:
+            _is_scanning = False
         flash("Kho hiện không có tài khoản nào để quét.", "warning")
         return redirect(url_for("admin.dashboard"))
 
     app_ref = current_app._get_current_object()
 
     def run_force_bg():
-        with app_ref.app_context():
-            with ThreadPoolExecutor(max_workers=3) as executor:
-                for acc in accounts:
-                    executor.submit(check_single_account, acc, True, False)
+        global _is_scanning
+        try:
+            with app_ref.app_context():
+                with ThreadPoolExecutor(max_workers=3) as executor:
+                    for acc in accounts:
+                        executor.submit(check_single_account, acc, True, False)
+        finally:
+            with _scan_lock:
+                _is_scanning = False
 
     t = threading.Thread(target=run_force_bg, daemon=True)
     t.start()
@@ -293,20 +324,34 @@ def force_check_all():
 @admin_bp.route("/check_payment", methods=["POST"])
 @login_required
 def check_payment_route():
+    global _is_scanning
+    with _scan_lock:
+        if _is_scanning:
+            flash("Một tiến trình quét tài khoản đang chạy. Vui lòng đợi quét xong trước khi bắt đầu quét mới.", "warning")
+            return redirect(url_for("admin.dashboard"))
+        _is_scanning = True
+
     database.init_db()
     accounts = database.get_all_accounts()
 
     if not accounts:
+        with _scan_lock:
+            _is_scanning = False
         flash("Kho hiện không có tài khoản nào để quét lỗi nợ cước.", "warning")
         return redirect(url_for("admin.dashboard"))
 
     app_ref = current_app._get_current_object()
 
     def run_payment_bg():
-        with app_ref.app_context():
-            with ThreadPoolExecutor(max_workers=3) as executor:
-                for acc in accounts:
-                    executor.submit(check_single_account, acc, True, True)
+        global _is_scanning
+        try:
+            with app_ref.app_context():
+                with ThreadPoolExecutor(max_workers=3) as executor:
+                    for acc in accounts:
+                        executor.submit(check_single_account, acc, True, True)
+        finally:
+            with _scan_lock:
+                _is_scanning = False
 
     t = threading.Thread(target=run_payment_bg, daemon=True)
     t.start()

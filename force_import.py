@@ -25,7 +25,13 @@ def force_import():
         database.init_db()
         count = 0
         for acc in accounts_list:
-            database.save_account(acc['email'], acc['expire'], acc['netflix_id'], acc['secure_netflix_id'])
+            database.save_account(
+                acc['email'],
+                acc['expire'],
+                acc['netflix_id'],
+                acc['secure_netflix_id'],
+                plan=acc.get('plan')
+            )
             count += 1
             
         print(f"SUCCESS: Đã ép thành công {count} accounts vào Database!")

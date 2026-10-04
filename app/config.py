@@ -9,8 +9,22 @@ class Config:
     # 1. Bảo mật Flask & Session
     SECRET_KEY = os.environ.get("SECRET_KEY")
     if not SECRET_KEY or SECRET_KEY == "super_secret_key_for_flash_messages_and_sessions_123":
-        # Tạo fallback tạm thời nếu chưa cấu hình trong .env, tránh dùng key mặc định dễ đoán
-        SECRET_KEY = os.environ.get("FLASK_SECRET", secrets.token_hex(32))
+        SECRET_KEY = os.environ.get("FLASK_SECRET")
+        if not SECRET_KEY:
+            secret_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".secret_key")
+            if os.path.exists(secret_file):
+                try:
+                    with open(secret_file, "r") as f:
+                        SECRET_KEY = f.read().strip()
+                except Exception:
+                    pass
+            if not SECRET_KEY:
+                SECRET_KEY = secrets.token_hex(32)
+                try:
+                    with open(secret_file, "w") as f:
+                        f.write(SECRET_KEY)
+                except Exception:
+                    pass
 
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'

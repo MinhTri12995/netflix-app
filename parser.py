@@ -147,7 +147,7 @@ def parse_lines(lines):
         # C. Multi-line Email
         deadflix_email_match = re.search(r'^(?:–|-|#)?\s*Email:\s*(.+)', line, re.IGNORECASE)
         if deadflix_email_match:
-            if current_netflix_id and current_email:
+            if current_netflix_id:
                 push_account()
             current_email = deadflix_email_match.group(1).strip().lower()
             continue
@@ -164,27 +164,40 @@ def parse_lines(lines):
             current_plan = deadflix_plan_match.group(1).strip()
             continue
             
-        # F. Multi-line NetflixId
-        netflixid_match = re.search(r'^NetflixId(?:=|\s*:\s*)(.+)', line, re.IGNORECASE)
+        # F. Raw Cookie String line (e.g. NetflixId=...; SecureNetflixId=...)
+        if 'netflixid=' in lower_line and ('securenetflixid=' in lower_line or ';' in line):
+            nid_match = re.search(r'(?<!Secure)NetflixId=([^;|\s]+)', line, re.IGNORECASE)
+            snid_match = re.search(r'SecureNetflixId=([^;|\s]+)', line, re.IGNORECASE)
+            if nid_match:
+                if current_netflix_id:
+                    push_account()
+                current_netflix_id = urllib.parse.unquote(nid_match.group(1).strip())
+                if snid_match:
+                    current_secure_netflix_id = urllib.parse.unquote(snid_match.group(1).strip())
+                push_account()
+                continue
+
+        # G. Multi-line NetflixId
+        netflixid_match = re.search(r'^NetflixId(?:=|\s*:\s*)([^;\r\n]+)', line, re.IGNORECASE)
         if netflixid_match:
-            if current_netflix_id and current_email:
+            if current_netflix_id:
                 push_account()
             current_netflix_id = urllib.parse.unquote(netflixid_match.group(1).strip())
             continue
 
-        # G. Multi-line SecureNetflixId
-        secure_netflixid_match = re.search(r'^SecureNetflixId(?:=|\s*:\s*)(.+)', line, re.IGNORECASE)
+        # H. Multi-line SecureNetflixId
+        secure_netflixid_match = re.search(r'^SecureNetflixId(?:=|\s*:\s*)([^;\r\n]+)', line, re.IGNORECASE)
         if secure_netflixid_match:
             current_secure_netflix_id = urllib.parse.unquote(secure_netflixid_match.group(1).strip())
             continue
 
-        # H. Separator lines
+        # I. Separator lines
         if line.startswith("# ===") or line.startswith("===") or line.startswith("---") or line.startswith("___"):
-            if current_netflix_id and (current_email or current_secure_netflix_id):
+            if current_netflix_id:
                 push_account()
             continue
 
-        # I. Netscape tab-separated format
+        # J. Netscape tab-separated format
         if '.netflix.com' in line:
             parts = line.split()
             if len(parts) >= 3:
@@ -196,18 +209,31 @@ def parse_lines(lines):
                 elif cookie_name == 'SecureNetflixId':
                     current_secure_netflix_id = cookie_value
             continue
-            
-        # J. Raw Cookie String line (e.g. NetflixId=...; SecureNetflixId=...)
-        if 'netflixid=' in lower_line:
-            nid_match = re.search(r'(?<!Secure)NetflixId=([^;|\s]+)', line, re.IGNORECASE)
-            snid_match = re.search(r'SecureNetflixId=([^;|\s]+)', line, re.IGNORECASE)
-            if nid_match:
-                if current_netflix_id and current_email:
-                    push_account()
-                current_netflix_id = urllib.parse.unquote(nid_match.group(1).strip())
-                if snid_match:
-                    current_secure_netflix_id = urllib.parse.unquote(snid_match.group(1).strip())
-                continue
 
     push_account()
     return accounts
+
+
+def parse_netflix_file(filepath):
+    """
+    Read a file and parse all Netflix accounts/cookies within it.
+    Supports utf-8-sig, utf-8, utf-16, and latin-1 encodings.
+    """
+    try:
+        with open(filepath, 'rb') as f:
+            file_bytes = f.read()
+
+        try:
+            content = file_bytes.decode('utf-8-sig')
+        except UnicodeDecodeError:
+            try:
+                content = file_bytes.decode('utf-16')
+            except UnicodeDecodeError:
+                content = file_bytes.decode('latin-1', errors='replace')
+
+        lines = content.splitlines()
+        return parse_lines(lines)
+    except Exception as e:
+        print(f"Error parsing file {filepath}: {e}")
+        return []
+

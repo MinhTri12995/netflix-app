@@ -27,6 +27,7 @@ from app.services.vision_service import (
     verify_payment_card_match
 )
 from app.services.notification_service import send_telegram_alert
+from app.services.rate_limiter import get_client_ip, check_rate_limit
 
 portal_bp = Blueprint("portal", __name__)
 
@@ -39,6 +40,11 @@ def index():
 def api_generate_nftoken():
     def register_fail(err_msg, status_code=400):
         return jsonify({"success": False, "error": err_msg}), status_code
+
+    client_ip = get_client_ip(request)
+    allowed, wait_sec = check_rate_limit(f"nftoken:{client_ip}", max_requests=30, window_seconds=60)
+    if not allowed:
+        return register_fail(f"Too many requests from your IP. Please try again after {wait_sec} seconds.", 429)
 
     try:
         data = request.get_json(silent=True) or {}
@@ -398,6 +404,11 @@ def api_submit_request():
 
 @portal_bp.route("/api/chat", methods=["POST"])
 def api_chat():
+    client_ip = get_client_ip(request)
+    allowed, wait_sec = check_rate_limit(f"chat:{client_ip}", max_requests=15, window_seconds=60)
+    if not allowed:
+        return jsonify({"success": False, "error": f"Too many chat requests. Please wait {wait_sec} seconds."}), 429
+
     data = request.get_json(silent=True) or {}
     user_message = data.get("message", "").strip()
     if not user_message:
@@ -442,6 +453,11 @@ def api_chat():
 
 @portal_bp.route("/api/translate_page", methods=["POST"])
 def api_translate_page():
+    client_ip = get_client_ip(request)
+    allowed, wait_sec = check_rate_limit(f"translate:{client_ip}", max_requests=15, window_seconds=60)
+    if not allowed:
+        return jsonify({"success": False, "error": f"Too many translation requests. Please wait {wait_sec} seconds."}), 429
+
     data = request.get_json(silent=True) or {}
     target_lang = data.get("language", "").strip()
     texts = data.get("texts", {})

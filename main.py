@@ -26,12 +26,22 @@ def main():
     if data:
         # 2. Lưu vào DB
         database.init_db()
-        database.save_account(data['email'], data['expire'], data['netflix_id'])
+        accounts_to_save = data if isinstance(data, list) else [data]
+        saved_count = 0
+        for acc in accounts_to_save:
+            email = acc.get('email', '')
+            expire = acc.get('expire', 'N/A')
+            netflix_id = acc.get('netflix_id', '')
+            secure_netflix_id = acc.get('secure_netflix_id', '')
+            plan = acc.get('plan')
+            if netflix_id:
+                database.save_account(email, expire, netflix_id, secure_netflix_id=secure_netflix_id, plan=plan)
+                saved_count += 1
+                print(f"  - Email     : {email}")
+                print(f"  - Expire    : {expire}")
+                print(f"  - NetflixId : {netflix_id[:20]}... (đã ẩn bớt)")
         
-        print("\n✅ Trích xuất và lưu vào DB THÀNH CÔNG!")
-        print(f"  - Email     : {data['email']}")
-        print(f"  - Expire    : {data['expire']}")
-        print(f"  - NetflixId : {data['netflix_id'][:20]}... (đã ẩn bớt)")
+        print(f"\n✅ Trích xuất và lưu vào DB THÀNH CÔNG {saved_count} tài khoản!")
     else:
         print("\n❌ Thất bại: File không hợp lệ hoặc thiếu thông tin.")
 

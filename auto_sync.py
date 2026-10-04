@@ -9,8 +9,9 @@ import parser
 import sys
 sys.stdout.reconfigure(encoding='utf-8')
 
-WATCH_DIR = r"D:\đtb\Auto_Import"
+WATCH_DIR = os.environ.get("AUTO_IMPORT_DIR", r"D:\đtb\Auto_Import")
 PROCESSED_DIR = os.path.join(WATCH_DIR, "Processed")
+ERRORS_DIR = os.path.join(WATCH_DIR, "Errors")
 
 def process_file(filepath):
     print(f"[{datetime.now().strftime('%H:%M:%S')}] Phát hiện file mới: {os.path.basename(filepath)}")
@@ -37,7 +38,13 @@ def process_file(filepath):
         database.init_db()
         count = 0
         for acc in accounts_list:
-            database.save_account(acc['email'], acc['expire'], acc['netflix_id'], acc['secure_netflix_id'])
+            database.save_account(
+                acc['email'],
+                acc['expire'],
+                acc['netflix_id'],
+                acc['secure_netflix_id'],
+                plan=acc.get('plan')
+            )
             count += 1
             
         print(f"  -> ✅ Đã đồng bộ thành công {count} account vào Web!")
@@ -51,6 +58,10 @@ def main():
     print(f"🔄 Đang theo dõi thư mục: {WATCH_DIR}")
     print("Mọi file .txt ném vào đây sẽ tự động được đưa lên Web (Ctrl+C để thoát)\n")
     
+    os.makedirs(WATCH_DIR, exist_ok=True)
+    os.makedirs(PROCESSED_DIR, exist_ok=True)
+    os.makedirs(ERRORS_DIR, exist_ok=True)
+
     while True:
         try:
             # Quét các file .txt trong thư mục
@@ -63,11 +74,14 @@ def main():
                     
                     success = process_file(filepath)
                     
-                    # Chuyển file vào thư mục Processed để không quét lại
-                    dest = os.path.join(PROCESSED_DIR, f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}")
+                    # Chuyển file vào thư mục Processed hoặc Errors để không quét lại
+                    target_dir = PROCESSED_DIR if success else ERRORS_DIR
+                    os.makedirs(target_dir, exist_ok=True)
+                    dest = os.path.join(target_dir, f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}")
                     try:
                         shutil.move(filepath, dest)
-                        print(f"  -> Đã di chuyển vào thư mục Processed.\n")
+                        folder_name = "Processed" if success else "Errors"
+                        print(f"  -> Đã di chuyển vào thư mục {folder_name}.\n")
                     except Exception as e:
                         print(f"  -> ❌ Không thể di chuyển file: {e}")
                         
@@ -78,7 +92,7 @@ def main():
         time.sleep(3)
 
 if __name__ == "__main__":
-    # Đảm bảo thư mục tồn tại
-    if not os.path.exists(PROCESSED_DIR):
-        os.makedirs(PROCESSED_DIR)
+    os.makedirs(WATCH_DIR, exist_ok=True)
+    os.makedirs(PROCESSED_DIR, exist_ok=True)
+    os.makedirs(ERRORS_DIR, exist_ok=True)
     main()
