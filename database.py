@@ -478,7 +478,7 @@ def get_random_available_account(plan_type=None):
         
     return None
 
-def create_request(code, image_url, u7buy_order_id="", reason="", status="pending"):
+def save_request(code, u7buy_order_id, image_url, reason="", status="pending"):
     data = {
         "code": code,
         "u7buy_order_id": u7buy_order_id,
@@ -490,7 +490,7 @@ def create_request(code, image_url, u7buy_order_id="", reason="", status="pendin
         if SUPABASE_KEY:
             get_supabase().table("requests").insert(data).execute()
     except Exception as e:
-        print(f"Supabase create_request error: {e}")
+        print(f"Supabase save_request error: {e}")
     try:
         import sqlite3
         if os.path.exists("accounts.db"):
@@ -501,7 +501,10 @@ def create_request(code, image_url, u7buy_order_id="", reason="", status="pendin
             conn.commit()
             conn.close()
     except Exception as e:
-        print(f"SQLite create_request error: {e}")
+        print(f"SQLite save_request error: {e}")
+
+def create_request(code, image_url, u7buy_order_id="", reason="", status="pending"):
+    return save_request(code=code, u7buy_order_id=u7buy_order_id, image_url=image_url, reason=reason, status=status)
 
 def has_recent_request(code, minutes=5):
     import datetime
