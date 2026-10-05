@@ -30,25 +30,20 @@ def process_file(filepath):
                 
         lines = content.splitlines()
         accounts_list = parser.parse_lines(lines)
-        
+
         if not accounts_list:
             print(f"  -> File trống hoặc không đúng định dạng.")
             return False
-            
-        database.init_db()
-        count = 0
-        for acc in accounts_list:
-            database.save_account(
-                acc['email'],
-                acc['expire'],
-                acc['netflix_id'],
-                acc['secure_netflix_id'],
-                plan=acc.get('plan')
-            )
-            count += 1
-            
-        print(f"  -> ✅ Đã đồng bộ thành công {count} account vào Web!")
-        return True
+
+        from app.services.import_service import import_accounts
+        result = import_accounts(accounts_list)
+
+        if result.is_complete_success:
+            print(f"  -> ✅ Đã đồng bộ thành công {result.saved_count}/{result.total} account vào Web!")
+            return True
+        else:
+            print(f"  -> ⚠️ Đồng bộ chưa hoàn tất: {result.saved_count} đã lưu, {result.failure_count} lỗi ghi database, {result.invalid_count} không hợp lệ.")
+            return False
         
     except Exception as e:
         print(f"  -> ❌ Lỗi xử lý file: {e}")

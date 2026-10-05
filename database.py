@@ -84,22 +84,30 @@ def init_db():
             netflix_id TEXT,
             secure_netflix_id TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            plan TEXT
+            plan TEXT,
+            status TEXT DEFAULT 'usable',
+            assignment_version INTEGER DEFAULT 1
         )""")
-        try:
-            c.execute("ALTER TABLE netflix_accounts ADD COLUMN plan TEXT")
-        except Exception:
-            pass
+        for col_def in ["plan TEXT", "status TEXT DEFAULT 'usable'", "assignment_version INTEGER DEFAULT 1"]:
+            try:
+                c.execute(f"ALTER TABLE netflix_accounts ADD COLUMN {col_def}")
+            except Exception:
+                pass
+
         c.execute("""CREATE TABLE IF NOT EXISTS access_keys (
             code TEXT PRIMARY KEY,
             assigned_email TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            expire_at TEXT
+            expire_at TEXT,
+            plan TEXT DEFAULT 'Premium',
+            assignment_version INTEGER DEFAULT 1
         )""")
-        try:
-            c.execute("ALTER TABLE access_keys ADD COLUMN expire_at TEXT")
-        except Exception:
-            pass
+        for col_def in ["expire_at TEXT", "plan TEXT DEFAULT 'Premium'", "assignment_version INTEGER DEFAULT 1"]:
+            try:
+                c.execute(f"ALTER TABLE access_keys ADD COLUMN {col_def}")
+            except Exception:
+                pass
+
         c.execute("""CREATE TABLE IF NOT EXISTS requests (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             code TEXT,
@@ -107,16 +115,44 @@ def init_db():
             image_url TEXT,
             reason TEXT,
             status TEXT DEFAULT 'pending',
+            blocked_reason TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )""")
-        try:
-            c.execute("ALTER TABLE requests ADD COLUMN u7buy_order_id TEXT")
-        except Exception:
-            pass
-        try:
-            c.execute("ALTER TABLE requests ADD COLUMN reason TEXT")
-        except Exception:
-            pass
+        for col_def in ["u7buy_order_id TEXT", "reason TEXT", "blocked_reason TEXT"]:
+            try:
+                c.execute(f"ALTER TABLE requests ADD COLUMN {col_def}")
+            except Exception:
+                pass
+
+        c.execute("""CREATE TABLE IF NOT EXISTS operations (
+            operation_id TEXT PRIMARY KEY,
+            status TEXT,
+            assigned_email TEXT,
+            detail_code TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )""")
+
+        c.execute("""CREATE TABLE IF NOT EXISTS rotation_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            code TEXT,
+            old_email TEXT,
+            new_email TEXT,
+            actor TEXT,
+            reason TEXT,
+            request_id TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )""")
+
+        c.execute("""CREATE TABLE IF NOT EXISTS events_outbox (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            event_type TEXT NOT NULL,
+            payload TEXT NOT NULL,
+            status TEXT DEFAULT 'pending',
+            retry_count INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            delivered_at TIMESTAMP
+        )""")
+
         conn.commit()
         conn.close()
     except Exception as e:
@@ -163,7 +199,45 @@ def save_account(email, expire_date, netflix_id, secure_netflix_id="", plan=None
         print(f"SQLite save_account error: {e}")
     return success
     
-def delete_account(email):
+def is_account_shared_by_others(email, exclude_code=None):
+    """Kiểm tra xem tài khoản email còn được các Access Code khác tham chiếu không (Shared Mode)"""
+    if not email:
+        return False
+    if SUPABASE_KEY:
+        try:
+            q = get_supabase().table("access_keys").select("code").eq("assigned_email", email)
+            if exclude_code:
+                q = q.neq("code", exclude_code)
+            res = q.limit(1).execute()
+            if res.data:
+                return True
+        except Exception as e:
+            print(f"Supabase is_account_shared_by_others error: {e}")
+    try:
+        import sqlite3
+        db_path = "accounts.db" if os.path.exists("accounts.db") else None
+        if db_path:
+            conn = get_sqlite_conn(db_path)
+            c = conn.cursor()
+            if exclude_code:
+                c.execute("SELECT code FROM access_keys WHERE assigned_email = ? AND code != ? LIMIT 1", (email, exclude_code))
+            else:
+                c.execute("SELECT code FROM access_keys WHERE assigned_email = ? LIMIT 1", (email,))
+            row = c.fetchone()
+            conn.close()
+            return row is not None
+    except Exception as e:
+        print(f"SQLite is_account_shared_by_others error: {e}")
+    return False
+
+def delete_account(email, exclude_code=None, force=False):
+    if not email:
+        return False
+    # Bảo vệ tài khoản dùng chung: Không xóa nếu vẫn còn mã khác tham chiếu
+    if not force and is_account_shared_by_others(email, exclude_code):
+        print(f"Shared account protected: Keeping {email} because other access key(s) still reference it.")
+        return True
+
     success = False
     if SUPABASE_KEY:
         try:
@@ -295,6 +369,37 @@ def get_all_accounts():
     for r in data:
         rows.append((r.get("email"), r.get("expire_date"), r.get("netflix_id"), r.get("secure_netflix_id"), r.get("created_at"), r.get("plan", "Premium")))
     return rows
+
+def get_dashboard_aggregates():
+    """Calculates stock and code counts directly from database without pulling all rows into memory."""
+    stats = {
+        'accounts': {'total': 0, 'Premium': 0, 'Standard': 0, 'Standard_Ads': 0, 'Basic': 0},
+        'codes': {'total': 0, 'Premium': 0, 'Standard': 0, 'Standard_Ads': 0, 'Basic': 0}
+    }
+    try:
+        conn = get_sqlite_conn()
+        c = conn.cursor()
+        c.execute("SELECT plan, COUNT(*) FROM netflix_accounts GROUP BY plan")
+        for plan_name, count in c.fetchall():
+            p = str(plan_name or "Premium")
+            if p in stats['accounts']:
+                stats['accounts'][p] += count
+            else:
+                stats['accounts']['Premium'] += count
+            stats['accounts']['total'] += count
+
+        c.execute("SELECT LENGTH(code), COUNT(*) FROM access_keys GROUP BY LENGTH(code)")
+        for length, count in c.fetchall():
+            if length == 15: stats['codes']['Premium'] += count
+            elif length == 10: stats['codes']['Standard'] += count
+            elif length == 8: stats['codes']['Standard_Ads'] += count
+            elif length == 5: stats['codes']['Basic'] += count
+            else: stats['codes']['Premium'] += count
+            stats['codes']['total'] += count
+        conn.close()
+    except Exception as e:
+        print(f"Aggregation query notice: {e}")
+    return stats
 
 def get_account_by_email(email):
     if SUPABASE_KEY:
@@ -569,7 +674,7 @@ def has_recent_request(code, minutes=5):
     import datetime
     if SUPABASE_KEY:
         try:
-            time_ago = (datetime.datetime.utcnow() - datetime.timedelta(minutes=minutes)).isoformat()
+            time_ago = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=minutes)).isoformat()
             response = get_supabase().table("requests").select("id").eq("code", code).gt("created_at", time_ago).limit(1).execute()
             if response.data is not None:
                 return bool(response.data)
@@ -592,7 +697,7 @@ def get_today_rotation_count(code):
     import datetime
     if SUPABASE_KEY:
         try:
-            twenty_four_hours_ago = (datetime.datetime.utcnow() - datetime.timedelta(hours=24)).isoformat()
+            twenty_four_hours_ago = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=24)).isoformat()
             response = get_supabase().table("requests") \
                 .select("id, status") \
                 .eq("code", code) \
@@ -622,7 +727,7 @@ def get_today_rotation_count(code):
 def get_pending_requests():
     if SUPABASE_KEY:
         try:
-            response = get_supabase().table("requests").select("*").eq("status", "pending").order("created_at", desc=True).execute()
+            response = get_supabase().table("requests").select("*").ilike("status", "pending%").order("created_at", desc=True).execute()
             if response.data is not None:
                 return response.data
         except Exception as e:
@@ -632,7 +737,7 @@ def get_pending_requests():
         if os.path.exists("accounts.db"):
             conn = get_sqlite_conn("accounts.db")
             c = conn.cursor()
-            c.execute("SELECT id, code, u7buy_order_id, image_url, reason, status, created_at FROM requests WHERE status = 'pending' ORDER BY created_at DESC")
+            c.execute("SELECT id, code, u7buy_order_id, image_url, reason, status, created_at FROM requests WHERE status LIKE 'pending%' ORDER BY created_at DESC")
             rows = c.fetchall()
             conn.close()
             res = []
@@ -744,7 +849,7 @@ def get_request_by_id(req_id):
 def cleanup_old_requests():
     import datetime
     try:
-        old_date = (datetime.datetime.utcnow() - datetime.timedelta(days=7)).isoformat()
+        old_date = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=7)).isoformat()
         if SUPABASE_KEY:
             response = get_supabase().table("requests").select("*").lt("created_at", old_date).execute()
             old_requests = response.data if response.data else []
@@ -759,60 +864,12 @@ def cleanup_old_requests():
     except Exception as e:
         print(f"Lỗi cleanup requests: {e}")
 
-def create_access_key(code, expire_at=None):
-    if len(code) == 15:
-        plan_type = "Premium"
-    elif len(code) == 10:
-        plan_type = "Standard"
-    elif len(code) == 8:
-        plan_type = "Standard_Ads"
-    elif len(code) == 5:
-        plan_type = "Basic"
-    else:
-        plan_type = "Premium"
-    
-    email = get_random_available_account(plan_type)
-    if not email:
-        return False, f"No available {plan_type} cookies left in the vault."
-        
-    if get_access_key(code):
-        return False, "This access key already exists."
-        
-    saved = False
-    if SUPABASE_KEY:
-        try:
-            data = {
-                "code": code,
-                "assigned_email": email
-            }
-            if expire_at:
-                data["expire_at"] = expire_at
-            get_supabase().table("access_keys").insert(data).execute()
-            saved = True
-        except Exception as e:
-            print(f"Supabase create_access_key error: {e}")
-
-    try:
-        import sqlite3
-        conn = get_sqlite_conn("accounts.db")
-        c = conn.cursor()
-        c.execute("""CREATE TABLE IF NOT EXISTS access_keys (
-            code TEXT PRIMARY KEY,
-            assigned_email TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            expire_at TEXT
-        )""")
-        c.execute("INSERT OR REPLACE INTO access_keys (code, assigned_email, expire_at) VALUES (?, ?, ?)",
-                  (code, email, expire_at))
-        conn.commit()
-        conn.close()
-        saved = True
-    except Exception as e:
-        print(f"SQLite create_access_key error: {e}")
-
-    if saved:
+def create_access_key(code, expire_at=None, plan_type=None):
+    from app.services.allocation_service import allocate
+    res = allocate(code, plan=plan_type, expire_at=expire_at)
+    if res.is_success:
         return True, "Success"
-    return False, "Failed to save access key to database."
+    return False, res.message or f"No available {plan_type or 'Premium'} cookies left in the vault."
 
 def get_access_key(code):
     if SUPABASE_KEY:
@@ -826,14 +883,12 @@ def get_access_key(code):
         except Exception as e:
             print(f"Supabase get_access_key transport notice: {e}")
     try:
-        import sqlite3
-        if os.path.exists("accounts.db"):
-            conn = get_sqlite_conn("accounts.db")
-            c = conn.cursor()
-            c.execute("SELECT code, assigned_email, expire_at FROM access_keys WHERE code = ?", (code,))
-            r = c.fetchone()
-            conn.close()
-            return r
+        conn = get_sqlite_conn()
+        c = conn.cursor()
+        c.execute("SELECT code, assigned_email, expire_at FROM access_keys WHERE code = ?", (code,))
+        r = c.fetchone()
+        conn.close()
+        return r
     except Exception:
         pass
     return None
@@ -848,45 +903,9 @@ def get_all_access_keys():
     return rows
 
 def rotate_access_key(code):
-    if len(code) == 15:
-        plan_type = "Premium"
-    elif len(code) == 10:
-        plan_type = "Standard"
-    elif len(code) == 8:
-        plan_type = "Standard_Ads"
-    elif len(code) == 5:
-        plan_type = "Basic"
-    else:
-        plan_type = "Premium"
-    
-    current_key = get_access_key(code)
-    current_email = current_key[1] if current_key and len(current_key) > 1 else None
-
-    new_email = get_random_available_account(plan_type, exclude_email=current_email)
-    if not new_email:
-        return False
-        
-    data = {"assigned_email": new_email}
-    success = False
-    if SUPABASE_KEY:
-        try:
-            get_supabase().table("access_keys").update(data).eq("code", code).execute()
-            success = True
-        except Exception as e:
-            print(f"Supabase Rotate error: {e}")
-
-    try:
-        import sqlite3
-        conn = get_sqlite_conn("accounts.db")
-        c = conn.cursor()
-        c.execute("UPDATE access_keys SET assigned_email = ? WHERE code = ?", (new_email, code))
-        conn.commit()
-        conn.close()
-        success = True
-    except Exception as e:
-        print(f"SQLite Rotate error: {e}")
-
-    return success
+    from app.services.allocation_service import replace
+    res = replace(code=code, actor="legacy:rotate_access_key")
+    return res.is_success
 
 def delete_access_key(code):
     success = False

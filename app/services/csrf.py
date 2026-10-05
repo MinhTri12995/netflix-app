@@ -44,11 +44,18 @@ def init_csrf(app):
         if not is_admin_route:
             return
 
-        # Trừ route API check_and_import nếu dùng token xác thực riêng (nếu có)
-        if request.path.endswith("/check_and_import") and request.headers.get("X-API-Key"):
-            return
+        has_admin_session = bool(session.get("logged_in"))
 
-        # Lấy token từ form data hoặc request header
+        # F11 fix: Nếu không có admin session, kiểm tra xác thực bằng X-API-Key cho route check_and_import
+        if request.path.endswith("/check_and_import") and not has_admin_session:
+            from app.config import Config
+            api_key = request.headers.get("X-API-Key")
+            expected_key = getattr(Config, "ADMIN_API_KEY", "") or os.environ.get("ADMIN_API_KEY", "")
+            if expected_key and api_key and hmac.compare_digest(api_key, expected_key):
+                return
+            abort(401, description="Unauthorized: Missing or invalid API key.")
+
+        # Khi có admin session, BẮT BUỘC phải có CSRF token hợp lệ (không cho phép X-API-Key bypass)
         token = request.form.get("csrf_token") or request.headers.get("X-CSRF-Token")
 
         if not token or not validate_csrf_token(token):

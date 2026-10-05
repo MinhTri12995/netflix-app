@@ -38,15 +38,22 @@ def api_health():
 
     is_healthy = (sqlite_status == "OK") and (supabase_status in ["OK", "DISABLED"])
 
+    from flask import session
+    if session.get("logged_in"):
+        return jsonify({
+            "status": "healthy" if is_healthy else "degraded",
+            "sqlite": sqlite_status,
+            "supabase": supabase_status,
+            "inventory": {
+                "accounts": total_accounts,
+                "access_keys": total_keys
+            },
+            "version": "2.0.0-pro"
+        }), (200 if is_healthy else 503)
+
+    # Public health check returns minimal status without internal metric leaks
     return jsonify({
-        "status": "healthy" if is_healthy else "degraded",
-        "sqlite": sqlite_status,
-        "supabase": supabase_status,
-        "inventory": {
-            "accounts": total_accounts,
-            "access_keys": total_keys
-        },
-        "version": "2.0.0-pro"
+        "status": "healthy" if is_healthy else "degraded"
     }), (200 if is_healthy else 503)
 
 @api_bp.route("/api/check_and_import", methods=["POST"])
@@ -77,8 +84,13 @@ def check_and_import():
 
             import_expire = expire if expire and expire != "N/A" else "2099-12-31"
 
-            database.save_account(import_email, import_expire, netflix_id, secure_netflix_id, final_plan)
-            return jsonify({"success": True, "status": "LIVE", "plan": final_plan, "email": import_email})
+            saved = database.save_account(import_email, import_expire, netflix_id, secure_netflix_id, final_plan)
+            if saved:
+                return jsonify({"success": True, "status": "LIVE", "plan": final_plan, "email": import_email})
+            else:
+                return jsonify({"success": False, "status": "ERROR", "error": "Database write failed."}), 500
+        elif status == "UNKNOWN":
+            return jsonify({"success": False, "status": "UNKNOWN", "error": "Check inconclusive due to network or server response. Account not imported."})
         elif status == "ERROR":
             return jsonify({"success": False, "status": "ERROR", "error": "Proxy or API error. Retry later."})
         else:

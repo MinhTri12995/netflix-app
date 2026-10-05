@@ -8,7 +8,24 @@ _ip_buckets = defaultdict(list)
 _last_cleanup = time.time()
 
 def get_client_ip(request) -> str:
-    """Trích xuất địa chỉ IP thực tế của client kể cả khi đứng sau reverse proxy/Cloudflare."""
+    """
+    Trích xuất địa chỉ IP của client an toàn (F12 fix).
+    Chỉ tin cậy header proxy (CF-Connecting-IP, X-Forwarded-For) khi kết nối
+    xuất phát từ danh sách TRUSTED_PROXIES được cấu hình rõ ràng.
+    Đối với peer không tin cậy, luôn sử dụng trực tiếp request.remote_addr.
+    """
+    import os
+    peer_ip = (request.remote_addr or "127.0.0.1").strip()
+
+    from app.config import Config
+    trusted_proxies = getattr(Config, "TRUSTED_PROXIES", None)
+    if trusted_proxies is None:
+        raw_env = os.environ.get("TRUSTED_PROXIES", "")
+        trusted_proxies = [p.strip() for p in raw_env.split(",") if p.strip()]
+
+    if not trusted_proxies or peer_ip not in trusted_proxies:
+        return peer_ip
+
     cf_ip = request.headers.get("CF-Connecting-IP")
     if cf_ip:
         return cf_ip.strip()
@@ -17,7 +34,7 @@ def get_client_ip(request) -> str:
     if x_forwarded:
         return x_forwarded.split(",")[0].strip()
 
-    return (request.remote_addr or "127.0.0.1").strip()
+    return peer_ip
 
 def check_rate_limit(key: str, max_requests: int, window_seconds: int) -> Tuple[bool, int]:
     """

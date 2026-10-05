@@ -121,7 +121,7 @@ def normalize_plan_name(raw_plan_name, fallback_text=""):
         elif any(kw in text_orig for kw in ['ベーシック']):
             return "Basic"
             
-    return "Premium"
+    return None
 
 def is_date_expired(date_str):
     if not date_str or str(date_str).strip() in ['N/A', 'None', '', 'null']:
@@ -212,18 +212,29 @@ def check_web_account_status_and_plan(cookies, proxy_dict):
             timeout=15,
             verify=True
         )
+        if response.status_code in [403, 429] or response.status_code >= 500:
+            return "ERROR", None
+        if not response.ok:
+            return "ERROR", None
+
         url_lower = response.url.lower()
-        html = response.text
+        html = response.text or ""
+        if not html.strip():
+            return "ERROR", None
         text_lower = html.lower()
-        
+
+        # 0. Kiểm tra trang lạ / ISP block / Captive portal
+        if "netflix" not in url_lower and "netflix" not in text_lower:
+            return "ERROR", None
+
         # 1. Chuyển hướng về Login, ClearCookies, hoặc Signup -> DIE (Cookie hết hạn)
         if "netflix.com/login" in url_lower or "/clearcookies" in url_lower or "/signup" in url_lower:
             return "DIE", None
-            
+
         # 2. URL chứa trang cập nhật thanh toán -> DIE (Lỗi Payment)
         if any(kw in url_lower for kw in PAYMENT_URL_KEYWORDS):
             return "DIE", None
-            
+
         # 3. Flags thanh toán / cấu trúc cờ nợ cước -> DIE
         if any(p.search(html) for p in PAYMENT_FLAG_PATTERNS):
             return "DIE", None
@@ -231,13 +242,25 @@ def check_web_account_status_and_plan(cookies, proxy_dict):
         # 4. Nội dung HTML chứa thông báo lỗi thanh toán / tạm hoãn / hết hạn -> DIE
         if any(kw in text_lower for kw in PAYMENT_DIE_KEYWORDS):
             return "DIE", None
-            
+
         # 5. Kiểm tra ngày hết hạn
         date_m = re.search(r'nextBillingDate"\s*:\s*\{"fieldType":"String","value":"([^"]+)"\}', html)
         if date_m:
             expire_date = date_m.group(1).replace(r'\x20', ' ').strip()
             if is_date_expired(expire_date):
                 return "DIE", None
+
+        # Xác nhận có dấu hiệu trang Account thực sự của Netflix
+        has_account_markers = (
+            "youraccount" in url_lower or
+            "nextbillingdate" in text_lower or
+            "localizedplanname" in text_lower or
+            "planname" in text_lower or
+            "membership" in text_lower or
+            "plan:" in text_lower
+        )
+        if not has_account_markers:
+            return "ERROR", None
 
         # 6. Kiểm tra gói cước nếu còn sống (LIVE)
         plan_raw = None
@@ -249,12 +272,10 @@ def check_web_account_status_and_plan(cookies, proxy_dict):
                 plan_raw = codecs.decode(plan_raw, 'unicode_escape')
             except Exception:
                 pass
-                
+
         final_plan = normalize_plan_name(plan_raw, text_lower)
-        if not final_plan:
-            final_plan = "Premium"
-            
         return "LIVE", final_plan
+
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.ProxyError):
         return "ERROR", None
     except Exception as e:
@@ -290,25 +311,24 @@ def check_account_live(netflix_id, secure_netflix_id="", check_payment=True):
     """
     Kiem tra toan dien ca Token API va Web HTML.
     Tra ve (status, plan) trong do status la 1 trong 3 trang thai: 'LIVE', 'DIE', 'UNKNOWN'.
-    Tuyet doi khong gan 'LIVE' khi gap loi mang/timeout/proxy.
+    Tuyet doi khong gan 'LIVE' khi gap loi mang/timeout/proxy/5xx.
     """
     cookies = {"NetflixId": netflix_id}
     if secure_netflix_id:
         cookies["SecureNetflixId"] = secure_netflix_id
-    
+
     proxy_dict = proxies_list.get_random_proxy()
-    
+
     # 1. Kiem tra kha nang tao Token dang nhap truc tiep
     plan_api = _get_token_and_plan_api(netflix_id, secure_netflix_id, proxy_dict)
-    
+
     # Retry voi ket noi truc tiep (Direct) neu proxy bi loi
     if plan_api == "ERROR":
         plan_api = _get_token_and_plan_api(netflix_id, secure_netflix_id, None)
-        
+
     if plan_api is None:
         return "DIE", None
     elif plan_api == "API_DEAD":
-        # API khong phan hoi (404), kiem tra qua Web
         web_status, web_plan = check_web_account_status_and_plan(cookies, proxy_dict)
         if web_status == "ERROR":
             web_status, web_plan = check_web_account_status_and_plan(cookies, None)
@@ -316,35 +336,33 @@ def check_account_live(netflix_id, secure_netflix_id="", check_payment=True):
             return "UNKNOWN", None
         return web_status, web_plan
     elif plan_api == "ERROR":
-        # Token API gap loi mang/5xx ca proxy va direct, thu kiem tra qua Web
         web_status, web_plan = check_web_account_status_and_plan(cookies, proxy_dict)
         if web_status == "ERROR":
             web_status, web_plan = check_web_account_status_and_plan(cookies, None)
         if web_status == "DIE":
             return "DIE", None
         elif web_status == "LIVE":
-            return "LIVE", web_plan or "Premium"
+            return "LIVE", web_plan
         else:
-            # Ca Token API va Web deu loi mang -> UNKNOWN (khong coi la LIVE)
             return "UNKNOWN", None
-        
+
     # 2. Kiem tra trang Web YourAccount de tranh loi Payment Hold
     if check_payment:
         web_status, web_plan = check_web_account_status_and_plan(cookies, proxy_dict)
         if web_status == "ERROR":
             web_status, web_plan = check_web_account_status_and_plan(cookies, None)
-            
+
         if web_status == "DIE":
             return "DIE", None
         elif web_status == "LIVE":
-            final_plan = web_plan if web_plan else (plan_api if plan_api != "VALID" else "Premium")
+            final_plan = web_plan if web_plan else (plan_api if plan_api != "VALID" else None)
             return "LIVE", final_plan
         elif web_status == "ERROR":
-            # Khi Token API da thanh cong (plan_api hop le), nhung kiem tra web gap timeout proxy
-            # Giu trang thai LIVE vi token thuc te da sinh thanh cong
-            return "LIVE", plan_api if plan_api != "VALID" else "Premium"
-            
-    return "LIVE", plan_api if plan_api != "VALID" else "Premium"
+            # Khi web check YourAccount gặp lỗi 500/403/timeout -> UNKNOWN, không tự động đoán LIVE/Premium!
+            return "UNKNOWN", None
+
+    final_plan = plan_api if plan_api != "VALID" else None
+    return "LIVE", final_plan
 
 
 def _get_token_and_plan_api(netflix_id, secure_netflix_id="", proxy_dict=None):
@@ -417,9 +435,9 @@ def _get_token_and_plan_api(netflix_id, secure_netflix_id="", proxy_dict=None):
             token = None
             
         if not token:
-            return None
-            
-        return normalize_plan_name("", data_compact)
+            return "ERROR"
+
+        return normalize_plan_name("", data_compact) or "VALID"
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.ProxyError):
         return "ERROR"
     except Exception as e:

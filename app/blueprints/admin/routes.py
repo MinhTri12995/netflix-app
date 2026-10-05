@@ -45,25 +45,7 @@ def dashboard():
     all_accounts = database.get_all_accounts()
     all_access_keys = database.get_all_access_keys()
 
-    stats = {
-        'accounts': {'total': len(all_accounts), 'Premium': 0, 'Standard': 0, 'Standard_Ads': 0, 'Basic': 0},
-        'codes': {'total': len(all_access_keys), 'Premium': 0, 'Standard': 0, 'Standard_Ads': 0, 'Basic': 0}
-    }
-
-    for code in all_access_keys:
-        length = len(code[0])
-        if length == 15: stats['codes']['Premium'] += 1
-        elif length == 10: stats['codes']['Standard'] += 1
-        elif length == 8: stats['codes']['Standard_Ads'] += 1
-        elif length == 5: stats['codes']['Basic'] += 1
-        else: stats['codes']['Premium'] += 1
-
-    for acc in all_accounts:
-        plan = str(acc[5]).strip() if len(acc) > 5 and acc[5] else "Premium"
-        if plan in stats['accounts']:
-            stats['accounts'][plan] += 1
-        else:
-            stats['accounts']['Premium'] += 1
+    stats = database.get_dashboard_aggregates()
 
     # Filter keys
     if search_code:
@@ -140,25 +122,23 @@ def dashboard():
 @login_required
 def generate_key():
     database.init_db()
-    plan_type = request.form.get("plan_type", "basic")
+    from app.services.allocation_service import generate_secure_code
+    plan_raw = request.form.get("plan_type", "basic").lower()
     duration = int(request.form.get("duration", "1"))
 
-    if plan_type == 'premium':
-        length = 15
-    elif plan_type == 'standard':
-        length = 10
-    elif plan_type == 'standard_ads':
-        length = 8
-    else:
-        length = 5
-        plan_type = 'basic'
+    norm_plan = {
+        'premium': 'Premium',
+        'standard': 'Standard',
+        'standard_ads': 'Standard_Ads',
+        'basic': 'Basic'
+    }.get(plan_raw, 'Premium')
 
-    code = ''.join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(length))
+    code = generate_secure_code(norm_plan, length=16)
     expire_at = (datetime.now() + timedelta(days=30 * duration)).strftime("%Y-%m-%d")
 
-    success, msg = database.create_access_key(code, expire_at)
+    success, msg = database.create_access_key(code, expire_at, plan_type=norm_plan)
     if success:
-        flash(f"Đã tạo thành công mã {plan_type.upper()} ({duration} tháng): {code}", "success")
+        flash(f"Đã tạo thành công mã {norm_plan.upper()} ({duration} tháng): {code}", "success")
     else:
         flash(f"Lỗi tạo mã: {msg}", "error")
     return redirect(url_for("admin.dashboard"))
@@ -414,39 +394,19 @@ def filter_duplicates():
 @login_required
 def accept_request(req_id):
     database.init_db()
-    req = database.get_request_by_id(req_id)
-    if not req:
-        flash("Lỗi: Không tìm thấy yêu cầu khiếu nại này.", "error")
-        return redirect(url_for("admin.dashboard"))
-
-    if req.get("status") != "pending":
-        flash(f"⚠️ Yêu cầu #{req_id} đã được xử lý trước đó (Trạng thái: {req.get('status')}).", "warning")
-        return redirect(url_for("admin.dashboard"))
-
-    code = (req.get("code") or "").strip()
-    if not code:
-        flash("Lỗi: Yêu cầu không có mã Access Code hợp lệ.", "error")
-        return redirect(url_for("admin.dashboard"))
-
-    acc_key_row = database.get_access_key(code)
-    if not acc_key_row:
-        flash(f"Lỗi: Không tìm thấy Access Code {code} trong cơ sở dữ liệu.", "error")
-        return redirect(url_for("admin.dashboard"))
-
-    old_email = acc_key_row[1] if len(acc_key_row) > 1 else ""
-
-    # BƯỚC 1: Xoay sang tài khoản dự phòng mới TRƯỚC
-    rotated = database.rotate_access_key(code)
-    if rotated:
-        # BƯỚC 2: Xoay thành công mới xóa tài khoản lỗi cũ
-        if old_email:
-            database.delete_account(old_email)
-        # BƯỚC 3: Cập nhật duy nhất yêu cầu này
-        database.update_request_status(req_id, "accepted")
-        flash(f"✅ Đã duyệt và đổi tài khoản mới thành công cho code {code}.", "success")
+    from app.services.allocation_service import replace
+    op_id = f"admin_accept_{req_id}"
+    res = replace(request_id=req_id, actor="admin", operation_id=op_id)
+    if res.is_success:
+        flash(f"✅ Đã duyệt và đổi tài khoản mới thành công.", "success")
+    elif res.status == "already_processed":
+        flash(f"⚠️ Yêu cầu #{req_id} đã được xử lý trước đó.", "warning")
+    elif res.status == "out_of_stock":
+        flash(f"⚠️ Kho hết Cookie dự phòng cho gói của yêu cầu này. Đã giữ lại yêu cầu trong hàng chờ!", "error")
+    elif res.status == "limit_exceeded":
+        flash("⚠️ Mã này đã đạt giới hạn đổi trong 24 giờ (tối đa 5 lần).", "error")
     else:
-        # Kho hết tài khoản dự phòng -> Giữ nguyên trạng thái pending, KHÔNG xóa tài khoản cũ!
-        flash(f"⚠️ Kho hết Cookie dự phòng cho gói của mã {code}. Không thể đổi tài khoản lúc này!", "error")
+        flash(f"Lỗi: {res.message}", "error")
 
     return redirect(url_for("admin.dashboard"))
 
@@ -493,3 +453,67 @@ def cleanup_expired_keys_route():
     else:
         flash("ℹ️ Không có mã Access Code nào đã hết hạn cần dọn dẹp.", "info")
     return redirect(url_for("admin.dashboard"))
+
+@admin_bp.route("/orders", methods=["GET"])
+@login_required
+def orders_dashboard():
+    database.init_db()
+    from app.services.order_service import list_orders
+    status_filter = request.args.get("status")
+    orders = list_orders(status_filter=status_filter)
+    csrf_token = generate_csrf_token()
+    return render_template("admin/orders.html", orders=orders, csrf_token=csrf_token)
+
+@admin_bp.route("/orders/create", methods=["POST"])
+@login_required
+def create_order_route():
+    database.init_db()
+    from app.services.order_service import create_or_update_order
+    order_id = request.form.get("order_id", "").strip()
+    code = request.form.get("code", "").strip()
+    status = request.form.get("status", "verified").strip()
+    admin_user = session.get("user", "admin")
+
+    ok, msg = create_or_update_order(order_id=order_id, code=code, status=status, actor=f"admin:{admin_user}")
+    if ok:
+        flash(f"✅ Đã lưu thành công đơn hàng {order_id} cho mã {code}.", "success")
+    else:
+        flash(f"Lỗi: Không thể lưu đơn hàng ({msg}).", "error")
+
+    return redirect(url_for("admin.orders_dashboard"))
+
+@admin_bp.route("/orders/import_csv", methods=["POST"])
+@login_required
+def import_orders_csv_route():
+    database.init_db()
+    from app.services.order_service import import_orders_csv
+    admin_user = session.get("user", "admin")
+
+    csv_text = request.form.get("csv_text", "").strip()
+    file = request.files.get("csv_file")
+
+    if file and file.filename:
+        try:
+            csv_text = file.read().decode("utf-8-sig", errors="ignore")
+        except Exception as e:
+            flash(f"Lỗi đọc tệp CSV: {e}", "error")
+            return redirect(url_for("admin.orders_dashboard"))
+
+    if not csv_text:
+        flash("Vui lòng tải lên tệp CSV hoặc nhập nội dung văn bản CSV.", "error")
+        return redirect(url_for("admin.orders_dashboard"))
+
+    result = import_orders_csv(csv_text, actor=f"admin:{admin_user}")
+    success_count = result.get("success_count", 0)
+    errors = result.get("errors", [])
+
+    if success_count > 0:
+        flash(f"✅ Đã nhập thành công {success_count} đơn hàng.", "success")
+    if errors:
+        err_samples = "; ".join([f"Dòng {e.get('row')}: {e.get('error')}" for e in errors[:3]])
+        if len(errors) > 3:
+            err_samples += f" (và {len(errors) - 3} lỗi khác)"
+        flash(f"⚠️ Có {len(errors)} dòng lỗi: {err_samples}", "warning")
+
+    return redirect(url_for("admin.orders_dashboard"))
+

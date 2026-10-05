@@ -279,9 +279,15 @@
             {% endwith %}
             <form action="/login" method="POST" style="display: flex; flex-direction: column; gap: 15px;">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <input type="text" name="email" class="search-box" placeholder="Email or Username" required style="margin-bottom: 0;">
-                <input type="password" name="password" class="search-box" placeholder="Password" required style="margin-bottom: 0;">
-                <button type="submit" style="width: 100%;">Login</button>
+                <div>
+                    <label for="admin-email" style="display: block; margin-bottom: 6px; font-size: 0.85rem; color: var(--text-sub);">Email or Username</label>
+                    <input id="admin-email" type="text" name="email" class="search-box" placeholder="admin@example.com" autocomplete="username" required style="margin-bottom: 0;">
+                </div>
+                <div>
+                    <label for="admin-password" style="display: block; margin-bottom: 6px; font-size: 0.85rem; color: var(--text-sub);">Password</label>
+                    <input id="admin-password" type="password" name="password" class="search-box" placeholder="••••••••" autocomplete="current-password" required style="margin-bottom: 0;">
+                </div>
+                <button type="submit" style="width: 100%; cursor: pointer;">Login</button>
             </form>
         </div>
     </div>

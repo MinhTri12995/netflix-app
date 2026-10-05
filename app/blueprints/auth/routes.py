@@ -9,6 +9,15 @@ def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not session.get("logged_in"):
+            # Cho phép API key hợp lệ cho các route background sync
+            if request.path.endswith("/check_and_import"):
+                import hmac
+                import os
+                api_key = request.headers.get("X-API-Key")
+                expected = getattr(Config, "ADMIN_API_KEY", "") or os.environ.get("ADMIN_API_KEY", "")
+                if expected and api_key and hmac.compare_digest(api_key, expected):
+                    return f(*args, **kwargs)
+                return {"success": False, "error": "Unauthorized: Missing or invalid API key"}, 401
             return redirect(url_for("auth.login", next=request.url))
         return f(*args, **kwargs)
     return decorated_function

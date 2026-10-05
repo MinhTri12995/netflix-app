@@ -226,6 +226,14 @@
     @keyframes modalFade { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
     .close-btn { position: absolute; right: 20px; top: 18px; color: #888; font-size: 24px; cursor: pointer; }
     .close-btn:hover { color: #fff; }
+
+    @media (max-width: 768px) {
+        .container { width: 100% !important; padding: 0 10px !important; margin-top: 15px !important; margin-bottom: 30px !important; }
+        .glass-panel { padding: 16px !important; border-radius: 12px !important; }
+        table { font-size: 0.8rem !important; }
+        th, td { padding: 8px 10px !important; }
+        .header h1 { font-size: 1.8rem !important; }
+    }
 </style>
 <script>
     function copyCookie(text, btn) {
@@ -272,6 +280,7 @@
             <h1>Admin Dashboard</h1>
             <p>Account & Access Key Management System</p>
             <a href="/" style="color: #3498db; text-decoration: none; margin-right: 15px;">[Back to Home]</a>
+            <a href="/admin/orders" style="color: #2ecc71; text-decoration: none; margin-right: 15px;">[📦 Verified Orders]</a>
             <a href="/admin/logout" style="color: #e74c3c; text-decoration: none;">[Logout]</a>
         </div>
 
@@ -340,12 +349,21 @@
                 <span style="font-size: 0.85rem; color: #2ecc71; background: rgba(46, 204, 113, 0.15); border: 1px solid rgba(46, 204, 113, 0.3); padding: 5px 12px; border-radius: 6px;">🤖 Auto-Replace: Too Many People | Manual: Other Errors</span>
             </div>
             
+            <div style="display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap;">
+                <button type="button" class="btn-req-filter" onclick="filterRequests('all', this)" style="padding: 5px 12px; font-size: 0.8rem; border-radius: 6px; background: rgba(255,255,255,0.2); color: #fff; border: 1px solid rgba(255,255,255,0.25); cursor: pointer;">All</button>
+                <button type="button" class="btn-req-filter" onclick="filterRequests('pending', this)" style="padding: 5px 12px; font-size: 0.8rem; border-radius: 6px; background: rgba(52, 152, 219, 0.2); color: #3498db; border: 1px solid rgba(52, 152, 219, 0.3); cursor: pointer;">Review Queue</button>
+                <button type="button" class="btn-req-filter" onclick="filterRequests('pending_out_of_stock', this)" style="padding: 5px 12px; font-size: 0.8rem; border-radius: 6px; background: rgba(231, 76, 60, 0.2); color: #e74c3c; border: 1px solid rgba(231, 76, 60, 0.3); cursor: pointer;">Out of Stock</button>
+                <button type="button" class="btn-req-filter" onclick="filterRequests('pending_card_mismatch', this)" style="padding: 5px 12px; font-size: 0.8rem; border-radius: 6px; background: rgba(243, 156, 18, 0.2); color: #f39c12; border: 1px solid rgba(243, 156, 18, 0.3); cursor: pointer;">Card Mismatch</button>
+                <button type="button" class="btn-req-filter" onclick="filterRequests('pending_unverified_order', this)" style="padding: 5px 12px; font-size: 0.8rem; border-radius: 6px; background: rgba(155, 89, 182, 0.2); color: #9b59b6; border: 1px solid rgba(155, 89, 182, 0.3); cursor: pointer;">Unverified</button>
+            </div>
+            
             <div style="overflow-x: auto;">
-                <table>
+                <table id="pendingRequestsTable">
                     <thead>
                         <tr>
                             <th>U7BUY Purchase ID</th>
                             <th>Access Code</th>
+                            <th>Status</th>
                             <th>Reason / Note</th>
                             <th>Proof Screenshot</th>
                             <th>Time</th>
@@ -354,9 +372,20 @@
                     </thead>
                     <tbody>
                         {% for req in pending_requests %}
-                        <tr>
+                        <tr class="req-row" data-status="{{ req.status }}">
                             <td style="font-weight: bold; font-family: monospace; font-size: 1.1rem; color: #3498db;">{{ req.u7buy_order_id if req.u7buy_order_id else 'N/A' }}</td>
                             <td style="font-weight: bold; font-family: monospace; font-size: 1.25rem; color: #f1c40f; letter-spacing: 1px;">{{ req.code }}</td>
+                            <td>
+                                {% if req.status == 'pending_out_of_stock' %}
+                                <span style="background: rgba(231, 76, 60, 0.25); color: #e74c3c; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">Out of Stock</span>
+                                {% elif req.status == 'pending_card_mismatch' %}
+                                <span style="background: rgba(243, 156, 18, 0.25); color: #f39c12; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">Card Mismatch</span>
+                                {% elif req.status == 'pending_unverified_order' %}
+                                <span style="background: rgba(155, 89, 182, 0.25); color: #9b59b6; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">Unverified</span>
+                                {% else %}
+                                <span style="background: rgba(52, 152, 219, 0.25); color: #3498db; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">Pending Review</span>
+                                {% endif %}
+                            </td>
                             <td style="font-size: 0.85rem; color: #ddd; max-width: 160px; word-break: break-word;">{{ req.reason if req.reason else 'Error Report' }}</td>
                             <td>
                                 {% if req.image_url %}
@@ -387,7 +416,7 @@
                             </td>
                         </tr>
                         {% else %}
-                        <tr><td colspan="6" style="text-align: center; color: #666; padding: 20px;">No pending replacement requests.</td></tr>
+                        <tr><td colspan="7" style="text-align: center; color: #666; padding: 20px;">No pending replacement requests.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -568,7 +597,11 @@
                         <tr>
                             <td style="font-weight: 600;">{{ acc[0] }}</td>
                             <td style="font-weight: bold; color: {% if 'Premium' in (acc[5] or '') %}#f1c40f{% else %}#bdc3c7{% endif %};">{{ acc[5] if acc[5] else 'Unknown' }}</td>
-                            <td style="font-size: 0.8rem; color: #666; font-family: monospace; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ acc[2] }}">{{ acc[2] }}</td>
+                            <td style="font-size: 0.8rem; font-family: monospace; max-width: 200px;">
+                                <span class="masked-cookie" style="cursor: pointer; background: rgba(255,255,255,0.06); padding: 4px 8px; border-radius: 4px; display: inline-block; color: #a0a5b8;" onclick="toggleMask(this, '{{ acc[2] }}')" title="Click to reveal / hide cookie" data-revealed="false">
+                                    •••••••••••••••• (click to reveal)
+                                </span>
+                            </td>
                             <td style="display: flex; gap: 8px;">
                                 <form action="/admin/delete/{{ acc[0] }}" method="POST" style="margin: 0;" onsubmit="return confirm('Delete this cookie?');">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -626,6 +659,39 @@
             btn.innerHTML = '⏳ Processing...';
             btn.style.pointerEvents = 'none';
             btn.style.opacity = '0.7';
+        }
+
+        function toggleMask(el, fullVal) {
+            if (el.dataset.revealed === "true") {
+                el.innerText = "•••••••••••••••• (click to reveal)";
+                el.dataset.revealed = "false";
+                el.style.color = "#a0a5b8";
+            } else {
+                el.innerText = fullVal;
+                el.dataset.revealed = "true";
+                el.style.color = "#2ecc71";
+            }
+        }
+
+        function filterRequests(statusType, btn) {
+            document.querySelectorAll('.btn-req-filter').forEach(b => {
+                b.style.opacity = '0.6';
+            });
+            if (btn) btn.style.opacity = '1.0';
+
+            const rows = document.querySelectorAll('.req-row');
+            rows.forEach(r => {
+                const status = r.dataset.status || '';
+                if (statusType === 'all') {
+                    r.style.display = '';
+                } else if (statusType === 'pending') {
+                    r.style.display = (status === 'pending') ? '' : 'none';
+                } else if (status === statusType) {
+                    r.style.display = '';
+                } else {
+                    r.style.display = 'none';
+                }
+            });
         }
 
         let isScanPaused = false;

@@ -77,3 +77,11 @@ class Config:
     # 7. Server Settings
     PORT = int(os.environ.get("PORT", 5000))
     DEBUG = os.environ.get("FLASK_DEBUG", "False").lower() in ("true", "1", "yes")
+
+    # 8. Feature Flags & Safety Controls
+    AUTO_APPROVAL_ENABLED = os.environ.get("AUTO_APPROVAL_ENABLED", "false").lower() in ("true", "1", "yes")
+
+    # 9. API Security & Trusted Proxies (F11, F12)
+    ADMIN_API_KEY = os.environ.get("ADMIN_API_KEY", "")
+    _raw_proxies = os.environ.get("TRUSTED_PROXIES", "127.0.0.1,::1")
+    TRUSTED_PROXIES = [p.strip() for p in _raw_proxies.split(",") if p.strip()]

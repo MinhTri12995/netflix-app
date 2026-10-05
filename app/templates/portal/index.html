@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Netflix Access • Member Activation Portal</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -504,13 +505,9 @@
             <span>Netflix Access Portal</span>
         </a>
         <div class="nav-actions">
-            <select id="languageSelect" class="lang-select" onchange="changeLanguage(this.value)">
-                <option value="en">English</option>
-                <option value="vi">Tiếng Việt</option>
-                <option value="es">Español</option>
-                <option value="pt">Português</option>
-                <option value="pl">Polski</option>
-                <option value="tr">Türkçe</option>
+            <select id="languageSelect" class="lang-select" onchange="setLanguage(this.value)" aria-label="Select Language">
+                <option value="en">English (US)</option>
+                <option value="vi">Tiếng Việt (VN)</option>
             </select>
         </div>
     </header>
@@ -665,42 +662,42 @@
     </main>
 
     <!-- Warranty Replacement Modal -->
-    <div id="warrantyModal" class="modal-overlay">
+    <div id="warrantyModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-hidden="true">
         <div class="modal-content">
-            <button type="button" class="modal-close" onclick="closeWarrantyModal()">
+            <button type="button" class="modal-close" aria-label="Close warranty modal" onclick="closeWarrantyModal()">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
-            <h3 style="font-size: 1.25rem; font-weight: 700; color: #fff; margin-bottom: 6px;">Submit Replacement Request</h3>
-            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;">Provide your order details and error screenshot. Screen limit and Payment error issues are verified and replaced automatically 24/7 by AI.</p>
+            <h3 id="modalTitle" style="font-size: 1.25rem; font-weight: 700; color: #fff; margin-bottom: 6px;">Submit Replacement Request</h3>
+            <p id="modalDesc" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;">Provide your order details and error screenshot. Screen limit and Payment error issues are verified and replaced automatically 24/7 by AI.</p>
 
             <form id="warrantyForm" onsubmit="submitWarrantyRequest(event)" style="display: flex; flex-direction: column; gap: 14px;">
                 <div>
-                    <label style="font-size: 0.82rem; font-weight: 600; color: #cbd5e1; display: block; margin-bottom: 6px;">U7BUY Order ID / Purchase ID <span style="color: #ef4444;">*</span></label>
+                    <label id="labelOrder" for="u7buyOrderId" style="font-size: 0.82rem; font-weight: 600; color: #cbd5e1; display: block; margin-bottom: 6px;">U7BUY Order ID / Purchase ID <span style="color: #ef4444;">*</span></label>
                     <input id="u7buyOrderId" type="text" class="code-input" style="padding: 12px 14px; font-size: 0.95rem;" placeholder="e.g. 19283746" required>
                 </div>
 
                 <div>
-                    <label style="font-size: 0.82rem; font-weight: 600; color: #cbd5e1; display: block; margin-bottom: 6px;">Access Code <span style="color: #ef4444;">*</span></label>
+                    <label id="labelCode" for="modalAccessCode" style="font-size: 0.82rem; font-weight: 600; color: #cbd5e1; display: block; margin-bottom: 6px;">Access Code <span style="color: #ef4444;">*</span></label>
                     <input id="modalAccessCode" type="text" class="code-input" style="padding: 12px 14px; font-size: 0.95rem;" placeholder="Your access code" required>
                 </div>
 
                 <div>
-                    <label style="font-size: 0.82rem; font-weight: 600; color: #cbd5e1; display: block; margin-bottom: 6px;">Reason / Loại lỗi gặp phải <span style="color: #ef4444;">*</span></label>
+                    <label id="labelReason" for="modalReasonCategory" style="font-size: 0.82rem; font-weight: 600; color: #cbd5e1; display: block; margin-bottom: 6px;">Reason / Loại lỗi gặp phải <span style="color: #ef4444;">*</span></label>
                     <select id="modalReasonCategory" class="code-input" style="padding: 12px 14px; font-size: 0.92rem; background: var(--surface-input); color: #fff; cursor: pointer;" required>
-                        <option value="TOO_MANY_PEOPLE">⚡ Too many people using screen / Screen limit (Quá số màn hình xem cùng lúc)</option>
-                        <option value="PAYMENT_ERROR">💳 Payment error / Membership on hold (Lỗi thanh toán / nợ cước)</option>
-                        <option value="OTHER">📝 Other reason / Different error (Lỗi khác / Duyệt thủ công 1-10h)</option>
+                        <option id="optReasonScreen" value="TOO_MANY_PEOPLE">⚡ Too many people using screen / Screen limit (Quá số màn hình xem cùng lúc)</option>
+                        <option id="optReasonPayment" value="PAYMENT_ERROR">💳 Payment error / Membership on hold (Lỗi thanh toán / nợ cước)</option>
+                        <option id="optReasonOther" value="OTHER">📝 Other reason / Different error (Lỗi khác / Duyệt thủ công 1-10h)</option>
                     </select>
                 </div>
 
                 <div>
-                    <label style="font-size: 0.82rem; font-weight: 600; color: #cbd5e1; display: block; margin-bottom: 6px;">Additional Note / Ghi chú thêm (Tùy chọn)</label>
+                    <label id="labelNote" for="modalReasonNote" style="font-size: 0.82rem; font-weight: 600; color: #cbd5e1; display: block; margin-bottom: 6px;">Additional Note / Ghi chú thêm (Tùy chọn)</label>
                     <input id="modalReasonNote" type="text" class="code-input" style="padding: 10px 14px; font-size: 0.9rem;" placeholder="e.g. Error appeared while watching, or hold message">
                 </div>
 
                 <div>
-                    <label style="font-size: 0.82rem; font-weight: 600; color: #cbd5e1; display: block; margin-bottom: 6px;">Screenshot Proof of Error <span style="color: #ef4444;">*</span></label>
-                    <input id="modalProofImage" type="file" accept="image/*" style="font-size: 0.85rem; color: var(--text-muted); background: var(--surface-input); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 10px; width: 100%; cursor: pointer;" required>
+                    <label id="labelProof" for="modalProofImage" style="font-size: 0.82rem; font-weight: 600; color: #cbd5e1; display: block; margin-bottom: 6px;">Screenshot Proof of Error <span style="color: #ef4444;">*</span></label>
+                    <input id="modalProofImage" type="file" accept="image/png,image/jpeg" style="font-size: 0.85rem; color: var(--text-muted); background: var(--surface-input); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 10px; width: 100%; cursor: pointer;" required>
                 </div>
 
                 <button id="modalSubmitBtn" type="submit" class="btn btn-primary" style="margin-top: 10px;">Submit for Verification</button>
@@ -734,163 +731,8 @@
         </div>
     </div>
 
+    <script src="/static/js/portal.js"></script>
     <script>
-        let currentCookieJson = "";
-
-        function showToast(message, type = 'success') {
-            let container = document.getElementById('toast-container');
-            if (!container) {
-                container = document.createElement('div');
-                container.id = 'toast-container';
-                container.style.cssText = 'position:fixed;bottom:25px;right:25px;z-index:999999;display:flex;flex-direction:column;gap:10px;pointer-events:none;';
-                document.body.appendChild(container);
-            }
-            const toast = document.createElement('div');
-            const bg = type === 'success' ? '#10B981' : (type === 'error' ? '#EF4444' : '#0284C7');
-            toast.style.cssText = `background:${bg};color:#fff;padding:12px 20px;border-radius:10px;font-size:0.9rem;font-weight:600;box-shadow:0 10px 25px rgba(0,0,0,0.5);display:flex;align-items:center;gap:8px;transform:translateY(16px);opacity:0;transition:all 0.25s ease;pointer-events:auto;`;
-            toast.innerText = message;
-            container.appendChild(toast);
-            setTimeout(() => { toast.style.transform = 'translateY(0)'; toast.style.opacity = '1'; }, 10);
-            setTimeout(() => {
-                toast.style.transform = 'translateY(16px)';
-                toast.style.opacity = '0';
-                setTimeout(() => toast.remove(), 250);
-            }, 3000);
-        }
-
-        function handleActivation() {
-            const code = document.getElementById('accessCodeInput').value.trim();
-            if (!code) {
-                showToast('Please enter your Access Code first.', 'error');
-                return;
-            }
-            const btn = document.getElementById('activateBtn');
-            const originalText = document.getElementById('btnActivateText').innerText;
-            document.getElementById('btnActivateText').innerText = 'Verifying & Connecting...';
-            btn.style.opacity = '0.7';
-
-            fetch('/api/generate_nftoken', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': {{ csrf_token() | tojson }} },
-                body: JSON.stringify({ cookie: code })
-            })
-            .then(res => res.json())
-            .then(data => {
-                document.getElementById('btnActivateText').innerText = originalText;
-                btn.style.opacity = '1';
-                if (data.success) {
-                    document.getElementById('pcLaunchLink').href = data.pc_link;
-                    document.getElementById('mobileLaunchLink').href = data.mobile_link;
-                    document.getElementById('tvLaunchLink').href = data.tv_link;
-                    if (data.general_link) document.getElementById('generalLaunchLink').href = data.general_link;
-                    if (data.plan) document.getElementById('planBadge').innerText = `Plan: ${data.plan}`;
-                    if (data.expire_date) document.getElementById('expireBadge').innerText = `Valid until: ${data.expire_date}`;
-                    currentCookieJson = data.cookie_json || "";
-                    document.getElementById('deviceHub').style.display = 'flex';
-                    showToast('Session authorization successful! Select your device below.', 'success');
-                } else {
-                    showToast(data.error || 'Activation failed. Please check your access code.', 'error');
-                }
-            })
-            .catch(() => {
-                document.getElementById('btnActivateText').innerText = originalText;
-                btn.style.opacity = '1';
-                showToast('Connection error. Please try again.', 'error');
-            });
-        }
-
-        function handleCopyCookie() {
-            if (!currentCookieJson) {
-                showToast('Please activate your access code first.', 'error');
-                return;
-            }
-            if (navigator.clipboard && window.isSecureContext) {
-                navigator.clipboard.writeText(currentCookieJson).then(() => {
-                    showToast('Cookie JSON copied to clipboard!', 'success');
-                }).catch(() => fallbackCopy(currentCookieJson));
-            } else {
-                fallbackCopy(currentCookieJson);
-            }
-        }
-
-        function fallbackCopy(text) {
-            const ta = document.createElement('textarea');
-            ta.value = text;
-            ta.style.position = 'fixed';
-            ta.style.left = '-9999px';
-            document.body.appendChild(ta);
-            ta.select();
-            document.execCommand('copy');
-            ta.remove();
-            showToast('Cookie JSON copied to clipboard!', 'success');
-        }
-
-        function openWarrantyModal() {
-            const code = document.getElementById('accessCodeInput').value.trim();
-            if (code) document.getElementById('modalAccessCode').value = code;
-            document.getElementById('warrantyModal').style.display = 'flex';
-        }
-
-        function closeWarrantyModal() {
-            document.getElementById('warrantyModal').style.display = 'none';
-        }
-
-        function submitWarrantyRequest(e) {
-            e.preventDefault();
-            const orderId = document.getElementById('u7buyOrderId').value.trim();
-            const code = document.getElementById('modalAccessCode').value.trim();
-            const categorySelect = document.getElementById('modalReasonCategory');
-            const category = categorySelect ? categorySelect.value : 'TOO_MANY_PEOPLE';
-            const noteInput = document.getElementById('modalReasonNote');
-            const note = noteInput ? noteInput.value.trim() : '';
-            const combinedReason = note ? `[${category}] ${note}` : `[${category}]`;
-
-            const fileInput = document.getElementById('modalProofImage');
-            if (!fileInput.files.length) {
-                showToast('Please attach a screenshot of the error.', 'error');
-                return;
-            }
-
-            const formData = new FormData();
-            formData.append('u7buy_order_id', orderId);
-            formData.append('code', code);
-            formData.append('reason_category', category);
-            formData.append('reason', combinedReason);
-            formData.append('image', fileInput.files[0]);
-
-            const submitBtn = document.getElementById('modalSubmitBtn');
-            submitBtn.innerText = 'Analyzing with AI Vision...';
-            submitBtn.disabled = true;
-
-            fetch('/api/submit_request', {
-                method: 'POST',
-                headers: { 'X-CSRF-Token': {{ csrf_token() | tojson }} },
-                body: formData
-            })
-            .then(res => res.json())
-            .then(data => {
-                submitBtn.innerText = 'Submit for Verification';
-                submitBtn.disabled = false;
-                if (data.success) {
-                    closeWarrantyModal();
-                    if (data.auto_rotated) {
-                        showToast(data.message || 'Error verified! A new active session has been assigned.', 'success');
-                        document.getElementById('accessCodeInput').value = code;
-                        handleActivation();
-                    } else {
-                        showToast(data.message || 'Request queued for verification.', 'success');
-                    }
-                } else {
-                    showToast(data.error || 'Failed to submit request.', 'error');
-                }
-            })
-            .catch(() => {
-                submitBtn.innerText = 'Submit for Verification';
-                submitBtn.disabled = false;
-                showToast('Network error submitting request.', 'error');
-            });
-        }
-
         function toggleChatWindow() {
             const win = document.getElementById('chatWindow');
             win.style.display = win.style.display === 'flex' ? 'none' : 'flex';
@@ -911,7 +753,10 @@
 
             fetch('/api/chat', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': {{ csrf_token() | tojson }} },
+                headers: { 
+                    'Content-Type': 'application/json', 
+                    'X-CSRF-Token': getCsrfToken() 
+                },
                 body: JSON.stringify({ message: msg })
             })
             .then(res => res.json())
@@ -929,54 +774,6 @@
                 body.appendChild(botMsg);
                 body.scrollTop = body.scrollHeight;
             });
-        }
-
-        const I18N = {
-            "vi": {
-                heroTitle: "Kích Hoạt Tài Khoản Thành Viên",
-                heroSubtitle: "Nhập mã Access Code từ đơn hàng để kích hoạt phiên xem phim Netflix tức thì mà không cần nhập mật khẩu.",
-                step1Title: "Kết nối trực tiếp",
-                step1Desc: "Tắt VPN. Sử dụng mạng Internet thông thường hoặc mạng 4G/5G.",
-                step2Title: "Nhập mã Code",
-                step2Desc: "Dán mã Access Code nhận được trong đơn hàng U7BUY của bạn.",
-                step3Title: "Chọn thiết bị",
-                step3Desc: "Lựa chọn xem trên Máy tính, Điện thoại hoặc Tivi thông minh.",
-                step4Title: "Bắt đầu xem",
-                step4Desc: "Hệ thống tự động đăng nhập. Chọn hồ sơ của bạn để thưởng thức.",
-                btnActivateText: "Kích hoạt & Mở Phim",
-                btnReportText: "Báo lỗi & Bảo hành"
-            },
-            "en": {
-                heroTitle: "Instant Member Activation",
-                heroSubtitle: "Enter your order Access Code to activate and launch your Netflix session directly without entering account credentials.",
-                step1Title: "Direct Network",
-                step1Desc: "Disable VPN services. Standard broadband or 4G/5G mobile connection required.",
-                step2Title: "Input Code",
-                step2Desc: "Paste your unique Access Code from your order confirmation below.",
-                step3Title: "Select Device",
-                step3Desc: "Choose between PC Browser, Smartphone, or Smart TV authorization.",
-                step4Title: "Stream & Enjoy",
-                step4Desc: "Session opens automatically. Select your designated profile to watch.",
-                btnActivateText: "Activate & Launch Stream",
-                btnReportText: "Report Issue"
-            }
-        };
-
-        function changeLanguage(lang) {
-            if (!I18N[lang]) return;
-            const t = I18N[lang];
-            document.getElementById('heroTitle').innerText = t.heroTitle;
-            document.getElementById('heroSubtitle').innerText = t.heroSubtitle;
-            document.getElementById('step1Title').innerText = t.step1Title;
-            document.getElementById('step1Desc').innerText = t.step1Desc;
-            document.getElementById('step2Title').innerText = t.step2Title;
-            document.getElementById('step2Desc').innerText = t.step2Desc;
-            document.getElementById('step3Title').innerText = t.step3Title;
-            document.getElementById('step3Desc').innerText = t.step3Desc;
-            document.getElementById('step4Title').innerText = t.step4Title;
-            document.getElementById('step4Desc').innerText = t.step4Desc;
-            document.getElementById('btnActivateText').innerText = t.btnActivateText;
-            document.getElementById('btnReportText').innerText = t.btnReportText;
         }
     </script>
 </body>

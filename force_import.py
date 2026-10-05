@@ -21,20 +21,14 @@ def force_import():
         if not accounts_list:
             print("Không tìm thấy account nào! Vui lòng kiểm tra lại data.txt")
             return
-            
-        database.init_db()
-        count = 0
-        for acc in accounts_list:
-            database.save_account(
-                acc['email'],
-                acc['expire'],
-                acc['netflix_id'],
-                acc['secure_netflix_id'],
-                plan=acc.get('plan')
-            )
-            count += 1
-            
-        print(f"SUCCESS: Đã ép thành công {count} accounts vào Database!")
+
+        from app.services.import_service import import_accounts
+        result = import_accounts(accounts_list)
+
+        if result.is_complete_success:
+            print(f"SUCCESS: Đã ép thành công {result.saved_count}/{result.total} accounts vào Database!")
+        else:
+            print(f"WARNING: Đã lưu {result.saved_count}, thất bại {result.failure_count}, không hợp lệ {result.invalid_count}.")
         
     except Exception as e:
         print(f"Lỗi hệ thống: {e}")

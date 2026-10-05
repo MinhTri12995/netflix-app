@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>U7BUY Verified Orders - Admin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #08090f;
+            --card-bg: rgba(22, 26, 42, 0.85);
+            --card-border: rgba(255, 255, 255, 0.1);
+            --primary: #E50914;
+            --success: #2ecc71;
+            --accent-blue: #00a8ff;
+            --danger: #e74c3c;
+            --warning: #f39c12;
+            --text-main: #ffffff;
+            --text-sub: #a0a5b8;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background: radial-gradient(circle at 50% 0%, #1a1f36 0%, #08090f 70%);
+            color: var(--text-main);
+            margin: 0; padding: 20px; min-height: 100vh;
+            display: flex; flex-direction: column; align-items: center;
+        }
+        .container {
+            width: 95%; max-width: 980px; margin-top: 20px;
+        }
+        .header { text-align: center; margin-bottom: 25px; }
+        .header h1 {
+            font-size: 2.2rem; font-weight: 800; margin: 0 0 8px 0;
+            background: linear-gradient(135deg, #ffffff 0%, #d1d5db 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .glass-panel {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+        .flash-message {
+            padding: 12px 16px; border-radius: 8px; margin-bottom: 20px;
+            background: rgba(46, 204, 113, 0.2); border: 1px solid var(--success); color: #2ecc71;
+        }
+        .flash-error {
+            background: rgba(231, 76, 60, 0.2); border-color: var(--danger); color: #ff7675;
+        }
+        .flash-warning {
+            background: rgba(243, 156, 18, 0.2); border-color: var(--warning); color: #fdcb6e;
+        }
+        input, select, textarea {
+            background: rgba(10, 12, 20, 0.8);
+            border: 1px solid var(--card-border);
+            color: #fff; padding: 10px 14px; border-radius: 6px;
+            font-family: inherit; font-size: 0.95rem; width: 100%;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none; border-color: var(--accent-blue);
+        }
+        .btn {
+            padding: 10px 18px; border-radius: 6px; border: none;
+            font-weight: 600; cursor: pointer; transition: all 0.2s;
+            font-size: 0.95rem;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-blue { background: var(--accent-blue); color: white; }
+        .grid-2 {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+        }
+        @media(max-width: 768px) {
+            .grid-2 { grid-template-columns: 1fr; }
+        }
+        table {
+            width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.9rem;
+        }
+        th, td {
+            padding: 12px 14px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        th { color: var(--text-sub); font-weight: 600; }
+        .badge {
+            display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: 600;
+        }
+        .badge-verified { background: rgba(46, 204, 113, 0.2); color: #2ecc71; border: 1px solid #2ecc71; }
+        .badge-unverified { background: rgba(243, 156, 18, 0.2); color: #f39c12; border: 1px solid #f39c12; }
+        .badge-cancelled { background: rgba(231, 76, 60, 0.2); color: #e74c3c; border: 1px solid #e74c3c; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📦 U7BUY Verified Orders</h1>
+            <p style="color: var(--text-sub);">Link U7BUY purchase order IDs with generated Access Codes</p>
+            <div style="margin-top: 10px;">
+                <a href="/admin/dashboard" style="color: var(--accent-blue); text-decoration: none; margin-right: 15px;">← Back to Dashboard</a>
+                <a href="/admin/logout" style="color: var(--danger); text-decoration: none;">[Logout]</a>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="flash-message {% if category == 'error' %}flash-error{% elif category == 'warning' %}flash-warning{% endif %}">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <div class="grid-2">
+            <!-- Form 1: Add or Verify Single Order -->
+            <div class="glass-panel">
+                <h3 style="margin-top: 0; color: var(--accent-blue);">➕ Link / Verify Single Order</h3>
+                <form action="/admin/orders/create" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <div style="margin-bottom: 12px;">
+                        <label style="display: block; font-size: 0.85rem; color: var(--text-sub); margin-bottom: 4px;">U7BUY Order ID</label>
+                        <input type="text" name="order_id" placeholder="e.g. U7_987654321" required>
+                    </div>
+                    <div style="margin-bottom: 12px;">
+                        <label style="display: block; font-size: 0.85rem; color: var(--text-sub); margin-bottom: 4px;">Access Code</label>
+                        <input type="text" name="code" placeholder="e.g. PREM123456789012" required>
+                    </div>
+                    <div style="margin-bottom: 16px;">
+                        <label style="display: block; font-size: 0.85rem; color: var(--text-sub); margin-bottom: 4px;">Status</label>
+                        <select name="status">
+                            <option value="verified" selected>Verified (Active purchase confirmed)</option>
+                            <option value="unverified">Unverified (Pending payment check)</option>
+                            <option value="cancelled">Cancelled (Refunded or disputed)</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-success" style="width: 100%;">Save Order Link</button>
+                </form>
+            </div>
+
+            <!-- Form 2: CSV Batch Import -->
+            <div class="glass-panel">
+                <h3 style="margin-top: 0; color: var(--success);">📄 CSV Batch Import</h3>
+                <p style="font-size: 0.85rem; color: var(--text-sub); margin-top: 0;">Upload or paste CSV lines: <code>order_id,code,status</code></p>
+                <form action="/admin/orders/import_csv" method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <div style="margin-bottom: 12px;">
+                        <label style="display: block; font-size: 0.85rem; color: var(--text-sub); margin-bottom: 4px;">Upload CSV File</label>
+                        <input type="file" name="csv_file" accept=".csv,.txt">
+                    </div>
+                    <div style="margin-bottom: 16px;">
+                        <label style="display: block; font-size: 0.85rem; color: var(--text-sub); margin-bottom: 4px;">Or Paste CSV Content</label>
+                        <textarea name="csv_text" rows="3" placeholder="U7_1001,CODE_A,verified&#10;U7_1002,CODE_B,verified"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-blue" style="width: 100%;">Import Orders</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Orders List -->
+        <div class="glass-panel">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                <h3 style="margin: 0;">📋 Registered Orders (Total: {{ orders|length }})</h3>
+                <div>
+                    <a href="/admin/orders" style="color: var(--text-sub); text-decoration: none; margin-right: 10px;">[All]</a>
+                    <a href="/admin/orders?status=verified" style="color: var(--success); text-decoration: none; margin-right: 10px;">[Verified]</a>
+                    <a href="/admin/orders?status=unverified" style="color: var(--warning); text-decoration: none; margin-right: 10px;">[Unverified]</a>
+                    <a href="/admin/orders?status=cancelled" style="color: var(--danger); text-decoration: none;">[Cancelled]</a>
+                </div>
+            </div>
+
+            <div style="overflow-x: auto; margin-top: 15px;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Access Code</th>
+                            <th>Status</th>
+                            <th>Verified By</th>
+                            <th>Verified At</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if orders %}
+                            {% for ord in orders %}
+                            <tr>
+                                <td style="font-weight: 600; color: #fff;"><code>{{ ord.order_id }}</code></td>
+                                <td><code>{{ ord.code }}</code></td>
+                                <td>
+                                    <span class="badge badge-{{ ord.status }}">{{ ord.status|upper }}</span>
+                                </td>
+                                <td style="color: var(--text-sub);">{{ ord.verified_by or '-' }}</td>
+                                <td style="color: var(--text-sub); font-size: 0.8rem;">{{ ord.verified_at or '-' }}</td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="5" style="text-align: center; color: var(--text-sub); padding: 30px;">
+                                    No orders found. Add one above or import via CSV.
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

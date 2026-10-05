@@ -145,11 +145,11 @@ def api_generate_nftoken():
                     continue
                 except CookieError as e:
                     print(f"Cookie {assigned_email} DIE / PAYMENT ERROR, rotating... (Error: {e})")
-                    database.delete_account(assigned_email)
-                    rotated = database.rotate_access_key(code)
-                    if not rotated:
+                    from app.services.allocation_service import replace
+                    rep_res = replace(code=code, actor="system:activation", reason=f"CookieError: {e}")
+                    if not rep_res.is_success:
                         return jsonify({"success": False, "error": f"Tài khoản lỗi và kho đã hết Cookie dự phòng cho gói {expected_plan}!"}), 500
-                    assigned_email = database.get_access_key(code)[1]
+                    assigned_email = rep_res.assigned_email
                     continue
                 except Exception as e:
                     print(f"Unexpected error: {e}")
@@ -240,9 +240,9 @@ def api_check_live_code():
             database.update_plan(assigned_email, final_plan)
             return jsonify({"success": True, "message": f"Account is LIVE normally! Plan: {final_plan}."})
         elif status == "DIE":
-            database.delete_account(assigned_email)
-            rotated = database.rotate_access_key(code)
-            if not rotated:
+            from app.services.allocation_service import replace
+            rep_res = replace(code=code, actor="system:live_check", reason="DIE detected during live check")
+            if not rep_res.is_success:
                 return jsonify({"success": False, "error": "Old account died but System ran out of backup Cookies!"}), 500
             return jsonify({"success": True, "message": "Account was faulty and has been AUTOMATICALLY CHANGED to a new account. You can click Login Now!"})
         else:
@@ -296,19 +296,14 @@ def api_submit_request():
 
     try:
         file_bytes = image.read()
-        if len(file_bytes) < 16:
-            return jsonify({"success": False, "error": "Invalid or empty image file uploaded."}), 400
+        from app.services.image_service import validate_image_bytes
+        ok, validated_img, val_msg = validate_image_bytes(file_bytes)
+        if not ok or not validated_img:
+            return jsonify({"success": False, "error": f"Unsupported image format or corrupted file ({val_msg}). Please upload a genuine screenshot."}), 400
 
-        # Validate genuine image headers (PNG, JPEG, WEBP)
-        is_png = file_bytes.startswith(b'\x89PNG\r\n\x1a\n')
-        is_jpeg = file_bytes.startswith(b'\xff\xd8\xff')
-        is_webp = file_bytes.startswith(b'RIFF') and b'WEBP' in file_bytes[:16]
-        if not (is_png or is_jpeg or is_webp):
-            return jsonify({"success": False, "error": "Unsupported image format. Please upload a real screenshot (PNG, JPG, or WEBP)."}), 400
-
-        file_ext = 'png' if is_png else ('jpg' if is_jpeg else 'webp')
+        file_ext = validated_img.format.lower()
         filename = f"{uuid.uuid4()}.{file_ext}"
-        content_type = image.content_type or f"image/{file_ext}"
+        content_type = f"image/{file_ext if file_ext != 'jpg' else 'jpeg'}"
 
         image_url = ""
         if database.SUPABASE_KEY:
@@ -372,110 +367,90 @@ def api_submit_request():
             except Exception as ocr_err:
                 print(f"OCR Vision check notice: {ocr_err}")
 
-        error_type = str(ai_data.get("error_type", "OTHER")).upper()
-        is_netflix = ai_data.get("is_netflix", False)
-        error_desc = ai_data.get("error_description", "")
-        card_last4 = ai_data.get("card_last4")
-        card_digits = ai_data.get("card_digits")
-        visible_email = ai_data.get("visible_email")
         assigned_email = acc_key_row[1] if len(acc_key_row) > 1 else ""
 
-        # Fallback keyword scan if error_type is OTHER but description has clear keywords
-        upper_desc = str(error_desc).upper()
-        if error_type == "OTHER":
-            if any(kw in upper_desc for kw in ["TOO MANY", "SCREEN LIMIT", "PEOPLE", "WATCHING ON", "DEMASIADAS"]):
-                error_type = "TOO_MANY_PEOPLE"
-            elif any(kw in upper_desc for kw in ["PAYMENT", "UPDATE PAYMENT", "MEMBERSHIP ON HOLD", "HOLD", "NỢ CƯỚC"]):
-                error_type = "PAYMENT_ERROR"
+        from app.services.evidence_service import parse_and_validate_ai_response, evaluate_evidence_for_auto_approval
+        from app.services.order_service import verify_order_for_request
 
-        # -------------------------------------------------------------------------
-        # CASE 1: LỖI QUÁ MÀN HÌNH (TOO_MANY_PEOPLE) - TỰ ĐỘNG DUYỆT 24/7
-        # -------------------------------------------------------------------------
-        if (error_type == "TOO_MANY_PEOPLE" or reason_category == "TOO_MANY_PEOPLE") and is_netflix:
-            rotated = database.rotate_access_key(code)
-            if rotated:
-                if assigned_email:
-                    database.delete_account(assigned_email)
+        ai_valid, evidence_data, schema_msg = parse_and_validate_ai_response(ai_data)
+        if not ai_valid:
+            error_type = evidence_data.get("error_type", "OTHER") if isinstance(evidence_data, dict) else "OTHER"
+            error_desc = f"AI validation: {schema_msg}"
+            can_auto_approve_screen = False
+        else:
+            error_type = evidence_data["error_type"]
+            error_desc = evidence_data["error_description"]
+            visible_email = evidence_data["visible_email"]
+
+            # 1. Bằng chứng AI: is_netflix=True, TOO_MANY_PEOPLE, visible_email khớp assigned_email
+            is_screen_eligible, eval_reason = evaluate_evidence_for_auto_approval(evidence_data, assigned_email)
+
+            # 2. Đơn hàng U7BUY: phải tồn tại, khớp với mã và đã được xác minh (status=verified)
+            is_order_verified, order_reason = verify_order_for_request(code, u7buy_order_id)
+
+            can_auto_approve_screen = (
+                getattr(Config, "AUTO_APPROVAL_ENABLED", False)
+                and is_screen_eligible
+                and is_order_verified
+            )
+            if is_screen_eligible and not is_order_verified:
+                error_desc = f"{error_desc} (Order verification required: {order_reason})"
+            elif not is_screen_eligible and error_type == "TOO_MANY_PEOPLE":
+                error_desc = f"{error_desc} (Proof verification required: {eval_reason})"
+
+        if can_auto_approve_screen:
+            saved = database.save_request(code, u7buy_order_id, image_url, f"[TOO_MANY_PEOPLE] Auto-approved: {error_desc or 'Screen limit verified'}", "pending")
+            if not saved:
+                return jsonify({"success": False, "error": "Database error: Could not record transaction."}), 500
+
+            recent_reqs = database.get_pending_requests()
+            req_id = None
+            for r in recent_reqs:
+                if r.get("code") == code:
+                    req_id = r.get("id")
+                    break
+
+            from app.services.allocation_service import replace
+            rep_res = replace(
+                request_id=req_id,
+                code=code,
+                actor="ai:screen_limit",
+                reason=f"[TOO_MANY_PEOPLE] Auto-approved: {error_desc or 'Screen limit verified'}"
+            )
+
+            if rep_res.is_success:
                 mark_code_request_success(code)
-                database.save_request(code, u7buy_order_id, image_url, f"[TOO_MANY_PEOPLE] Auto-approved: {error_desc or 'Screen limit verified'}", "auto_accepted")
-                send_telegram_alert(f"⚡ <b>Tự động đổi tài khoản thành công!</b>\n- Mã: <code>{code}</code>\n- U7BUY: <code>{u7buy_order_id}</code>\n- Lỗi: Quá số lượng màn hình (Screen Limit)")
-
                 return jsonify({
                     "success": True,
                     "auto_rotated": True,
                     "error_type": "TOO_MANY_PEOPLE",
                     "message": "AI Verified! Screen limit error detected. The system has automatically replaced your session with a fresh active account. Click Login Now!"
                 })
-            else:
-                database.save_request(code, u7buy_order_id, image_url, f"[TOO_MANY_PEOPLE] Verified (Out of stock): {error_desc}", "pending_out_of_stock")
-                send_telegram_alert(f"⚠️ <b>Kho hết tài khoản đổi tự động (Màn hình):</b>\n- Mã: <code>{code}</code>\n- U7BUY: <code>{u7buy_order_id}</code>")
+            elif rep_res.status == "out_of_stock":
                 return jsonify({
                     "success": True,
                     "auto_rotated": False,
                     "message": "Screen limit verified! The backup vault is temporarily restocking. Admin has been notified to restock and assign your account shortly."
                 })
-
-        # -------------------------------------------------------------------------
-        # CASE 2: LỖI THANH TOÁN / NỢ CƯỚC (PAYMENT_ERROR) - TỰ ĐỘNG DUYỆT 24/7
-        # -------------------------------------------------------------------------
-        elif (error_type == "PAYMENT_ERROR" or reason_category == "PAYMENT_ERROR") and is_netflix:
-            # 1. Kiểm tra an toàn: Nếu email trong ảnh hiển thị rõ, phải khớp với email tài khoản được cấp
-            if visible_email and assigned_email:
-                if visible_email.strip().lower() != assigned_email.strip().lower():
-                    database.save_request(code, u7buy_order_id, image_url, f"[PAYMENT_ERROR] Rejected email mismatch: {visible_email} vs {assigned_email}", "rejected_email_mismatch")
-                    return jsonify({
-                        "success": False,
-                        "error": f"Security verification failed: The email on your screenshot ({visible_email}) does not match the account assigned to your Access Code ({assigned_email})."
-                    }), 400
-
-            # 2. Kiểm tra an toàn thẻ thanh toán (nếu có số thẻ trên ảnh)
-            if (card_last4 or card_digits) and assigned_email:
-                acc_row = database.get_account_by_email(assigned_email)
-                if acc_row:
-                    scraped_cards = scrape_netflix_account_payment_card(acc_row[2], acc_row[3] if len(acc_row) > 3 else "")
-                    is_match, match_reason = verify_payment_card_match(card_last4, card_digits, scraped_cards)
-                    if not is_match:
-                        database.save_request(code, u7buy_order_id, image_url, f"[PAYMENT_ERROR] Card mismatch: {card_last4 or card_digits} vs scraped ({match_reason})", "pending_card_mismatch")
-                        send_telegram_alert(f"⚠️ <b>Yêu cầu đổi mã - Thẻ không khớp:</b>\n- Mã: <code>{code}</code>\n- U7BUY: <code>{u7buy_order_id}</code>\n- Thẻ: {card_last4 or card_digits}")
-                        return jsonify({
-                            "success": False,
-                            "error": "Security verification failed: The payment card shown in your screenshot does not match the card on file for this account. Your request has been queued for Admin manual review."
-                        }), 400
-
-            # Đối chiếu hợp lệ -> Tự động xoay mã và xóa tài khoản lỗi
-            rotated = database.rotate_access_key(code)
-            if rotated:
-                if assigned_email:
-                    database.delete_account(assigned_email)
-                mark_code_request_success(code)
-                database.save_request(code, u7buy_order_id, image_url, f"[PAYMENT_ERROR] Auto-approved: {error_desc or 'Payment error verified'}", "auto_accepted")
-                send_telegram_alert(f"⚡ <b>Tự động đổi tài khoản thành công!</b>\n- Mã: <code>{code}</code>\n- U7BUY: <code>{u7buy_order_id}</code>\n- Lỗi: Lỗi thanh toán / nợ cước (Payment Error)")
-
-                return jsonify({
-                    "success": True,
-                    "auto_rotated": True,
-                    "error_type": "PAYMENT_ERROR",
-                    "message": "AI Verified! Payment error detected. The faulty account has been removed and your Access Code has been replaced with a fresh account! Click Login Now!"
-                })
             else:
-                database.save_request(code, u7buy_order_id, image_url, f"[PAYMENT_ERROR] Verified (Out of stock): {error_desc}", "pending_out_of_stock")
-                send_telegram_alert(f"⚠️ <b>Kho hết tài khoản đổi tự động (Thanh toán):</b>\n- Mã: <code>{code}</code>\n- U7BUY: <code>{u7buy_order_id}</code>")
-                return jsonify({
-                    "success": True,
-                    "auto_rotated": False,
-                    "message": "Payment error verified! The backup vault is temporarily restocking. Admin has been notified to restock and assign your account shortly."
-                })
+                return jsonify({"success": False, "error": f"Auto-replacement error: {rep_res.message}"}), 500
 
         # -------------------------------------------------------------------------
-        # CASE 3: LỖI KHÁC HOẶC CHỜ DUYỆT THỦ CÔNG (OTHER)
+        # CASE 2 & 3: PAYMENT ERROR VÀ CÁC LỖI KHÁC -> CHUYỂN HÀNG CHỜ ADMIN DUYỆT THỦ CÔNG
         # -------------------------------------------------------------------------
-        req_reason = f"[{reason_category}] {reason or error_desc or 'Chờ duyệt thủ công'}"
-        saved = database.save_request(code, u7buy_order_id, image_url, req_reason, "pending")
+        # Ở Giai đoạn 0 / Task 1, toàn bộ lỗi thanh toán và lỗi khác đều xếp hàng chờ Admin duyệt
+        status_to_save = "pending"
+        if error_type == "PAYMENT_ERROR" or reason_category == "PAYMENT_ERROR":
+            req_reason = f"[PAYMENT_ERROR] {reason or error_desc or 'Lỗi thanh toán / nợ cước chờ duyệt'}"
+        else:
+            req_reason = f"[{reason_category}] {reason or error_desc or 'Chờ duyệt thủ công'}"
+
+        saved = database.save_request(code, u7buy_order_id, image_url, req_reason, status_to_save)
         if not saved:
             return jsonify({"success": False, "error": "Database error: Could not record your request. Please try again later."}), 500
 
         mark_code_request_success(code)
-        send_telegram_alert(f"🔔 <b>Có yêu cầu khiếu nại mới (Chờ duyệt)!</b>\n- Mã: <code>{code}</code>\n- U7BUY: <code>{u7buy_order_id}</code>\n- Phân loại: {reason_category}\n- Lý do: {reason or 'Chờ Admin duyệt'}")
+        send_telegram_alert(f"🔔 <b>Có yêu cầu khiếu nại mới (Chờ duyệt)!</b>\n- Mã: <code>{code}</code>\n- U7BUY: <code>{u7buy_order_id}</code>\n- Phân loại: {reason_category}\n- Lý do: {req_reason}")
 
         return jsonify({
             "success": True,
