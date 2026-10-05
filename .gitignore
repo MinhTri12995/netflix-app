@@ -14,7 +14,9 @@ ENV/
 
 # Databases and session vaults
 *.db
+!accounts.db
 *.db.bak
+*.db.prod_backup
 *.db-wal
 *.db-shm
 *.sqlite

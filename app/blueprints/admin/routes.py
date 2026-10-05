@@ -45,7 +45,7 @@ def dashboard():
     all_accounts = database.get_all_accounts()
     all_access_keys = database.get_all_access_keys()
 
-    stats = database.get_dashboard_aggregates()
+    stats = database.get_dashboard_aggregates(all_accounts=all_accounts, all_access_keys=all_access_keys)
 
     # Filter keys
     if search_code:

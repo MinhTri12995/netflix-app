@@ -20,7 +20,12 @@ def get_supabase() -> Client:
 import json
 import sqlite3
 
-def get_sqlite_conn(db_path="accounts.db"):
+def get_sqlite_conn(db_path=None):
+    override = os.environ.get("SQLITE_DB_PATH")
+    if override:
+        db_path = override
+    elif not db_path:
+        db_path = "accounts.db"
     conn = sqlite3.connect(db_path, timeout=15)
     try:
         conn.execute("PRAGMA journal_mode = WAL;")
@@ -370,12 +375,61 @@ def get_all_accounts():
         rows.append((r.get("email"), r.get("expire_date"), r.get("netflix_id"), r.get("secure_netflix_id"), r.get("created_at"), r.get("plan", "Premium")))
     return rows
 
-def get_dashboard_aggregates():
-    """Calculates stock and code counts directly from database without pulling all rows into memory."""
+def get_dashboard_aggregates(all_accounts=None, all_access_keys=None):
+    """Calculates stock and code counts directly from database or pre-loaded rows."""
     stats = {
         'accounts': {'total': 0, 'Premium': 0, 'Standard': 0, 'Standard_Ads': 0, 'Basic': 0},
         'codes': {'total': 0, 'Premium': 0, 'Standard': 0, 'Standard_Ads': 0, 'Basic': 0}
     }
+
+    # 1. Fast-path: calculate from in-memory objects if provided
+    if all_accounts is not None and all_access_keys is not None:
+        for acc in all_accounts:
+            plan = str(acc[5]).strip() if len(acc) > 5 and acc[5] else "Premium"
+            if plan in stats['accounts']:
+                stats['accounts'][plan] += 1
+            else:
+                stats['accounts']['Premium'] += 1
+            stats['accounts']['total'] += 1
+
+        for k in all_access_keys:
+            code = k[0] if isinstance(k, (list, tuple)) else (k.get("code") or "")
+            length = len(code)
+            if length == 15: stats['codes']['Premium'] += 1
+            elif length == 10: stats['codes']['Standard'] += 1
+            elif length == 8: stats['codes']['Standard_Ads'] += 1
+            elif length == 5: stats['codes']['Basic'] += 1
+            else: stats['codes']['Premium'] += 1
+            stats['codes']['total'] += 1
+        return stats
+
+    # 2. Supabase aggregation
+    if SUPABASE_KEY:
+        try:
+            acc_rows = fetch_all_rows("netflix_accounts", "plan")
+            for r in acc_rows:
+                p = str(r.get("plan") or "Premium").strip()
+                if p in stats['accounts']:
+                    stats['accounts'][p] += 1
+                else:
+                    stats['accounts']['Premium'] += 1
+                stats['accounts']['total'] += 1
+
+            key_rows = fetch_all_rows("access_keys", "code")
+            for r in key_rows:
+                code = r.get("code") or ""
+                length = len(code)
+                if length == 15: stats['codes']['Premium'] += 1
+                elif length == 10: stats['codes']['Standard'] += 1
+                elif length == 8: stats['codes']['Standard_Ads'] += 1
+                elif length == 5: stats['codes']['Basic'] += 1
+                else: stats['codes']['Premium'] += 1
+                stats['codes']['total'] += 1
+            return stats
+        except Exception as e:
+            print(f"Supabase aggregation error: {e}")
+
+    # 3. Direct SQLite query
     try:
         conn = get_sqlite_conn()
         c = conn.cursor()
@@ -899,7 +953,7 @@ def get_all_access_keys():
     
     rows = []
     for r in data:
-        rows.append((r["code"], r["assigned_email"], r.get("created_at"), r.get("expire_at")))
+        rows.append((r.get("code", ""), r.get("assigned_email", ""), r.get("created_at"), r.get("expire_at")))
     return rows
 
 def rotate_access_key(code):
