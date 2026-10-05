@@ -79,7 +79,7 @@ class Config:
     DEBUG = os.environ.get("FLASK_DEBUG", "False").lower() in ("true", "1", "yes")
 
     # 8. Feature Flags & Safety Controls
-    AUTO_APPROVAL_ENABLED = os.environ.get("AUTO_APPROVAL_ENABLED", "false").lower() in ("true", "1", "yes")
+    AUTO_APPROVAL_ENABLED = os.environ.get("AUTO_APPROVAL_ENABLED", "true").lower() in ("true", "1", "yes")
 
     # 9. API Security & Trusted Proxies (F11, F12)
     ADMIN_API_KEY = os.environ.get("ADMIN_API_KEY", "")

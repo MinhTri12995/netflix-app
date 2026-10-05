@@ -95,7 +95,8 @@ U7_CSV_2,VALID_CODE_02,verified
         app.config["TESTING"] = True
         client = app.test_client()
 
-        # Do NOT create order for VALID_CODE_01 (it's unverified)
+        # Create order with status unverified for VALID_CODE_01
+        create_or_update_order("U7_UNVERIFIED_ORDER", "VALID_CODE_01", "unverified")
         from tests.conftest import create_valid_png_bytes
         png_bytes = create_valid_png_bytes()
         mock_ai_resp = MagicMock()

@@ -45,16 +45,16 @@ class TestEvidenceService(unittest.TestCase):
         self.assertTrue(ok)
         self.assertEqual(data["error_type"], "OTHER")
 
-    def test_screen_limit_without_email_rejected_for_auto_approval(self):
-        """Auto-approval requires visible_email on screenshot; missing email routes to admin."""
+    def test_screen_limit_without_email_accepted_for_auto_approval(self):
+        """Netflix screen limit overlay does not display user email; valid screen limit is accepted for auto-approval."""
         evidence = {
             "is_netflix": True,
             "error_type": "TOO_MANY_PEOPLE",
             "visible_email": None
         }
         ok, reason = evaluate_evidence_for_auto_approval(evidence, "assigned@nf.com")
-        self.assertFalse(ok)
-        self.assertEqual(reason, "EMAIL_NOT_VISIBLE_ON_PROOF")
+        self.assertTrue(ok)
+        self.assertEqual(reason, "ELIGIBLE_FOR_AUTO_APPROVAL")
 
     def test_email_mismatch_rejected_for_auto_approval(self):
         """Visible email must match assigned email; mismatch routes to admin."""

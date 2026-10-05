@@ -337,13 +337,20 @@ def api_submit_request():
                 "Authorization": f"Bearer {Config.MISTRAL_API_KEY}",
                 "Content-Type": "application/json"
             }
-            prompt = """Analyze this Netflix error screenshot carefully. Reply with a valid JSON object with the following keys:
-            "error_type": Exactly one of "PAYMENT_ERROR", "TOO_MANY_PEOPLE", or "OTHER",
-            "is_netflix": boolean (true if this is a genuine Netflix screen, app, or website, false otherwise),
-            "card_digits": string or null (any credit/debit card numbers or partial digits visible),
-            "card_last4": string or null (last 4 digits of card visible if any),
-            "visible_email": string or null (Netflix user email visible in screenshot if any),
-            "error_description": string (brief summary of error message displayed)."""
+            prompt = """Analyze this Netflix error screenshot carefully.
+Detect if there is a screen limit / too many users / too many people error in ANY language:
+- English: "Too many people are using your account right now", "Screen limit"
+- Vietnamese: "Quá nhiều người đang sử dụng tài khoản", "Đã đạt giới hạn màn hình"
+- Spanish: "Demasiadas personas están usando tu cuenta", etc.
+- Portuguese, Thai, or other languages.
+
+Reply with a valid JSON object with the following keys:
+"error_type": Exactly one of "PAYMENT_ERROR", "TOO_MANY_PEOPLE", or "OTHER",
+"is_netflix": boolean (true if this is a genuine Netflix screen, app, TV, or website, false otherwise),
+"card_digits": string or null (any credit/debit card numbers or partial digits visible),
+"card_last4": string or null (last 4 digits of card visible if any),
+"visible_email": string or null (Netflix user email visible in screenshot if any, otherwise null),
+"error_description": string (brief summary of error message displayed)."""
 
             payload = {
                 "model": "pixtral-12b-2409",
@@ -382,14 +389,14 @@ def api_submit_request():
             error_desc = evidence_data["error_description"]
             visible_email = evidence_data["visible_email"]
 
-            # 1. Bằng chứng AI: is_netflix=True, TOO_MANY_PEOPLE, visible_email khớp assigned_email
+            # 1. Bằng chứng AI: is_netflix=True, TOO_MANY_PEOPLE (không bắt buộc email vì Netflix overlay không hiện email)
             is_screen_eligible, eval_reason = evaluate_evidence_for_auto_approval(evidence_data, assigned_email)
 
-            # 2. Đơn hàng U7BUY: phải tồn tại, khớp với mã và đã được xác minh (status=verified)
+            # 2. Đơn hàng U7BUY: hợp lệ nếu có mã đơn và không bị huỷ / trùng mã khác
             is_order_verified, order_reason = verify_order_for_request(code, u7buy_order_id)
 
             can_auto_approve_screen = (
-                getattr(Config, "AUTO_APPROVAL_ENABLED", False)
+                getattr(Config, "AUTO_APPROVAL_ENABLED", True)
                 and is_screen_eligible
                 and is_order_verified
             )
@@ -438,11 +445,14 @@ def api_submit_request():
         # -------------------------------------------------------------------------
         # CASE 2 & 3: PAYMENT ERROR VÀ CÁC LỖI KHÁC -> CHUYỂN HÀNG CHỜ ADMIN DUYỆT THỦ CÔNG
         # -------------------------------------------------------------------------
-        # Ở Giai đoạn 0 / Task 1, toàn bộ lỗi thanh toán và lỗi khác đều xếp hàng chờ Admin duyệt
-        status_to_save = "pending"
-        if error_type == "PAYMENT_ERROR" or reason_category == "PAYMENT_ERROR":
+        if reason_category == "OTHER":
+            status_to_save = "manual"
+            req_reason = f"[OTHER] {reason or error_desc or 'Chờ duyệt thủ công'}"
+        elif error_type == "PAYMENT_ERROR" or reason_category == "PAYMENT_ERROR":
+            status_to_save = "pending"
             req_reason = f"[PAYMENT_ERROR] {reason or error_desc or 'Lỗi thanh toán / nợ cước chờ duyệt'}"
         else:
+            status_to_save = "pending"
             req_reason = f"[{reason_category}] {reason or error_desc or 'Chờ duyệt thủ công'}"
 
         saved = database.save_request(code, u7buy_order_id, image_url, req_reason, status_to_save)

@@ -352,6 +352,7 @@
             <div style="display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap;">
                 <button type="button" class="btn-req-filter" onclick="filterRequests('all', this)" style="padding: 5px 12px; font-size: 0.8rem; border-radius: 6px; background: rgba(255,255,255,0.2); color: #fff; border: 1px solid rgba(255,255,255,0.25); cursor: pointer;">All</button>
                 <button type="button" class="btn-req-filter" onclick="filterRequests('pending', this)" style="padding: 5px 12px; font-size: 0.8rem; border-radius: 6px; background: rgba(52, 152, 219, 0.2); color: #3498db; border: 1px solid rgba(52, 152, 219, 0.3); cursor: pointer;">Review Queue</button>
+                <button type="button" class="btn-req-filter" onclick="filterRequests('manual', this)" style="padding: 5px 12px; font-size: 0.8rem; border-radius: 6px; background: rgba(241, 196, 15, 0.2); color: #f1c40f; border: 1px solid rgba(241, 196, 15, 0.3); cursor: pointer;">Manual / Other</button>
                 <button type="button" class="btn-req-filter" onclick="filterRequests('pending_out_of_stock', this)" style="padding: 5px 12px; font-size: 0.8rem; border-radius: 6px; background: rgba(231, 76, 60, 0.2); color: #e74c3c; border: 1px solid rgba(231, 76, 60, 0.3); cursor: pointer;">Out of Stock</button>
                 <button type="button" class="btn-req-filter" onclick="filterRequests('pending_card_mismatch', this)" style="padding: 5px 12px; font-size: 0.8rem; border-radius: 6px; background: rgba(243, 156, 18, 0.2); color: #f39c12; border: 1px solid rgba(243, 156, 18, 0.3); cursor: pointer;">Card Mismatch</button>
                 <button type="button" class="btn-req-filter" onclick="filterRequests('pending_unverified_order', this)" style="padding: 5px 12px; font-size: 0.8rem; border-radius: 6px; background: rgba(155, 89, 182, 0.2); color: #9b59b6; border: 1px solid rgba(155, 89, 182, 0.3); cursor: pointer;">Unverified</button>
@@ -372,7 +373,7 @@
                     </thead>
                     <tbody>
                         {% for req in pending_requests %}
-                        <tr class="req-row" data-status="{{ req.status }}">
+                        <tr class="req-row" data-status="{{ req.status }}" data-reason="{{ req.reason | lower }}">
                             <td style="font-weight: bold; font-family: monospace; font-size: 1.1rem; color: #3498db;">{{ req.u7buy_order_id if req.u7buy_order_id else 'N/A' }}</td>
                             <td style="font-weight: bold; font-family: monospace; font-size: 1.25rem; color: #f1c40f; letter-spacing: 1px;">{{ req.code }}</td>
                             <td>
@@ -382,6 +383,8 @@
                                 <span style="background: rgba(243, 156, 18, 0.25); color: #f39c12; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">Card Mismatch</span>
                                 {% elif req.status == 'pending_unverified_order' %}
                                 <span style="background: rgba(155, 89, 182, 0.25); color: #9b59b6; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">Unverified</span>
+                                {% elif req.status == 'manual' or req.status == 'manual_review' or 'other' in (req.reason | lower) or 'thủ công' in (req.reason | lower) %}
+                                <span style="background: rgba(241, 196, 15, 0.25); color: #f1c40f; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">Manual Review</span>
                                 {% else %}
                                 <span style="background: rgba(52, 152, 219, 0.25); color: #3498db; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">Pending Review</span>
                                 {% endif %}
@@ -681,11 +684,14 @@
 
             const rows = document.querySelectorAll('.req-row');
             rows.forEach(r => {
-                const status = r.dataset.status || '';
+                const status = (r.dataset.status || '').toLowerCase();
+                const reason = (r.dataset.reason || '').toLowerCase();
                 if (statusType === 'all') {
                     r.style.display = '';
                 } else if (statusType === 'pending') {
-                    r.style.display = (status === 'pending') ? '' : 'none';
+                    r.style.display = (status === 'pending' || status === 'manual' || status === 'manual_review') ? '' : 'none';
+                } else if (statusType === 'manual') {
+                    r.style.display = (status === 'manual' || status === 'manual_review' || reason.includes('other') || reason.includes('thủ công')) ? '' : 'none';
                 } else if (status === statusType) {
                     r.style.display = '';
                 } else {

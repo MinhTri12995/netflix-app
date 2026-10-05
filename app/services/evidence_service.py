@@ -46,8 +46,13 @@ def parse_and_validate_ai_response(raw_response: Any) -> Tuple[bool, Dict[str, A
 
     # 2. Validate error_type
     raw_error_type = str(data.get("error_type") or "").strip().upper()
-    if raw_error_type in ALLOWED_ERROR_TYPES:
+    desc = str(data.get("error_description") or data.get("reason") or "").strip().lower()
+    if raw_error_type in ALLOWED_ERROR_TYPES and raw_error_type != "OTHER":
         error_type = raw_error_type
+    elif any(k in desc for k in ["too many", "screen limit", "quá nhiều", "màn hình", "pantallas"]):
+        error_type = "TOO_MANY_PEOPLE"
+    elif raw_error_type == "OTHER":
+        error_type = "OTHER"
     else:
         error_type = "OTHER"
 
@@ -59,7 +64,6 @@ def parse_and_validate_ai_response(raw_response: Any) -> Tuple[bool, Dict[str, A
         visible_email = None
 
     # 4. Extract other fields
-    desc = str(data.get("error_description") or data.get("reason") or "").strip()
     card_last4 = str(data.get("card_last4") or "").strip() or None
     card_digits = str(data.get("card_digits") or "").strip() or None
 
@@ -83,11 +87,11 @@ def evaluate_evidence_for_auto_approval(
 ) -> Tuple[bool, str]:
     """
     Evaluate if validated AI evidence qualifies for automated account replacement.
-    Strict Invariants:
-    1. is_netflix must be True
-    2. error_type must be TOO_MANY_PEOPLE
-    3. visible_email must be present AND exactly match the currently assigned account email
-    4. Any failure routes to manual admin review
+    For TOO_MANY_PEOPLE (screen limit):
+    - is_netflix must be True
+    - error_type must be TOO_MANY_PEOPLE
+    - Email is NOT mandatory on screen limit overlay because Netflix does not show user emails on this dialog.
+      If visible_email is present, it must match expected_email; if not present, it's accepted.
     """
     if not evidence or not isinstance(evidence, dict):
         return False, "EVIDENCE_EMPTY"
@@ -99,11 +103,9 @@ def evaluate_evidence_for_auto_approval(
         return False, f"ERROR_TYPE_NOT_SCREEN_LIMIT: {evidence.get('error_type')}"
 
     visible_email = evidence.get("visible_email")
-    if not visible_email:
-        return False, "EMAIL_NOT_VISIBLE_ON_PROOF"
-
-    expected = (expected_email or "").strip().lower()
-    if visible_email.strip().lower() != expected:
-        return False, f"EMAIL_MISMATCH: proof shows '{visible_email}', assigned account is '{expected}'"
+    if visible_email:
+        expected = (expected_email or "").strip().lower()
+        if expected and visible_email.strip().lower() != expected:
+            return False, f"EMAIL_MISMATCH: proof shows '{visible_email}', assigned account is '{expected}'"
 
     return True, "ELIGIBLE_FOR_AUTO_APPROVAL"

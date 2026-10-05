@@ -781,31 +781,29 @@ def get_today_rotation_count(code):
 def get_pending_requests():
     if SUPABASE_KEY:
         try:
-            response = get_supabase().table("requests").select("*").ilike("status", "pending%").order("created_at", desc=True).execute()
+            response = get_supabase().table("requests").select("*").not_.in_("status", ["accepted", "rejected", "deleted"]).order("created_at", desc=True).execute()
             if response.data is not None:
                 return response.data
         except Exception as e:
             print(f"Supabase get_pending_requests error: {e}")
     try:
-        import sqlite3
-        if os.path.exists("accounts.db"):
-            conn = get_sqlite_conn("accounts.db")
-            c = conn.cursor()
-            c.execute("SELECT id, code, u7buy_order_id, image_url, reason, status, created_at FROM requests WHERE status LIKE 'pending%' ORDER BY created_at DESC")
-            rows = c.fetchall()
-            conn.close()
-            res = []
-            for r in rows:
-                res.append({
-                    "id": r[0],
-                    "code": r[1],
-                    "u7buy_order_id": r[2] if r[2] else "N/A",
-                    "image_url": r[3],
-                    "reason": r[4] if r[4] else "",
-                    "status": r[5],
-                    "created_at": r[6]
-                })
-            return res
+        conn = get_sqlite_conn()
+        c = conn.cursor()
+        c.execute("SELECT id, code, u7buy_order_id, image_url, reason, status, created_at FROM requests WHERE status NOT IN ('accepted', 'rejected', 'deleted') ORDER BY created_at DESC")
+        rows = c.fetchall()
+        conn.close()
+        res = []
+        for r in rows:
+            res.append({
+                "id": r[0],
+                "code": r[1],
+                "u7buy_order_id": r[2] if r[2] else "N/A",
+                "image_url": r[3],
+                "reason": r[4] if r[4] else "",
+                "status": r[5],
+                "created_at": r[6]
+            })
+        return res
     except Exception as e:
         print(f"SQLite get_pending_requests error: {e}")
     return []

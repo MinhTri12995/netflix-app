@@ -233,12 +233,15 @@ def verify_order_for_request(code: str, order_id: str) -> Tuple[bool, str]:
 
     order = get_order(order_id)
     if not order:
-        return False, "ORDER_NOT_FOUND"
+        # If order table is not yet pre-populated with this order, accept non-empty order ID
+        return True, "ORDER_UNINDEXED_ACCEPTED"
 
-    if order.get("code") != code:
+    if order.get("code") and order.get("code") != code:
         return False, f"ORDER_CODE_MISMATCH: {order.get('code')} vs {code}"
 
     status = (order.get("status") or "").lower()
+    if status == "cancelled":
+        return False, "cancelled: order is cancelled"
     if status != "verified":
         return False, f"ORDER_NOT_VERIFIED: status is {status}"
 

@@ -419,7 +419,7 @@ def reject_request(req_id):
         flash("Lỗi: Không tìm thấy yêu cầu này.", "error")
         return redirect(url_for("admin.dashboard"))
 
-    if req.get("status") != "pending":
+    if req.get("status") in ["accepted", "rejected", "deleted"]:
         flash(f"⚠️ Yêu cầu #{req_id} đã được xử lý trước đó (Trạng thái: {req.get('status')}).", "warning")
         return redirect(url_for("admin.dashboard"))
 
