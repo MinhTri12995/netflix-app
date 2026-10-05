@@ -163,6 +163,28 @@ def init_db():
     except Exception as e:
         print(f"init_db local SQLite notice: {e}")
 
+    # Đồng bộ schema PostgreSQL nếu có POSTGRES_URL
+    pg_url = os.environ.get("POSTGRES_URL") or os.environ.get("DATABASE_URL")
+    if pg_url:
+        try:
+            import psycopg2
+            pg_conn = psycopg2.connect(pg_url, connect_timeout=3)
+            pg_cur = pg_conn.cursor()
+            pg_cur.execute("""
+                ALTER TABLE IF EXISTS netflix_accounts ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'usable';
+                ALTER TABLE IF EXISTS netflix_accounts ADD COLUMN IF NOT EXISTS assignment_version INTEGER DEFAULT 1;
+                ALTER TABLE IF EXISTS netflix_accounts ADD COLUMN IF NOT EXISTS plan TEXT DEFAULT 'Premium';
+                ALTER TABLE IF EXISTS access_keys ADD COLUMN IF NOT EXISTS plan TEXT DEFAULT 'Premium';
+                ALTER TABLE IF EXISTS access_keys ADD COLUMN IF NOT EXISTS assignment_version INTEGER DEFAULT 1;
+                ALTER TABLE IF EXISTS requests ADD COLUMN IF NOT EXISTS u7buy_order_id TEXT;
+                ALTER TABLE IF EXISTS requests ADD COLUMN IF NOT EXISTS blocked_reason TEXT;
+            """)
+            pg_conn.commit()
+            pg_cur.close()
+            pg_conn.close()
+        except Exception:
+            pass
+
 def save_account(email, expire_date, netflix_id, secure_netflix_id="", plan=None):
     data = {
         "email": email,

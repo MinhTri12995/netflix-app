@@ -163,5 +163,94 @@ class TestAuthoritativeStore(unittest.TestCase):
         conn.close()
         self.assertEqual(keys, 1)
 
+    def test_supabase_replace_resilient_when_status_column_missing(self):
+        """Supabase replace must fallback cleanly when netflix_accounts.status column does not exist (code 42703)."""
+        from app.services.allocation_service import replace
+
+        cloud_mock = MagicMock()
+        mock_reqs = MagicMock()
+        mock_keys = MagicMock()
+        mock_accs = MagicMock()
+
+        cloud_mock.table.side_effect = lambda t: {
+            "requests": mock_reqs,
+            "access_keys": mock_keys,
+            "netflix_accounts": mock_accs,
+            "operations": MagicMock()
+        }.get(t, MagicMock())
+
+        mock_keys.select().eq().execute.return_value = MagicMock(data=[{"code": "CODE123", "assigned_email": "old@nf.com", "plan": "Premium"}])
+        mock_keys.select().in_().execute.return_value = MagicMock(data=[])
+        mock_keys.update().eq().execute.return_value = MagicMock()
+
+        def select_mock(cols):
+            m = MagicMock()
+            if "status" in cols:
+                m.eq().neq().execute.side_effect = Exception("{'message': 'column netflix_accounts.status does not exist', 'code': '42703'}")
+            else:
+                m.eq().execute.return_value = MagicMock(data=[{"email": "spare@nf.com", "plan": "Premium"}])
+            return m
+        mock_accs.select.side_effect = select_mock
+        mock_accs.delete().eq().execute.return_value = MagicMock()
+
+        mock_reqs.select().eq().execute.return_value = MagicMock(data=[{"id": 1, "code": "CODE123", "status": "pending"}])
+        mock_reqs.update().eq().execute.return_value = MagicMock()
+
+        with patch("database.SUPABASE_KEY", "dummy-key"), \
+             patch("database.get_supabase", return_value=cloud_mock), \
+             patch("database.get_today_rotation_count", return_value=0), \
+             patch("database.is_account_shared_by_others", return_value=False):
+            res = replace(code="CODE123", actor="ai:screen_limit", reason="Screen limit")
+
+        self.assertTrue(res.is_success)
+        self.assertEqual(res.assigned_email, "spare@nf.com")
+
+    def test_supabase_replace_resilient_when_assignment_version_missing(self):
+        """Supabase replace must fallback cleanly when access_keys.assignment_version does not exist."""
+        from app.services.allocation_service import replace
+
+        cloud_mock = MagicMock()
+        mock_reqs = MagicMock()
+        mock_keys = MagicMock()
+        mock_accs = MagicMock()
+
+        cloud_mock.table.side_effect = lambda t: {
+            "requests": mock_reqs,
+            "access_keys": mock_keys,
+            "netflix_accounts": mock_accs,
+            "operations": MagicMock()
+        }.get(t, MagicMock())
+
+        mock_keys.select().eq().execute.return_value = MagicMock(data=[{"code": "CODE456", "assigned_email": "old456@nf.com", "plan": "Premium"}])
+        mock_keys.select().in_().execute.return_value = MagicMock(data=[])
+
+        def select_mock(cols):
+            m = MagicMock()
+            if "status" in cols:
+                m.eq().neq().execute.side_effect = Exception("column netflix_accounts.status does not exist (42703)")
+            else:
+                m.eq().execute.return_value = MagicMock(data=[{"email": "spare456@nf.com", "plan": "Premium"}])
+            return m
+        mock_accs.select.side_effect = select_mock
+        mock_accs.delete().eq().execute.return_value = MagicMock()
+
+        def ak_update_mock(payload):
+            m = MagicMock()
+            if "assignment_version" in payload:
+                m.eq().execute.side_effect = Exception("column access_keys.assignment_version does not exist (42703)")
+            else:
+                m.eq().execute.return_value = MagicMock()
+            return m
+        mock_keys.update.side_effect = ak_update_mock
+
+        with patch("database.SUPABASE_KEY", "dummy-key"), \
+             patch("database.get_supabase", return_value=cloud_mock), \
+             patch("database.get_today_rotation_count", return_value=0), \
+             patch("database.is_account_shared_by_others", return_value=False):
+            res = replace(code="CODE456", actor="ai:screen_limit", reason="Screen limit")
+
+        self.assertTrue(res.is_success)
+        self.assertEqual(res.assigned_email, "spare456@nf.com")
+
 if __name__ == "__main__":
     unittest.main()

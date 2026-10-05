@@ -147,7 +147,14 @@ def allocate(code: str, plan: Optional[str] = None, expire_at: Optional[str] = N
                 return res
 
             # Query candidate accounts
-            accs_res = db.get_supabase().table("netflix_accounts").select("email, plan").eq("plan", plan).execute()
+            try:
+                accs_res = db.get_supabase().table("netflix_accounts").select("email, plan, status").eq("plan", plan).neq("status", "blocked_for_new_assignments").execute()
+            except Exception as e:
+                err_str = str(e).lower()
+                if "status" in err_str or "42703" in err_str:
+                    accs_res = db.get_supabase().table("netflix_accounts").select("email, plan").eq("plan", plan).execute()
+                else:
+                    raise
             if not accs_res.data:
                 res = OperationResult(status="out_of_stock", operation_id=operation_id, detail_code="NO_ACCOUNTS", message=f"No {plan} accounts available in vault")
                 record_operation(operation_id, res)
@@ -329,13 +336,29 @@ def replace(
             plan = key_data.get("plan") or get_plan_for_code(code)
             max_cap = get_max_capacity(plan)
 
-            accs_res = db.get_supabase().table("netflix_accounts").select("email, plan, status").eq("plan", plan).neq("status", "blocked_for_new_assignments").execute()
+            try:
+                accs_res = db.get_supabase().table("netflix_accounts").select("email, plan, status").eq("plan", plan).neq("status", "blocked_for_new_assignments").execute()
+            except Exception as e:
+                err_str = str(e).lower()
+                if "status" in err_str or "42703" in err_str:
+                    accs_res = db.get_supabase().table("netflix_accounts").select("email, plan").eq("plan", plan).execute()
+                else:
+                    raise
+
             all_accs = accs_res.data or []
             candidate_emails = [a["email"] for a in all_accs if a["email"] != old_email]
 
             if not candidate_emails:
                 if request_id is not None:
-                    db.get_supabase().table("requests").update({"status": "pending_out_of_stock", "blocked_reason": "OUT_OF_STOCK"}).eq("id", request_id).execute()
+                    req_id_val = int(request_id) if str(request_id).isdigit() else request_id
+                    try:
+                        db.get_supabase().table("requests").update({"status": "pending_out_of_stock", "blocked_reason": "OUT_OF_STOCK"}).eq("id", req_id_val).execute()
+                    except Exception as e:
+                        err_str = str(e).lower()
+                        if "blocked_reason" in err_str or "42703" in err_str:
+                            db.get_supabase().table("requests").update({"status": "pending_out_of_stock"}).eq("id", req_id_val).execute()
+                        else:
+                            raise
                 res = OperationResult(status="out_of_stock", operation_id=operation_id, request_id=str(request_id) if request_id else None, detail_code="NO_CAPACITY", message="No replacement accounts available in vault")
                 record_operation(operation_id, res)
                 return res
@@ -350,7 +373,15 @@ def replace(
             valid_candidates = [em for em in candidate_emails if usage.get(em, 0) < max_cap]
             if not valid_candidates:
                 if request_id is not None:
-                    db.get_supabase().table("requests").update({"status": "pending_out_of_stock", "blocked_reason": "OUT_OF_STOCK"}).eq("id", request_id).execute()
+                    req_id_val = int(request_id) if str(request_id).isdigit() else request_id
+                    try:
+                        db.get_supabase().table("requests").update({"status": "pending_out_of_stock", "blocked_reason": "OUT_OF_STOCK"}).eq("id", req_id_val).execute()
+                    except Exception as e:
+                        err_str = str(e).lower()
+                        if "blocked_reason" in err_str or "42703" in err_str:
+                            db.get_supabase().table("requests").update({"status": "pending_out_of_stock"}).eq("id", req_id_val).execute()
+                        else:
+                            raise
                 res = OperationResult(status="out_of_stock", operation_id=operation_id, request_id=str(request_id) if request_id else None, detail_code="CAPACITY_EXCEEDED", message="All accounts at capacity")
                 record_operation(operation_id, res)
                 return res
@@ -358,22 +389,35 @@ def replace(
             new_email = min(valid_candidates, key=lambda e: usage.get(e, 0))
 
             # Update access key
-            db.get_supabase().table("access_keys").update({
-                "assigned_email": new_email,
-                "assignment_version": curr_version + 1
-            }).eq("code", code).execute()
+            try:
+                db.get_supabase().table("access_keys").update({
+                    "assigned_email": new_email,
+                    "assignment_version": curr_version + 1
+                }).eq("code", code).execute()
+            except Exception as e:
+                err_str = str(e).lower()
+                if "assignment_version" in err_str or "42703" in err_str:
+                    db.get_supabase().table("access_keys").update({
+                        "assigned_email": new_email
+                    }).eq("code", code).execute()
+                else:
+                    raise
 
             # Protect shared accounts: keep and mark needs_review if shared; delete if solitary
             if old_email:
                 if db.is_account_shared_by_others(old_email, exclude_code=code):
-                    db.get_supabase().table("netflix_accounts").update({"status": "needs_review"}).eq("email", old_email).execute()
+                    try:
+                        db.get_supabase().table("netflix_accounts").update({"status": "needs_review"}).eq("email", old_email).execute()
+                    except Exception as e:
+                        print(f"Supabase update status notice (status column might not exist): {e}")
                 else:
                     db.get_supabase().table("netflix_accounts").delete().eq("email", old_email).execute()
 
             # Update request status
             if request_id is not None:
                 new_status = "auto_accepted" if actor.startswith("ai") else "accepted"
-                db.get_supabase().table("requests").update({"status": new_status}).eq("id", request_id).execute()
+                req_id_val = int(request_id) if str(request_id).isdigit() else request_id
+                db.get_supabase().table("requests").update({"status": new_status}).eq("id", req_id_val).execute()
 
             # Outbox & events
             from app.services.outbox_service import send_notification_outbox

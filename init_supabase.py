@@ -24,8 +24,13 @@ def init_db():
                 netflix_id TEXT,
                 secure_netflix_id TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                plan TEXT
-            )
+                plan TEXT DEFAULT 'Premium',
+                status TEXT DEFAULT 'usable',
+                assignment_version INTEGER DEFAULT 1
+            );
+            ALTER TABLE netflix_accounts ADD COLUMN IF NOT EXISTS plan TEXT DEFAULT 'Premium';
+            ALTER TABLE netflix_accounts ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'usable';
+            ALTER TABLE netflix_accounts ADD COLUMN IF NOT EXISTS assignment_version INTEGER DEFAULT 1;
         """)
         
         # 2. Bảng access_keys
@@ -34,8 +39,12 @@ def init_db():
                 code TEXT PRIMARY KEY,
                 assigned_email TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                expire_at TEXT
-            )
+                expire_at TEXT,
+                plan TEXT DEFAULT 'Premium',
+                assignment_version INTEGER DEFAULT 1
+            );
+            ALTER TABLE access_keys ADD COLUMN IF NOT EXISTS plan TEXT DEFAULT 'Premium';
+            ALTER TABLE access_keys ADD COLUMN IF NOT EXISTS assignment_version INTEGER DEFAULT 1;
         """)
 
         # 3. Bảng requests (bảo hành / khiếu nại)
@@ -47,8 +56,11 @@ def init_db():
                 image_url TEXT,
                 reason TEXT,
                 status TEXT DEFAULT 'pending',
+                blocked_reason TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
+            );
+            ALTER TABLE requests ADD COLUMN IF NOT EXISTS u7buy_order_id TEXT;
+            ALTER TABLE requests ADD COLUMN IF NOT EXISTS blocked_reason TEXT;
         """)
         
         conn.commit()
