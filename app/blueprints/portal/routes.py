@@ -155,6 +155,25 @@ def api_generate_nftoken():
                     print(f"Unexpected error: {e}")
                     continue
 
+            # Fallback an toàn: nếu mạng/API trục trặc, vẫn xuất cookie & link cho khách đăng nhập
+            acc = database.get_account_by_email(assigned_email)
+            if acc:
+                nid = acc[2]
+                snid = acc[3] if acc[3] else ""
+                fallback_token = generate_json_cookie_token(nid, snid)
+                cookie_json = urllib.parse.unquote(fallback_token[9:])
+                return jsonify({
+                    "success": True,
+                    "pc_link": "https://www.netflix.com/browse",
+                    "mobile_link": "https://www.netflix.com/unsupported",
+                    "tv_link": "https://www.netflix.com/tv8",
+                    "general_link": "https://www.netflix.com/YourAccount",
+                    "is_json": True,
+                    "cookie_json": cookie_json,
+                    "plan": acc[5] if (len(acc) > 5 and acc[5]) else "Premium",
+                    "expire_date": acc[1] if (len(acc) > 1 and acc[1]) else "N/A"
+                })
+
             return register_fail("Không thể kết nối đến máy chủ Netflix do mạng hoặc Proxy. Vui lòng bấm LOGIN NOW lại!")
 
         elif is_access_code:

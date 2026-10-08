@@ -7,14 +7,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Cấu hình Webshare Rotating Proxy chuẩn từ Dashboard / Environment (.env)
+# Cấu hình Webshare Rotating Proxy (Mặc định tắt để dùng mạng trực tiếp của Render siêu nhanh)
+ENABLE_PROXY = os.environ.get("ENABLE_PROXY", "false").lower() in ["true", "1"]
 WEBSHARE_USERNAME = os.environ.get("WEBSHARE_USERNAME", "").strip()
 WEBSHARE_PASSWORD = os.environ.get("WEBSHARE_PASSWORD", "").strip()
 WEBSHARE_HOST = os.environ.get("WEBSHARE_HOST", "p.webshare.io").strip()
 WEBSHARE_PORT = os.environ.get("WEBSHARE_PORT", "80").strip()
 
-# Gateway xoay IP tự động của Webshare
-if WEBSHARE_USERNAME and WEBSHARE_PASSWORD and WEBSHARE_HOST:
+# Gateway xoay IP tự động của Webshare (chỉ kích hoạt khi ENABLE_PROXY=true)
+if ENABLE_PROXY and WEBSHARE_USERNAME and WEBSHARE_PASSWORD and WEBSHARE_HOST:
     ROTATING_PROXY_URL = f"http://{WEBSHARE_USERNAME}:{WEBSHARE_PASSWORD}@{WEBSHARE_HOST}:{WEBSHARE_PORT}"
     ROTATING_PROXY_DICT = {
         "http": ROTATING_PROXY_URL,
