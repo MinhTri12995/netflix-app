@@ -65,11 +65,11 @@ def fetch_netflix_nftoken_api(netflix_id, secure_netflix_id=""):
         try:
             response = requests.get(
                 url, params=params, headers=headers,
-                proxies=proxy_dict, timeout=7, verify=True
+                proxies=proxy_dict, timeout=3.5, verify=True
             )
-            # Nếu Proxy hết hạn băng thông (402) hoặc lỗi xác thực (407)
-            if response.status_code in [402, 407]:
-                print(f"[Proxy] HTTP {response.status_code} (Bandwidth/Auth limit). Fallback to direct connection...")
+            # Nếu Proxy lỗi hoặc bị giới hạn (400, 402, 407, 502, 503, 504)
+            if response.status_code in [400, 402, 407, 502, 503, 504]:
+                print(f"[Proxy] HTTP {response.status_code} (Proxy error/limit). Fallback to direct connection...")
                 response = None
         except requests.exceptions.RequestException as e:
             print(f"[Proxy] Proxy connection error ({e}). Fallback to direct connection...")

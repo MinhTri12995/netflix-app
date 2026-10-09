@@ -7,16 +7,21 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Cấu hình Webshare Rotating Proxy (Mặc định tắt để dùng mạng trực tiếp của Render siêu nhanh)
-ENABLE_PROXY = os.environ.get("ENABLE_PROXY", "false").lower() in ["true", "1"]
-WEBSHARE_USERNAME = os.environ.get("WEBSHARE_USERNAME", "").strip()
-WEBSHARE_PASSWORD = os.environ.get("WEBSHARE_PASSWORD", "").strip()
+# Cấu hình Webshare Rotating Proxy (Hỗ trợ proxy xoay vòng với fallback tự động)
+ENABLE_PROXY = os.environ.get("ENABLE_PROXY", "true").lower() in ["true", "1"]
+WEBSHARE_USERNAME = os.environ.get("WEBSHARE_USERNAME", "qizklnon-rotate").strip()
+WEBSHARE_PASSWORD = os.environ.get("WEBSHARE_PASSWORD", "e8y63lmvp8v3").strip()
 WEBSHARE_HOST = os.environ.get("WEBSHARE_HOST", "p.webshare.io").strip()
 WEBSHARE_PORT = os.environ.get("WEBSHARE_PORT", "80").strip()
 
-# Gateway xoay IP tự động của Webshare (chỉ kích hoạt khi ENABLE_PROXY=true)
-if ENABLE_PROXY and WEBSHARE_USERNAME and WEBSHARE_PASSWORD and WEBSHARE_HOST:
-    ROTATING_PROXY_URL = f"http://{WEBSHARE_USERNAME}:{WEBSHARE_PASSWORD}@{WEBSHARE_HOST}:{WEBSHARE_PORT}"
+# Tự động gắn hậu tố -rotate nếu dùng gateway p.webshare.io và người dùng chỉ điền username thường
+proxy_user = WEBSHARE_USERNAME
+if WEBSHARE_HOST == "p.webshare.io" and proxy_user and not proxy_user.endswith("-rotate"):
+    proxy_user = f"{proxy_user}-rotate"
+
+# Gateway xoay IP tự động của Webshare
+if ENABLE_PROXY and proxy_user and WEBSHARE_PASSWORD and WEBSHARE_HOST:
+    ROTATING_PROXY_URL = f"http://{proxy_user}:{WEBSHARE_PASSWORD}@{WEBSHARE_HOST}:{WEBSHARE_PORT}"
     ROTATING_PROXY_DICT = {
         "http": ROTATING_PROXY_URL,
         "https": ROTATING_PROXY_URL

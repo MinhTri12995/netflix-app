@@ -65,10 +65,11 @@ class Config:
     MISTRAL_MODEL = os.environ.get("MISTRAL_MODEL", "ministral-8b-latest")
 
     # 5. Webshare Rotating Proxy
-    WEBSHARE_USERNAME = os.environ.get("WEBSHARE_USERNAME", "")
-    WEBSHARE_PASSWORD = os.environ.get("WEBSHARE_PASSWORD", "")
+    WEBSHARE_USERNAME = os.environ.get("WEBSHARE_USERNAME", "qizklnon-rotate")
+    WEBSHARE_PASSWORD = os.environ.get("WEBSHARE_PASSWORD", "e8y63lmvp8v3")
     WEBSHARE_HOST = os.environ.get("WEBSHARE_HOST", "p.webshare.io")
     WEBSHARE_PORT = int(os.environ.get("WEBSHARE_PORT", 80))
+    ENABLE_PROXY = os.environ.get("ENABLE_PROXY", "true").lower() in ("true", "1", "yes")
 
     # 6. Telegram Bot Alerts
     TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
