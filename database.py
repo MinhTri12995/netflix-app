@@ -185,21 +185,6 @@ def init_db():
         except Exception:
             pass
 
-    # Ensure known verified live accounts have status 'live' and dead accounts are flagged
-    KNOWN_LIVE_SEEDS = [
-        "sandy.glenn68@icloud.com", "rhodesjessica420@gmail.com", "melanavp@yahoo.com",
-        "aalex_anna@yahoo.com", "pdale661av@gmail.com", "ficociello@yahoo.com",
-        "khalan21@gmail.com", "kalliewade12@yahoo.com", "thompsonjay5132@hotmail.com",
-        "nina_r.ehelo@hotmail.com"
-    ]
-    if SUPABASE_KEY:
-        try:
-            for live_em in KNOWN_LIVE_SEEDS:
-                get_supabase().table("netflix_accounts").update({"status": "live"}).eq("email", live_em).execute()
-            get_supabase().table("netflix_accounts").update({"status": "needs_review"}).eq("email", "matson1959@hotmail.com").execute()
-        except Exception as seed_err:
-            print(f"Seed live accounts notice: {seed_err}")
-
 def save_account(email, expire_date, netflix_id, secure_netflix_id="", plan=None):
     data = {
         "email": email,

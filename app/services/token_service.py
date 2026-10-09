@@ -12,6 +12,13 @@ NETFLIX_API_URL = "https://ios.prod.ftl.netflix.com/iosui/user/15.48"
 class ProxyError(Exception): pass
 class CookieError(Exception): pass
 
+class TokenResponseError(ProxyError):
+    """Unverified upstream response; does not prove an account is unusable."""
+    def __init__(self, status_code, shape):
+        self.status_code = status_code
+        self.shape = shape
+        super().__init__(f"Token response unverified (HTTP {status_code}; shape={shape})")
+
 def generate_json_cookie_token(nid, snid):
     exp_time = int(time.time()) + 86400 * 365
     cookie_data = [
@@ -73,8 +80,8 @@ def fetch_netflix_nftoken_api(netflix_id, secure_netflix_id=""):
                 proxies_list.mark_proxy_failed(f"HTTP {response.status_code}")
                 response = None
         except requests.exceptions.RequestException as e:
-            print(f"[Proxy] Proxy connection error ({e}). Fallback to direct connection...")
-            proxies_list.mark_proxy_failed(str(e))
+            print(f"[Proxy] Connection error ({type(e).__name__}). Fallback to direct connection...")
+            proxies_list.mark_proxy_failed(type(e).__name__)
             response = None
 
     # 2. Tu dong ket noi truc tiep (Direct) neu Proxy bi loi hoac khong co proxy
@@ -85,8 +92,8 @@ def fetch_netflix_nftoken_api(netflix_id, secure_netflix_id=""):
                 proxies=None, timeout=7, verify=True
             )
         except requests.exceptions.RequestException as e:
-            print(f"Network error connecting to Netflix: {e}")
-            raise ProxyError(f"Cannot connect to Netflix: {e}")
+            print(f"Network error connecting to Netflix: {type(e).__name__}")
+            raise ProxyError(f"Cannot connect to Netflix ({type(e).__name__})") from None
 
     if response.status_code in [403, 429]:
         raise ProxyError("IP bị Netflix giới hạn tạm thời (403/429)")
@@ -100,21 +107,29 @@ def fetch_netflix_nftoken_api(netflix_id, secure_netflix_id=""):
     if response.status_code == 401:
         raise CookieError(f"Cookie invalid or unauthorized (HTTP {response.status_code})")
 
+    if not 200 <= response.status_code < 300:
+        raise ProxyError(f"Netflix API HTTP {response.status_code}")
     try:
-        response.raise_for_status()
         data = response.json()
-        if 'value' in data and 'account' in data['value'] and 'token' in data['value']['account']:
-            token_data = data['value']['account']['token']['default']
-            if isinstance(token_data, dict) and 'token' in token_data:
-                return token_data['token']
-            elif isinstance(token_data, str):
-                return token_data
+    except ValueError:
+        raise TokenResponseError(response.status_code, "non_json") from None
 
-        raise CookieError("Netflix token not found in response - Cookie is likely dead.")
-    except (CookieError, ProxyError):
-        raise
-    except Exception as e:
-        raise ProxyError(f"Parse/Network Error: {e}")
+    # Inspect only the supported envelope; diagnostics never include response values.
+    token_data = data
+    for field in ('value', 'account', 'token', 'default'):
+        if not isinstance(token_data, dict) or field not in token_data:
+            raise TokenResponseError(response.status_code, f"missing_{field}")
+        token_data = token_data[field]
+    if isinstance(token_data, dict):
+        token_data = token_data.get('token')
+    if not isinstance(token_data, str):
+        raise TokenResponseError(response.status_code, "invalid_token_type")
+    token = token_data.strip()
+    if (not token or any(c.isspace() for c in token)
+            or token.lower().startswith(('http:', 'https:', 'fallback:'))
+            or token.lower().rstrip('/') in ('netflix.com', 'www.netflix.com')):
+        raise TokenResponseError(response.status_code, "invalid_token_value")
+    return token
 
 # --- Rate limiting logic per code ---
 _rate_limit_lock = threading.Lock()

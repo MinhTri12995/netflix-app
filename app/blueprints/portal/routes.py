@@ -19,6 +19,7 @@ from app.services.token_service import (
     mark_code_request_success,
     check_live_rate_limit,
     ProxyError,
+    TokenResponseError,
     CookieError
 )
 from app.services.account_service import fetch_realtime_account_info, is_date_expired
@@ -38,8 +39,14 @@ def index():
 
 @portal_bp.route("/api/generate_nftoken", methods=["POST"])
 def api_generate_nftoken():
-    def register_fail(err_msg, status_code=400):
-        return jsonify({"success": False, "error": err_msg}), status_code
+    def register_fail(err_msg, status_code=400, **details):
+        return jsonify({"success": False, "error": err_msg, **details}), status_code
+
+    def unverified_token_response(err):
+        print(f"[Portal] {err}")
+        return register_fail(
+            "Dịch vụ chưa trả về token đăng nhập hợp lệ. Tài khoản của bạn được giữ nguyên; vui lòng thử lại sau ít phút.",
+            503, error_code="TOKEN_RESPONSE_UNVERIFIED", retryable=True)
 
     client_ip = get_client_ip(request)
     allowed, wait_sec = check_rate_limit(f"nftoken:{client_ip}", max_requests=30, window_seconds=60)
@@ -97,14 +104,21 @@ def api_generate_nftoken():
                 expected_plan = "Premium"
 
             max_attempts = 4
+            excluded_emails = set()
             for attempt in range(max_attempts):
+                email_identity = str(assigned_email or "").strip().casefold()
+                if email_identity in excluded_emails:
+                    break
                 acc = database.get_account_by_email(assigned_email)
                 acc_status = str(acc[6] or "").strip().lower() if (acc and len(acc) > 6) else ""
 
                 if not acc or acc_status in ["needs_review", "dead", "blocked_for_new_assignments", "expired", "die"]:
+                    excluded_emails.add(email_identity)
+                    if attempt == max_attempts - 1:
+                        break
                     print(f"Account {assigned_email} missing or unusable (status='{acc_status}'), rotating...")
                     from app.services.allocation_service import replace
-                    rep_res = replace(code=code, actor="system:activation", reason=f"Account status '{acc_status}' unusable", delete_old_account=False, ignore_quota=True)
+                    rep_res = replace(code=code, actor="system:activation", reason=f"Account status '{acc_status}' unusable", delete_old_account=False, ignore_quota=True, exclude_emails=excluded_emails)
                     if not rep_res.is_success:
                         return jsonify({"success": False, "error": f"Hệ thống đã hết tài khoản dự phòng cho gói {expected_plan}!"}), 500
                     assigned_email = rep_res.assigned_email
@@ -138,10 +152,11 @@ def api_generate_nftoken():
                     except Exception as live_err:
                         print(f"mark_account_live notice: {live_err}")
 
-                    pc_link = f"https://www.netflix.com/browse?nftoken={token}"
-                    mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"
-                    tv_link = f"https://www.netflix.com/tv8?nftoken={token}"
-                    general_link = f"https://www.netflix.com/YourAccount?nftoken={token}"
+                    encoded_token = urllib.parse.quote(token, safe="")
+                    pc_link = f"https://www.netflix.com/browse?nftoken={encoded_token}"
+                    mobile_link = f"https://www.netflix.com/unsupported?nftoken={encoded_token}"
+                    tv_link = f"https://www.netflix.com/tv8?nftoken={encoded_token}"
+                    general_link = f"https://www.netflix.com/YourAccount?nftoken={encoded_token}"
 
                     return jsonify({
                         "success": True,
@@ -154,18 +169,23 @@ def api_generate_nftoken():
                         "plan": acc_plan,
                         "expire_date": acc_expire
                     })
+                except TokenResponseError as e:
+                    return unverified_token_response(e)
                 except ProxyError as e:
                     print(f"Proxy error ({e}), retrying with another proxy...")
                     continue
                 except CookieError as e:
-                    print(f"Cookie {assigned_email} DIE / PAYMENT ERROR, rotating... (Error: {e})")
+                    excluded_emails.add(email_identity)
+                    print(f"[Portal] Cookie authorization failed (attempt {attempt + 1}), checking replacement...")
                     try:
                         database.update_account_status(assigned_email, "needs_review")
                     except Exception as st_err:
                         print(f"update_account_status notice: {st_err}")
 
+                    if attempt == max_attempts - 1:
+                        break
                     from app.services.allocation_service import replace
-                    rep_res = replace(code=code, actor="system:activation", reason=f"CookieError: {e}", delete_old_account=False, ignore_quota=True)
+                    rep_res = replace(code=code, actor="system:activation", reason=f"CookieError: {e}", delete_old_account=False, ignore_quota=True, exclude_emails=excluded_emails)
                     if not rep_res.is_success:
                         return jsonify({"success": False, "error": f"Tài khoản lỗi và kho đã hết Cookie dự phòng cho gói {expected_plan}!"}), 500
                     assigned_email = rep_res.assigned_email
@@ -174,7 +194,7 @@ def api_generate_nftoken():
                     print(f"Unexpected error: {e}")
                     continue
 
-            return register_fail("Không thể tạo link đăng nhập tự động vào lúc này. Vui lòng bấm 'Report Issue' để đổi tài khoản mới hoặc thử lại sau ít phút!")
+            return register_fail("Không thể tạo link đăng nhập tự động vào lúc này. Vui lòng bấm 'Report Issue' để được hỗ trợ hoặc thử lại sau ít phút!", 503, error_code="TOKEN_UNAVAILABLE", retryable=True)
 
         elif is_access_code:
             return register_fail("Access Code không tồn tại trong hệ thống. Vui lòng kiểm tra lại mã đã mua!")
@@ -197,10 +217,11 @@ def api_generate_nftoken():
                     cookie_json = urllib.parse.unquote(token[9:])
                 else:
                     cookie_json = urllib.parse.unquote(generate_json_cookie_token(nid, snid)[9:])
-                pc_link = f"https://www.netflix.com/browse?nftoken={token}"
-                mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"
-                tv_link = f"https://www.netflix.com/tv8?nftoken={token}"
-                general_link = f"https://www.netflix.com/YourAccount?nftoken={token}"
+                encoded_token = urllib.parse.quote(token, safe="")
+                pc_link = f"https://www.netflix.com/browse?nftoken={encoded_token}"
+                mobile_link = f"https://www.netflix.com/unsupported?nftoken={encoded_token}"
+                tv_link = f"https://www.netflix.com/tv8?nftoken={encoded_token}"
+                general_link = f"https://www.netflix.com/YourAccount?nftoken={encoded_token}"
                 return jsonify({
                     "success": True,
                     "pc_link": pc_link,
@@ -212,6 +233,8 @@ def api_generate_nftoken():
                     "plan": "Premium",
                     "expire_date": "N/A"
                 })
+            except TokenResponseError as e:
+                return unverified_token_response(e)
             except Exception as e:
                 return register_fail(f"Could not generate token: {e}")
 

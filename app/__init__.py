@@ -32,6 +32,13 @@ def create_app(config_class=Config):
     # Kích hoạt bảo vệ CSRF cho toàn hệ thống
     init_csrf(app)
 
+    @app.after_request
+    def add_deployment_revision(response):
+        revision = os.environ.get("RENDER_GIT_COMMIT", "")
+        if len(revision) == 40 and all(c in "0123456789abcdef" for c in revision.lower()):
+            response.headers["X-App-Revision"] = revision
+        return response
+
     @app.errorhandler(403)
     def handle_forbidden_error(e):
         return jsonify({

@@ -302,7 +302,7 @@ Plan: Standard
             "image": (io.BytesIO(png_bytes), "screenshot.png")
         }
 
-        with patch("requests.post", return_value=mock_ai_resp), patch("app.blueprints.portal.routes.send_telegram_alert"), patch.object(Config, "AUTO_APPROVAL_ENABLED", True):
+        with patch("requests.post", return_value=mock_ai_resp), patch("app.blueprints.portal.routes.send_telegram_alert"), patch.object(Config, "AUTO_APPROVAL_ENABLED", True), patch.object(Config, "MISTRAL_API_KEY", "test-only-key"):
             res = self.client.post("/api/submit_request", data=data, content_type="multipart/form-data")
 
         self.assertEqual(res.status_code, 200)

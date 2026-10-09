@@ -2,7 +2,7 @@ import os
 import secrets
 import string
 import threading
-from typing import Optional, Tuple
+from typing import Any, Iterable, Optional, Tuple
 import database as db
 from app.services.business_result import OperationResult
 
@@ -309,12 +309,14 @@ def replace(
     expected_assignment_version: Optional[int] = None,
     reason: str = "",
     delete_old_account: Optional[bool] = None,
-    ignore_quota: bool = False
+    ignore_quota: bool = False,
+    exclude_emails: Optional[Iterable[str]] = None
 ) -> OperationResult:
     """
     Atomically replace an access key's assigned account with idempotency,
     quota bounds, capacity invariants, and shared-account protection.
     """
+    excluded = {str(email).strip().casefold() for email in (exclude_emails or ())}
     if operation_id:
         cached = lookup_operation(operation_id)
         if cached:
@@ -405,6 +407,7 @@ def replace(
             candidate_accounts = [
                 a for a in all_accs 
                 if a.get("email") != old_email
+                and str(a.get("email") or "").strip().casefold() not in excluded
                 and match_plan(a.get("plan"), plan)
                 and is_account_usable(a.get("status"))
             ]
@@ -415,6 +418,7 @@ def replace(
                     candidate_accounts = [
                         a for a in (all_res.data or [])
                         if a.get("email") != old_email
+                        and str(a.get("email") or "").strip().casefold() not in excluded
                         and match_plan(a.get("plan"), plan)
                         and is_account_usable(a.get("status"))
                     ]
@@ -428,6 +432,7 @@ def replace(
                     candidate_accounts = [
                         a for a in (all_res.data or [])
                         if a.get("email") != old_email
+                        and str(a.get("email") or "").strip().casefold() not in excluded
                         and is_account_usable(a.get("status"))
                     ]
                 except Exception:
@@ -649,14 +654,15 @@ def replace(
                 acc_em = r_acc[0]
                 acc_pl = r_acc[1]
                 acc_st = r_acc[2] if has_status else None
-                if match_plan(acc_pl, plan) and is_account_usable(acc_st):
+                if (str(acc_em).strip().casefold() not in excluded
+                        and match_plan(acc_pl, plan) and is_account_usable(acc_st)):
                     candidate_accounts.append((acc_em, acc_st))
 
             if not candidate_accounts:
                 for r_acc in raw_accs:
                     acc_em = r_acc[0]
                     acc_st = r_acc[2] if has_status else None
-                    if is_account_usable(acc_st):
+                    if str(acc_em).strip().casefold() not in excluded and is_account_usable(acc_st):
                         candidate_accounts.append((acc_em, acc_st))
 
             if not candidate_accounts:
