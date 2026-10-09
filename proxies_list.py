@@ -13,6 +13,9 @@ WEBSHARE_USERNAME = os.environ.get("WEBSHARE_USERNAME", "qizklnon-rotate").strip
 WEBSHARE_PASSWORD = os.environ.get("WEBSHARE_PASSWORD", "e8y63lmvp8v3").strip()
 WEBSHARE_HOST = os.environ.get("WEBSHARE_HOST", "p.webshare.io").strip()
 WEBSHARE_PORT = os.environ.get("WEBSHARE_PORT", "9999").strip()
+# Webshare rotating gateway p.webshare.io bắt buộc dùng cổng 9999 cho HTTPS Tunnel đến Netflix (cổng 80 sẽ bị 400 Bad Request)
+if WEBSHARE_HOST == "p.webshare.io" and str(WEBSHARE_PORT) in ["80", "8080", ""]:
+    WEBSHARE_PORT = "9999"
 
 # Tự động gắn hậu tố -rotate nếu dùng gateway p.webshare.io và người dùng chỉ điền username thường
 proxy_user = WEBSHARE_USERNAME

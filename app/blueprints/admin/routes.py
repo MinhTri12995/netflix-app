@@ -95,7 +95,7 @@ def dashboard():
             current_proxy_url = "Webshare Proxy"
         current_proxy = current_proxy_url.split('@')[-1] if '@' in current_proxy_url else current_proxy_url
     except Exception:
-        current_proxy = "p.webshare.io:80"
+        current_proxy = "p.webshare.io:9999"
 
     share_mode_enabled = database.get_config("SHARE_MODE_ENABLED", False)
     mix_plan_enabled = database.get_config("MIX_PREMIUM_STANDARD", False)
