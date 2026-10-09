@@ -978,7 +978,7 @@ def get_all_access_keys():
 
 def rotate_access_key(code):
     from app.services.allocation_service import replace
-    res = replace(code=code, actor="legacy:rotate_access_key")
+    res = replace(code=code, actor="legacy:rotate_access_key", delete_old_account=False)
     return res.is_success
 
 def delete_access_key(code):

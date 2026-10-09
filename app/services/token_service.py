@@ -65,7 +65,7 @@ def fetch_netflix_nftoken_api(netflix_id, secure_netflix_id=""):
         try:
             response = requests.get(
                 url, params=params, headers=headers,
-                proxies=proxy_dict, timeout=2.0, verify=True
+                proxies=proxy_dict, timeout=5.0, verify=True
             )
             # Nếu Proxy lỗi hoặc bị giới hạn (400, 402, 407, 502, 503, 504)
             if response.status_code in [400, 402, 407, 502, 503, 504]:

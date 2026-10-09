@@ -68,7 +68,7 @@ class Config:
     WEBSHARE_USERNAME = os.environ.get("WEBSHARE_USERNAME", "qizklnon-rotate")
     WEBSHARE_PASSWORD = os.environ.get("WEBSHARE_PASSWORD", "e8y63lmvp8v3")
     WEBSHARE_HOST = os.environ.get("WEBSHARE_HOST", "p.webshare.io")
-    WEBSHARE_PORT = int(os.environ.get("WEBSHARE_PORT", 80))
+    WEBSHARE_PORT = int(os.environ.get("WEBSHARE_PORT", 9999))
     ENABLE_PROXY = os.environ.get("ENABLE_PROXY", "true").lower() in ("true", "1", "yes")
 
     # 6. Telegram Bot Alerts

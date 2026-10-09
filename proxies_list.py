@@ -12,7 +12,7 @@ ENABLE_PROXY = os.environ.get("ENABLE_PROXY", "true").lower() in ["true", "1"]
 WEBSHARE_USERNAME = os.environ.get("WEBSHARE_USERNAME", "qizklnon-rotate").strip()
 WEBSHARE_PASSWORD = os.environ.get("WEBSHARE_PASSWORD", "e8y63lmvp8v3").strip()
 WEBSHARE_HOST = os.environ.get("WEBSHARE_HOST", "p.webshare.io").strip()
-WEBSHARE_PORT = os.environ.get("WEBSHARE_PORT", "80").strip()
+WEBSHARE_PORT = os.environ.get("WEBSHARE_PORT", "9999").strip()
 
 # Tự động gắn hậu tố -rotate nếu dùng gateway p.webshare.io và người dùng chỉ điền username thường
 proxy_user = WEBSHARE_USERNAME
