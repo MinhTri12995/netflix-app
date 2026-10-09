@@ -361,7 +361,7 @@ def toggle_share_mode():
     new_mode = not current_mode
     database.set_config("SHARE_MODE_ENABLED", new_mode)
     status_str = "BẬT" if new_mode else "TẮT"
-    flash(f"✅ Đã {status_str} chế độ Share Mode (1 Code = 2 Accounts).", "success")
+    flash(f"✅ Đã {status_str} chế độ chia sẻ (1 tài khoản tối đa 2 mã).", "success")
     return redirect(url_for("admin.dashboard"))
 
 @admin_bp.route("/check_all", methods=["POST"])

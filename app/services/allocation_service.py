@@ -37,8 +37,6 @@ def get_max_capacity(plan: str) -> int:
     is_shared = db.get_config("SHARE_MODE_ENABLED", True)
     if not is_shared:
         return 1
-    if plan == "Premium":
-        return 4
     return 2
 
 UNUSABLE_ACCOUNT_STATUSES = {

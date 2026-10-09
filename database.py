@@ -632,7 +632,7 @@ def get_random_available_account(plan_type=None, exclude_email=None):
     def get_max_cap(plan_str):
         if not share_mode_enabled:
             return 1
-        return 4 if is_acc_premium(plan_str) else 2
+        return 2
 
     # Lọc các tài khoản hợp lệ, chưa đầy tải và không trùng tài khoản cần loại trừ (exclude_email)
     valid_accs = []

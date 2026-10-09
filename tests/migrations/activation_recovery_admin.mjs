@@ -67,4 +67,16 @@ console.log('PASS legacy backfill, repeat migration, restricted RPCs, plan prote
  }
  console.log('PASS legacy counter restored without changing business plans or RPC permissions');
 }
+if(process.argv[3]) {
+ await db.exec(await readFile(resolve(process.argv[3]),'utf8'));
+ assert.equal((await db.query("SELECT activation_capacity('Premium') AS n")).rows[0].n,2);
+ assert.equal((await db.query("SELECT count(*)::int AS n FROM access_keys WHERE assigned_email='new'")).rows[0].n,4);
+ await db.exec("UPDATE access_keys SET expire_at='2099-12-31' WHERE assigned_email='new'");
+ await assert.rejects(db.exec("INSERT INTO access_keys(code,assigned_email,plan) VALUES('EXTRA','new','Premium')"),/capacity/i);
+ await db.exec("INSERT INTO netflix_accounts(email,netflix_id,plan) VALUES('fresh','nfresh','Premium')");
+ await db.exec("INSERT INTO access_keys(code,assigned_email,plan) VALUES('FRESH1','fresh','Premium'),('FRESH2','fresh','Premium')");
+ await assert.rejects(db.exec("INSERT INTO access_keys(code,assigned_email,plan) VALUES('FRESH3','fresh','Premium')"),/capacity/i);
+ assert.equal((await db.query("SELECT count(*)::int AS n FROM access_keys WHERE assigned_email='fresh'")).rows[0].n,2);
+ console.log('PASS Premium two-code capacity and preservation of existing four-code assignments');
+}
 await db.close();

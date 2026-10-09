@@ -79,8 +79,8 @@ class TestCapacityIntegration(unittest.TestCase):
         conn.close()
         self.assertEqual(key_count, 1)
 
-    def test_twenty_concurrent_requests_shared_premium_four_succeed(self):
-        """20 yêu cầu tranh tài khoản Premium (Shared Mode, sức chứa 4): đúng 4 thành công, 16 báo out_of_stock."""
+    def test_twenty_concurrent_requests_shared_premium_two_succeed(self):
+        """20 requests for one Premium account admit exactly two codes."""
         db.set_config("SHARE_MODE_ENABLED", True)
         db.save_account("prem_race@nf.com", "2099-12-31", "nid_prem", plan="Premium")
 
@@ -102,13 +102,13 @@ class TestCapacityIntegration(unittest.TestCase):
         success_count = sum(1 for r in results if r.status == "success")
         oos_count = sum(1 for r in results if r.status == "out_of_stock")
 
-        self.assertEqual(success_count, 4, f"Expected exactly 4 successes for Premium shared mode, got {success_count}")
-        self.assertEqual(oos_count, 16, f"Expected exactly 16 out_of_stock, got {oos_count}")
+        self.assertEqual(success_count, 2, f"Expected exactly 2 successes for Premium shared mode, got {success_count}")
+        self.assertEqual(oos_count, 18, f"Expected exactly 18 out_of_stock, got {oos_count}")
 
         conn = db.get_sqlite_conn()
         key_count = conn.execute("SELECT COUNT(*) FROM access_keys WHERE assigned_email = 'prem_race@nf.com'").fetchone()[0]
         conn.close()
-        self.assertEqual(key_count, 4)
+        self.assertEqual(key_count, 2)
 
     def test_twenty_concurrent_requests_shared_standard_two_succeed(self):
         """20 yêu cầu tranh tài khoản Standard (Shared Mode, sức chứa 2): đúng 2 thành công, 18 báo out_of_stock."""

@@ -311,7 +311,7 @@
                     <span style="font-size: 0.9rem; color: #aaa;">Cấp và khôi phục giữ đúng gói của mã.</span>
                     <form action="/admin/toggle_share_mode" method="POST" style="margin: 0; display: flex; align-items: center; gap: 5px;">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <span style="font-size: 0.9rem; color: #aaa;">Chia sẻ (Premium: 4 mã/tài khoản; gói khác: 2):</span>
+                        <span style="font-size: 0.9rem; color: #aaa;">Chia sẻ (tối đa 2 mã/tài khoản):</span>
                         <label class="switch" style="position: relative; display: inline-block; width: 40px; height: 20px;">
                             <input type="checkbox" onChange="this.form.submit()" {% if share_mode_enabled %}checked{% endif %} style="opacity: 0; width: 0; height: 0;">
                             <span class="slider round" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: {% if share_mode_enabled %}#2ecc71{% else %}#ccc{% endif %}; transition: .4s; border-radius: 20px;">
