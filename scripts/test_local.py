@@ -28,7 +28,7 @@ def main():
                 env = {key: "" for key in (
                     "SUPABASE_KEY", "SUPABASE_SECRET_KEY", "POSTGRES_URL", "DATABASE_URL",
                     "MISTRAL_API_KEY", "TELEGRAM_BOT_TOKEN", "U7BUY_APP_ID", "U7BUY_APP_SECRET")}
-                env.update(SECRET_KEY="isolated-test-secret", SQLITE_DB_PATH=str(Path(tmp) / "isolated.db"))
+                env.update(DISABLE_ADMIN_WORKER="1", SECRET_KEY="isolated-test-secret", SQLITE_DB_PATH=str(Path(tmp) / "isolated.db"))
                 with patch.dict(os.environ, env), patch("dotenv.load_dotenv", return_value=False), \
                         patch("socket.socket.connect", deny_service_call), \
                         patch("requests.sessions.Session.request", deny_service_call):

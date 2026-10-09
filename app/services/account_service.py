@@ -144,19 +144,8 @@ def fetch_realtime_account_info(netflix_id, secure_netflix_id=""):
                     'localizedplanname', 'planname', 'plan:')):
                 raise ProxyError('Account page could not be verified')
 
-            plan_raw = None
-            plan_m = re.search(r'(?:localizedPlanName|planName)"\s*:\s*\{"fieldType":"String","value":"([^"]+)"\}', html)
-            if not plan_m:
-                plan_m = re.search(r'(?:localizedPlanName|planName)"\s*:\s*"([^"{}]+)"',html)
-            if plan_m:
-                plan_raw = plan_m.group(1).replace(r'\x20', ' ').strip()
-                import codecs
-                try:
-                    plan_raw = codecs.decode(plan_raw, 'unicode_escape')
-                except Exception:
-                    pass
-
-            plan = checker.normalize_plan_name(plan_raw)
+            from app.services.plan_parser import html_plan
+            plan = html_plan(html)
             return plan, expire_date
 
         except (CookieError, ProxyError):

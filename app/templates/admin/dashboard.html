@@ -641,13 +641,11 @@
         
         <div class="glass-panel" style="border-left: 4px solid #3498db;">
             <h3 style="margin-top: 0; margin-bottom: 10px; font-weight: 400; color: #3498db;">🚀 Smart Bulk Folder Scanner</h3>
-            <p style="font-size: 0.9rem; color: #aaa; margin-bottom: 20px;">Upload an entire folder containing multiple subfolders and text files. The browser will automatically extract cookies and check them LIVE one by one to prevent server overload.</p>
+            <p style="font-size: 0.9rem; color: #aaa; margin-bottom: 20px;">Chọn thư mục để trích xuất tài khoản. Danh sách và tiến trình kiểm tra được lưu trên máy chủ; bạn có thể tải lại hoặc rời trang sau khi gửi thành công.</p>
             
             <div style="display: flex; gap: 15px; align-items: center; margin-bottom: 15px; flex-wrap: wrap;">
                 <input type="file" id="bulkFolderInput" webkitdirectory directory multiple style="padding: 10px; background: rgba(0,0,0,0.2); border: 1px dashed #3498db; color: #ccc; flex: 1; min-width: 250px;">
                 <button id="startScanBtn" onclick="startBulkScan()" style="background: #3498db; padding: 12px 20px;">Start Scanning</button>
-                <button id="pauseScanBtn" onclick="togglePauseScan()" style="background: #f39c12; padding: 12px 20px; display: none;">⏸ Tạm dừng</button>
-                <button id="stopScanBtn" onclick="stopBulkScan()" style="background: #e74c3c; padding: 12px 20px; display: none;">⏹ Dừng quét</button>
             </div>
             
             <div id="scanProgressArea" style="display: none; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px;">
@@ -681,11 +679,11 @@
                     </form>
                     <form action="/admin/check_payment" method="POST" onsubmit="showLoading(this.querySelector('button'))" style="margin: 0;">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" style="background: #c0392b; padding: 8px 15px; font-size: 0.9rem;" title="Scan full DB to delete accounts with Update Payment errors">🚫 SCAN PAYMENT ERRORS</button>
+                        <button type="submit" style="background: #c0392b; padding: 8px 15px; font-size: 0.9rem;" title="Kiểm tra thanh toán; giữ tài khoản và mã đang sử dụng khi phát hiện lỗi">🚫 SCAN PAYMENT ERRORS</button>
                     </form>
                     <form action="/admin/force_check_all" method="POST" onsubmit="showLoading(this.querySelector('button'))" style="margin: 0;">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" style="background: #e74c3c; padding: 8px 15px; font-size: 0.9rem;" title="Force check all accounts regardless of plan (Costs Proxy)">🔥 FORCE FULL SCAN</button>
+                        <button type="submit" style="background: #e74c3c; padding: 8px 15px; font-size: 0.9rem;" title="Kiểm tra toàn bộ gói và thanh toán; lưu tiến trình để tiếp tục sau khi tải lại trang">🔍 CHECK ALL</button>
                     </form>
                     <form action="/admin/check_all" method="POST" onsubmit="showLoading(this.querySelector('button'))" style="margin: 0;">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -694,6 +692,19 @@
                 </div>
             </div>
             
+            <section id="inventory-progress" class="inventory-progress" aria-label="Tiến trình tác vụ kho">
+                <h3>Tiến trình &amp; lịch sử kiểm tra</h3>
+                <p id="job-status" role="status" aria-live="polite">Đang tải tiến trình đã lưu…</p>
+                <progress id="job-progress" max="1" value="0" aria-label="Số tài khoản đã xử lý"></progress>
+                <p id="job-message"></p><p id="job-counts"></p>
+                <p>Lỗi mạng giữ nguyên gói và liên kết. Tài khoản lỗi được đưa vào diện cần kiểm tra; không tự xóa mã.</p>
+                <details open><summary>Kết quả gần nhất</summary>
+                    <div style="overflow:auto"><table><thead><tr><th>Tài khoản</th><th>Kết quả</th><th>Gói xác minh</th></tr></thead><tbody id="job-results"></tbody></table></div>
+                </details>
+                <details><summary>Lịch sử tác vụ</summary><div id="job-history"></div></details>
+                <a href="{{ url_for('admin.dashboard', _anchor='account-vault') }}">Tải lại bảng kho</a>
+            </section>
+            <script src="{{ url_for('static', filename='js/inventory-jobs.js') }}" defer></script>
             <form action="/admin" method="GET" style="display: flex; gap: 10px; margin-bottom: 20px;">
                 <input type="text" name="search_email" class="search-box" aria-label="Tìm email" placeholder="Tìm email..." value="{{ request.args.get('search_email', '') }}">
                 <select name="account_status" aria-label="Trạng thái tài khoản">
@@ -833,35 +844,6 @@
         let isScanPaused = false;
         let isScanStopped = false;
 
-        function togglePauseScan() {
-            const pauseBtn = document.getElementById('pauseScanBtn');
-            if (!isScanPaused) {
-                isScanPaused = true;
-                pauseBtn.innerHTML = "▶ Tiếp tục";
-                pauseBtn.style.background = "#2ecc71";
-                document.getElementById('scanStatusText').innerText = "ĐÃ TẠM DỪNG";
-                document.getElementById('scanStatusText').style.color = "#f39c12";
-            } else {
-                isScanPaused = false;
-                pauseBtn.innerHTML = "⏸ Tạm dừng";
-                pauseBtn.style.background = "#f39c12";
-                document.getElementById('scanStatusText').innerText = "Đang kiểm tra LIVE qua Proxy...";
-                document.getElementById('scanStatusText').style.color = "#3498db";
-            }
-        }
-
-        function stopBulkScan() {
-            isScanStopped = true;
-            document.getElementById('scanStatusText').innerText = "ĐÃ DỪNG QUÉT!";
-            document.getElementById('scanStatusText').style.color = "#e74c3c";
-            const btn = document.getElementById('startScanBtn');
-            btn.disabled = false;
-            btn.innerHTML = "Quét thư mục khác";
-            document.getElementById('pauseScanBtn').style.display = "none";
-            document.getElementById('stopScanBtn').style.display = "none";
-            document.getElementById('scanActionArea').style.display = "block";
-        }
-
         // Helper giải mã an toàn tránh lỗi URIError
         const safeDecode = (str) => {
             if (!str) return "";
@@ -885,15 +867,15 @@
             }
 
             const btn = document.getElementById('startScanBtn');
-            const pauseBtn = document.getElementById('pauseScanBtn');
-            const stopBtn = document.getElementById('stopScanBtn');
+            const pauseBtn = {style:{}};
+            const stopBtn = {style:{}};
 
             btn.disabled = true;
             btn.innerHTML = "⏳ Đang phân tích files...";
-            pauseBtn.style.display = "inline-block";
+            pauseBtn.style.display = "none";
             pauseBtn.innerHTML = "⏸ Tạm dừng";
             pauseBtn.style.background = "#f39c12";
-            stopBtn.style.display = "inline-block";
+            stopBtn.style.display = "none";
             document.getElementById('scanActionArea').style.display = "none";
 
             document.getElementById('scanProgressArea').style.display = "block";
@@ -1098,108 +1080,22 @@
                 return;
             }
 
-            document.getElementById('scanStatusText').innerText = "Đang kiểm tra LIVE qua Proxy...";
-            document.getElementById('scanStatusText').style.color = "#3498db";
-            btn.innerHTML = "⏳ Đang quét...";
-            
-            let processed = 0;
-            let liveCount = 0;
-            let dieCount = 0;
-            let errorCount = 0;
-            
-            // 2. Gửi API Check từng cái (Concurrency = 3 để không sập proxy/server)
-            const CONCURRENCY = 3;
-            let index = 0;
-            
-            async function worker() {
-                while (index < total && !isScanStopped) {
-                    while (isScanPaused && !isScanStopped) {
-                        await new Promise(r => setTimeout(r, 500));
-                    }
-                    if (isScanStopped) break;
-
-                    const currentIndex = index++;
-                    if (currentIndex >= total) break;
-                    const acc = uniqueCookies[currentIndex];
-                    
-                    let successChecked = false;
-                    let retries = 0;
-
-                    while (!successChecked && retries < 2 && !isScanStopped) {
-                        try {
-                            const res = await fetch('/api/check_and_import', {
-                                method: 'POST',
-                                headers: { 
-                                    'Content-Type': 'application/json',
-                                    'X-CSRF-Token': '{{ csrf_token() }}'
-                                },
-                                body: JSON.stringify(acc)
-                            });
-
-                            if (res.status === 401 || res.redirected) {
-                                alert("Phiên đăng nhập đã hết hạn! Vui lòng đăng nhập lại để tiếp tục.");
-                                stopBulkScan();
-                                return;
-                            }
-
-                            const data = await res.json();
-                            
-                            if (data.status === 'LIVE') {
-                                liveCount++;
-                                document.getElementById('scanLiveCount').innerText = liveCount;
-                                successChecked = true;
-                            } else if (data.status === 'ERROR') {
-                                retries++;
-                                if (retries < 2) {
-                                    await new Promise(r => setTimeout(r, 1000));
-                                } else {
-                                    errorCount++;
-                                    document.getElementById('scanErrorCount').innerText = errorCount;
-                                    successChecked = true;
-                                }
-                            } else {
-                                dieCount++;
-                                document.getElementById('scanDieCount').innerText = dieCount;
-                                successChecked = true;
-                            }
-                        } catch (e) {
-                            retries++;
-                            if (retries >= 2) {
-                                errorCount++;
-                                document.getElementById('scanErrorCount').innerText = errorCount;
-                                successChecked = true;
-                            } else {
-                                await new Promise(r => setTimeout(r, 1000));
-                            }
-                        }
-                    }
-                    
-                    processed++;
-                    document.getElementById('scanCountText').innerText = `${processed} / ${total}`;
-                    document.getElementById('scanProgressBar').style.width = `${(processed / total) * 100}%`;
-                }
-            }
-            
-            const workers = [];
-            for (let i = 0; i < Math.min(CONCURRENCY, total); i++) {
-                workers.push(worker());
-            }
-            
-            await Promise.all(workers);
-            
-            if (!isScanStopped) {
-                document.getElementById('scanStatusText').innerText = "HOÀN TẤT QUÉT!";
-                document.getElementById('scanStatusText').style.color = "#2ecc71";
-                btn.disabled = false;
-                btn.innerHTML = "Quét thư mục khác";
-                pauseBtn.style.display = "none";
-                stopBtn.style.display = "none";
-                document.getElementById('scanActionArea').style.display = "block";
+            try {
+                const response = await fetch('/admin/jobs/import', {
+                    method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':'{{ csrf_token() }}'},
+                    body:JSON.stringify({accounts:uniqueCookies})
+                });
+                if(response.redirected) throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+                const result=await response.json();
+                if(!response.ok) throw new Error(result.error||'Chưa lưu được danh sách nhập.');
+                document.getElementById('scanStatusText').textContent='Đã lưu danh sách. Theo dõi tại Tiến trình & lịch sử kiểm tra; có thể rời trang.';
+                document.getElementById('inventory-progress').scrollIntoView({behavior:'smooth'});
+            } catch(err) {
+                document.getElementById('scanStatusText').textContent=err.message;
+            } finally {
+                btn.disabled=false; btn.textContent='Nhập thư mục'; pauseBtn.style.display='none'; stopBtn.style.display='none';
             }
         }
-
-        /* --- Request Change (Admin) JavaScript Functions --- */
-        let _adminLookupTimer = null;
 
         function onAdminCodeInput(val) {
             clearTimeout(_adminLookupTimer);

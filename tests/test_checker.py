@@ -82,7 +82,7 @@ class TestChecker(unittest.TestCase):
         mock_resp.status_code = 200
         mock_resp.ok = True
         mock_resp.url = "https://www.netflix.com/YourAccount"
-        mock_resp.text = '<html>netflix YourAccount plan: standard nextBillingDate: {"fieldType":"String","value":"2099-12-31"}</html>'
+        mock_resp.text = '<script>account={"membershipStatus":"CURRENT_MEMBER","planName":"Standard","nextBillingDate":"2099-12-31"};</script>'
 
         with patch("checker._get_token_and_plan_api", return_value="API_DEAD"), \
              patch("requests.get", return_value=mock_resp):

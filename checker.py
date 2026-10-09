@@ -85,64 +85,8 @@ def visible_account_text(html):
     return ' '.join(parser.parts).lower()
 
 def normalize_plan_name(raw_plan_name, fallback_text=""):
-    import unicodedata
-    import re
-    
-    # 1. Nếu đã trích xuất được plan_name cụ thể từ JSON / Metadata (e.g. "Premium", "Standard", "Cao cấp", "Standard with Ads")
-    if raw_plan_name and str(raw_plan_name).strip():
-        # Loại bỏ các ký tự vô hình zero-width (\ufeff, \u200b, v.v.)
-        raw_str = re.sub(r'[\ufeff\u200b\u200c\u200d\u200e\u200f\xa0]', '', str(raw_plan_name)).strip()
-        p_clean = unicodedata.normalize('NFKD', raw_str.lower()).encode('ASCII', 'ignore').decode('utf-8')
-        
-        # Nhận diện Ads trước (trên tất cả ngôn ngữ)
-        if any(kw in p_clean for kw in ['ads', 'advert', 'anuncio', 'pub', 'werbung', 'quang cao', 'reklam', 'iklan', 'publicit']):
-            return "Standard with Ads"
-        elif any(kw in raw_str for kw in ['広告つきスタンダード', '広告']):
-            return "Standard with Ads"
-            
-        # Nhận diện Premium (trên tất cả ngôn ngữ)
-        if any(kw in p_clean for kw in ['premium', 'ultra', '4k', '4-screen', 'cao cap', 'ozel', 'premjum']):
-            return "Premium"
-        elif any(kw in raw_str for kw in ['المميزة', 'プレミアム', 'Cao cấp']):
-            return "Premium"
-            
-        # Nhận diện Standard (trên tất cả ngôn ngữ)
-        if any(kw in p_clean for kw in ['standard', 'estandar', 'standardowy', 'padrao', 'hd', 'standar', 'tieu chuan']):
-            return "Standard"
-        elif any(kw in raw_str for kw in ['القياسية', 'スタンダード', 'Tiêu chuẩn']):
-            return "Standard"
-            
-        # Nhận diện Basic & Mobile
-        if any(kw in p_clean for kw in ['basic', 'basico', 'podstawowy', 'co ban', 'temel', 'mobil']):
-            return "Basic"
-        elif any(kw in raw_str for kw in ['ベーシック', 'Cơ bản']):
-            return "Basic"
-            
-        return raw_str
-        
-    # 2. Fallback: Tìm trong các cụm từ gói cước chính xác từ HTML/JSON response
-    if fallback_text:
-        text_orig = str(fallback_text)
-        text_clean = unicodedata.normalize('NFKD', text_orig.lower()).encode('ASCII', 'ignore').decode('utf-8')
-        
-        if any(kw in text_clean for kw in ['"standard with ads"', '"standard_ads"', 'standard with ads', 'standard con anuncios', 'standard z reklamami', 'standard avec pub', 'reklam iceren', 'standar dengan iklan']):
-            return "Standard with Ads"
-        elif any(kw in text_orig for kw in ['広告つきスタンダード']):
-            return "Standard with Ads"
-        elif any(kw in text_clean for kw in ['"premium"', 'plan: premium', 'premium plan', 'ultra hd', '4k uhd', 'cao cap']):
-            return "Premium"
-        elif any(kw in text_orig for kw in ['المميزة', 'プレミアム']):
-            return "Premium"
-        elif any(kw in text_clean for kw in ['"standard"', 'plan: standard', 'standard plan', 'standardowy', 'padrao', 'tieu chuan']):
-            return "Standard"
-        elif any(kw in text_orig for kw in ['القياسية', 'スタンダード']):
-            return "Standard"
-        elif any(kw in text_clean for kw in ['"basic"', 'plan: basic', 'podstawowy', 'co ban', 'basico', 'mobile']):
-            return "Basic"
-        elif any(kw in text_orig for kw in ['ベーシック']):
-            return "Basic"
-            
-    return None
+    from app.services.plan_parser import normalize_plan
+    return normalize_plan(raw_plan_name)
 
 def is_date_expired(date_str):
     if not date_str or str(date_str).strip() in ['N/A', 'None', '', 'null']:
@@ -284,19 +228,8 @@ def check_web_account_status_and_plan(cookies, proxy_dict):
             return "ERROR", None
 
         # 6. Kiểm tra gói cước nếu còn sống (LIVE)
-        plan_raw = None
-        plan_m = re.search(r'(?:localizedPlanName|planName)"\s*:\s*\{"fieldType":"String","value":"([^"]+)"\}', html)
-        if not plan_m:
-            plan_m = re.search(r'(?:localizedPlanName|planName)"\s*:\s*"([^"{}]+)"',html)
-        if plan_m:
-            plan_raw = plan_m.group(1).replace(r'\x20', ' ').strip()
-            try:
-                import codecs
-                plan_raw = codecs.decode(plan_raw, 'unicode_escape')
-            except Exception:
-                pass
-
-        final_plan = normalize_plan_name(plan_raw, visible_account_text(html))
+        from app.services.plan_parser import html_plan
+        final_plan = html_plan(html)
         return "LIVE", final_plan
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.ProxyError):
@@ -425,7 +358,7 @@ def _get_token_and_plan_api(netflix_id, secure_netflix_id="", proxy_dict=None):
         if response.status_code in [403, 429] or response.status_code >= 500:
             return "ERROR"
         if not response.ok:
-            return None
+            return "ERROR"
         try:
             data = response.json()
         except Exception:
@@ -434,20 +367,6 @@ def _get_token_and_plan_api(netflix_id, secure_netflix_id="", proxy_dict=None):
         # 1. Kiem tra cau truc dict truc tiep
         if _is_dict_dead(data):
             return None
-
-        # 2. Kiem tra chuoi JSON compact (loai bo khoang trang quanh : va ,)
-        data_compact = json.dumps(data, separators=(',', ':')).lower()
-        exact_die_indicators = [
-            "\"on_hold\"", "\"canceled\"", "\"former_member\"", "\"never_member\"",
-            "\"cancelled\"", "\"delinquent\"", "\"status\":\"hold\"", "\"status\":\"inactive\"",
-            "\"payment_failure\"", "\"warnuserofpaymentfailure\":true", "\"ispaymentfailure\":true",
-            "\"payment_update\"", "\"paymenterror\"", "\"account_on_hold\"", "\"hold_payment\"",
-            "\"membershipstatus\":\"anonymous\"", "\"membershipstatus\":\"former_member\"",
-            "\"membershipstatus\":\"never_member\"", "\"ismembershipactive\":false"
-        ]
-        for indicator in exact_die_indicators:
-            if indicator in data_compact:
-                return None
 
         token_data = ((((data.get("value") or {}).get("account") or {}).get("token") or {}).get("default") or {})
         if isinstance(token_data, dict):
@@ -460,9 +379,10 @@ def _get_token_and_plan_api(netflix_id, secure_netflix_id="", proxy_dict=None):
         if not token:
             return "ERROR"
 
-        return normalize_plan_name("", data_compact) or "VALID"
+        from app.services.plan_parser import current_plan
+        return current_plan(data) or "VALID"
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.ProxyError):
         return "ERROR"
     except Exception as e:
-        print(f"Token API error: {e}")
+        print(f"Token API error ({type(e).__name__})")
         return "ERROR"

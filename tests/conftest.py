@@ -1,5 +1,6 @@
 import os
 import sys
+os.environ["DISABLE_ADMIN_WORKER"] = "1"
 import tempfile
 import sqlite3
 from unittest.mock import patch

@@ -24,3 +24,5 @@ dialog::backdrop{background:#0009}.details-header{display:flex;align-items:cente
 @media(max-width:900px){.health-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.container{width:calc(100% - 24px)!important}.glass-panel{padding:16px!important}.header{gap:10px}}
 @media(max-width:480px){.admin-nav{gap:0}.admin-nav a{padding:10px 8px;font-size:13px}.health-grid{gap:8px}.health-grid>a,.health-grid>div{padding:14px}.health-grid strong{font-size:26px}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important}}
+
+.inventory-progress{background:#131d2b;border:1px solid #45536a;border-radius:12px;padding:20px;margin-bottom:24px}.inventory-progress progress{width:100%;height:24px;accent-color:#3ac998}.inventory-progress p{overflow-wrap:anywhere;color:#c7d3e3}.inventory-progress summary{cursor:pointer;padding:10px 0}#job-history{display:flex;flex-wrap:wrap;gap:8px}#job-history button{background:#293a53;color:#fff;padding:10px;overflow-wrap:anywhere}#job-results td{overflow-wrap:anywhere}

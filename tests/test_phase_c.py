@@ -236,13 +236,16 @@ Plan: Standard
             sess["_csrf_token"] = token
             sess["csrf_token"] = token
 
-        admin_routes._is_scanning = True
-        try:
+        from app.services.inventory_jobs import enqueue, progress
+        conn = database.get_sqlite_conn()
+        conn.execute("INSERT INTO netflix_accounts(email,netflix_id) VALUES('scan@test.invalid','fake')")
+        conn.commit(); conn.close()
+        existing = enqueue('full_scan')
+        with patch('app.services.inventory_jobs.start_worker'):
             res = self.client.post("/admin/check_all", data={"csrf_token": token}, follow_redirects=True)
-            self.assertEqual(res.status_code, 200)
-            self.assertIn("Một tiến trình quét tài khoản đang chạy".encode("utf-8"), res.data)
-        finally:
-            admin_routes._is_scanning = False
+        self.assertEqual(res.status_code, 200)
+        self.assertIn("Đang có tác vụ chạy".encode("utf-8"), res.data)
+        self.assertEqual(progress()['run']['id'], existing['id'])
 
     def test_api_health_endpoint(self):
         """api_health returns 200 with inventory and database status."""

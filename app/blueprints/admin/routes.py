@@ -1,8 +1,6 @@
 import secrets
 import string
-import threading
 from datetime import datetime, timedelta
-from concurrent.futures import ThreadPoolExecutor
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, jsonify, session
 
 import database
@@ -12,27 +10,6 @@ from app.blueprints.auth.routes import login_required
 from app.services.notification_service import send_telegram_alert
 
 admin_bp = Blueprint("admin", __name__)
-
-_scan_lock = threading.Lock()
-_is_scanning = False
-
-def check_single_account(acc, force=False, check_payment=False):
-    email = acc[0]
-    current_plan = acc[5] if len(acc) > 5 else None
-
-    if not force and current_plan:
-        return
-
-    netflix_id = acc[2]
-    secure_netflix_id = acc[3] if len(acc) > 3 else ""
-    status, plan = checker.check_account_live(netflix_id, secure_netflix_id, check_payment)
-
-    if status == "LIVE":
-        database.mark_account_live(email)
-        if plan and plan != "VALID":
-            database.update_plan(email, plan)
-    elif status == "DIE":
-        database.update_account_status(email, "dead")
 
 @admin_bp.route("/")
 @admin_bp.route("/dashboard")
@@ -325,12 +302,7 @@ def upload():
     accounts_list = parser.parse_lines(lines)
 
     if accounts_list:
-        database.init_db()
-        count = 0
-        for acc in accounts_list:
-            database.save_account(acc['email'], acc['expire'], acc['netflix_id'], acc['secure_netflix_id'], acc.get('plan'))
-            count += 1
-        flash(f"🎉 Đã trích xuất và lưu thành công {count} tài khoản vào kho!", "success")
+        return queue_inventory_task('import', accounts_list)
     else:
         flash("❌ Thất bại: Không tìm thấy tài khoản hợp lệ trong file.", "error")
 
@@ -364,169 +336,71 @@ def toggle_share_mode():
     flash(f"✅ Đã {status_str} chế độ chia sẻ (1 tài khoản tối đa 2 mã).", "success")
     return redirect(url_for("admin.dashboard"))
 
+def queue_inventory_task(kind, records=None):
+    from app.services.inventory_jobs import enqueue, start_worker
+    try:
+        job = enqueue(kind, records)
+        start_worker(current_app._get_current_object())
+        flash("Đã lưu tác vụ. Theo dõi tiến trình bên dưới; có thể tải lại hoặc rời trang." if not job['existing'] else "Đang có tác vụ chạy. Tiến trình hiện tại được hiển thị bên dưới.", "warning")
+    except Exception as exc:
+        current_app.logger.warning('Cannot queue inventory task (%s)', type(exc).__name__)
+        flash("Không thể lưu tác vụ lúc này. Vui lòng thử lại.", "error")
+    return redirect(url_for('admin.dashboard', _anchor='inventory-progress'))
+
+
 @admin_bp.route("/check_all", methods=["POST"])
 @login_required
 def check_all():
-    global _is_scanning
-    with _scan_lock:
-        if _is_scanning:
-            flash("Một tiến trình quét tài khoản đang chạy. Vui lòng đợi quét xong trước khi bắt đầu quét mới.", "warning")
-            return redirect(url_for("admin.dashboard"))
-        _is_scanning = True
+    return queue_inventory_task('missing_plans')
 
-    database.init_db()
-    accounts = database.get_all_accounts()
-    accounts_to_check = [acc for acc in accounts if not acc[5]]
-
-    if not accounts_to_check:
-        with _scan_lock:
-            _is_scanning = False
-        flash("Tất cả tài khoản trong kho đều đã có Gói cước.", "warning")
-        return redirect(url_for("admin.dashboard"))
-
-    app_ref = current_app._get_current_object()
-
-    def run_bg():
-        global _is_scanning
-        try:
-            with app_ref.app_context():
-                with ThreadPoolExecutor(max_workers=3) as executor:
-                    for acc in accounts_to_check:
-                        executor.submit(check_single_account, acc, False)
-        finally:
-            with _scan_lock:
-                _is_scanning = False
-
-    t = threading.Thread(target=run_bg, daemon=True)
-    t.start()
-    flash(f"🔄 Đang quét ngầm {len(accounts_to_check)} tài khoản. Cookie chết sẽ tự động bị loại bỏ.", "warning")
-    return redirect(url_for("admin.dashboard"))
 
 @admin_bp.route("/force_check_all", methods=["POST"])
 @login_required
 def force_check_all():
-    global _is_scanning
-    with _scan_lock:
-        if _is_scanning:
-            flash("Một tiến trình quét tài khoản đang chạy. Vui lòng đợi quét xong trước khi bắt đầu quét mới.", "warning")
-            return redirect(url_for("admin.dashboard"))
-        _is_scanning = True
+    return queue_inventory_task('full_scan')
 
-    database.init_db()
-    accounts = database.get_all_accounts()
-
-    if not accounts:
-        with _scan_lock:
-            _is_scanning = False
-        flash("Kho hiện không có tài khoản nào để quét.", "warning")
-        return redirect(url_for("admin.dashboard"))
-
-    app_ref = current_app._get_current_object()
-
-    def run_force_bg():
-        global _is_scanning
-        try:
-            with app_ref.app_context():
-                with ThreadPoolExecutor(max_workers=3) as executor:
-                    for acc in accounts:
-                        executor.submit(check_single_account, acc, True, False)
-        finally:
-            with _scan_lock:
-                _is_scanning = False
-
-    t = threading.Thread(target=run_force_bg, daemon=True)
-    t.start()
-    flash(f"🔥 Đang quét toàn bộ {len(accounts)} tài khoản trong kho.", "warning")
-    return redirect(url_for("admin.dashboard"))
 
 @admin_bp.route("/check_payment", methods=["POST"])
 @login_required
 def check_payment_route():
-    global _is_scanning
-    with _scan_lock:
-        if _is_scanning:
-            flash("Một tiến trình quét tài khoản đang chạy. Vui lòng đợi quét xong trước khi bắt đầu quét mới.", "warning")
-            return redirect(url_for("admin.dashboard"))
-        _is_scanning = True
+    return queue_inventory_task('payment_scan')
 
-    database.init_db()
-    accounts = database.get_all_accounts()
-
-    if not accounts:
-        with _scan_lock:
-            _is_scanning = False
-        flash("Kho hiện không có tài khoản nào để quét lỗi nợ cước.", "warning")
-        return redirect(url_for("admin.dashboard"))
-
-    app_ref = current_app._get_current_object()
-
-    def run_payment_bg():
-        global _is_scanning
-        try:
-            with app_ref.app_context():
-                with ThreadPoolExecutor(max_workers=3) as executor:
-                    for acc in accounts:
-                        executor.submit(check_single_account, acc, True, True)
-        finally:
-            with _scan_lock:
-                _is_scanning = False
-
-    t = threading.Thread(target=run_payment_bg, daemon=True)
-    t.start()
-    flash(f"🚫 Đang quét LỖI THANH TOÁN / NỢ CƯỚC cho {len(accounts)} tài khoản.", "warning")
-    return redirect(url_for("admin.dashboard"))
 
 @admin_bp.route("/filter_duplicates", methods=["POST"])
 @login_required
 def filter_duplicates():
-    database.init_db()
-    accounts = database.get_all_accounts()
+    return queue_inventory_task('duplicates')
 
-    seen_netflix_ids = {}
-    duplicates_to_delete = []
 
-    access_keys = database.get_all_access_keys()
-    assigned_emails_set = set()
-    for k in access_keys:
-        if len(k) > 1 and k[1]:
-            for e in k[1].split(","):
-                if e.strip():
-                    assigned_emails_set.add(e.strip())
+@admin_bp.route("/jobs/import", methods=['POST'])
+@login_required
+def queue_import():
+    from app.services.inventory_jobs import enqueue, start_worker
+    try:
+        job = enqueue('import', (request.get_json(silent=True) or {}).get('accounts'))
+        if job['existing']:
+            return jsonify(error='Đang có tác vụ chạy. Đợi hoàn tất rồi nhập lại thư mục.', id=job['id']), 409
+        start_worker(current_app._get_current_object())
+        return jsonify(success=True, id=job['id']), 202
+    except ValueError as exc:
+        return jsonify(error=str(exc)), 400
+    except Exception as exc:
+        current_app.logger.warning('Cannot queue import (%s)', type(exc).__name__)
+        return jsonify(error='Không thể lưu danh sách nhập. Vui lòng giữ thư mục và thử lại.'), 503
 
-    for acc in accounts:
-        email = acc[0]
-        netflix_id = acc[2]
-        plan = acc[5]
 
-        if not netflix_id:
-            continue
+@admin_bp.route("/jobs/progress")
+@login_required
+def inventory_job_progress():
+    from app.services.inventory_jobs import progress
+    try:
+        response = jsonify(progress(request.args.get('id')) or {'run': None})
+        response.headers['Cache-Control'] = 'no-store'
+        return response
+    except Exception as exc:
+        current_app.logger.warning('Inventory progress unavailable (%s)', type(exc).__name__)
+        return jsonify(error='Chưa tải được tiến trình. Kết quả đã lưu sẽ được tải lại.'), 503
 
-        if netflix_id in seen_netflix_ids:
-            existing_email = seen_netflix_ids[netflix_id]['email']
-            existing_plan = seen_netflix_ids[netflix_id]['plan']
-
-            if existing_email in assigned_emails_set and email not in assigned_emails_set:
-                duplicates_to_delete.append(email)
-            elif email in assigned_emails_set and existing_email not in assigned_emails_set:
-                duplicates_to_delete.append(existing_email)
-                seen_netflix_ids[netflix_id] = {'email': email, 'plan': plan}
-            elif plan and not existing_plan:
-                duplicates_to_delete.append(existing_email)
-                seen_netflix_ids[netflix_id] = {'email': email, 'plan': plan}
-            else:
-                duplicates_to_delete.append(email)
-        else:
-            seen_netflix_ids[netflix_id] = {'email': email, 'plan': plan}
-
-    for email in duplicates_to_delete:
-        database.delete_account(email)
-
-    if duplicates_to_delete:
-        flash(f"🧹 Đã lọc và xóa {len(duplicates_to_delete)} tài khoản trùng NetflixId.", "success")
-    else:
-        flash("Kho sạch sẽ, không có NetflixId nào bị trùng lặp!", "success")
-
-    return redirect(url_for("admin.dashboard"))
 
 @admin_bp.route("/request/<req_id>/accept", methods=["POST"])
 @login_required

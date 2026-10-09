@@ -34,3 +34,13 @@ jobs:
         AUTO_APPROVAL_ENABLED: "false"
       run: |
         python scripts/test_local.py
+
+    - uses: actions/setup-node@v4
+      with:
+        node-version: "24"
+
+    - name: Test PostgreSQL migrations in isolation
+      run: |
+        npm install --prefix "$RUNNER_TEMP/migration-tests" @electric-sql/pglite@0.5.8
+        node tests/migrations/activation_recovery_admin.mjs "$RUNNER_TEMP/migration-tests" supabase/migrations/20261009155342_premium_two_code_capacity.sql
+        node tests/migrations/inventory_jobs.mjs "$RUNNER_TEMP/migration-tests"
