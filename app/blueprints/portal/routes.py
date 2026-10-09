@@ -55,13 +55,15 @@ def api_generate_nftoken():
         database.init_db()
 
         acc_key_row = None
-        if "NetflixId" not in cookie_value and not cookie_value.startswith("FALLBACK:") and not cookie_value.startswith("[") and not cookie_value.startswith("{"):
+        is_cookie_string = ("NetflixId" in cookie_value) or cookie_value.startswith("FALLBACK:") or cookie_value.startswith("[") or cookie_value.startswith("{")
+        if not is_cookie_string:
+            clean_code = "".join(cookie_value.split()).upper()
             try:
-                acc_key_row = database.get_access_key(cookie_value)
+                acc_key_row = database.get_access_key(clean_code) or database.get_access_key(cookie_value)
             except Exception as e:
                 print(f"Error querying access key: {e}")
 
-        is_access_code = acc_key_row is not None or (len(cookie_value) in [5, 6, 7, 8, 9, 10, 12, 15, 16] and "NetflixId" not in cookie_value and not cookie_value.startswith("FALLBACK:"))
+        is_access_code = acc_key_row is not None or (len("".join(cookie_value.split())) in [5, 6, 7, 8, 9, 10, 12, 15, 16] and not is_cookie_string)
 
         if acc_key_row:
             code = acc_key_row[0]
@@ -110,7 +112,10 @@ def api_generate_nftoken():
                 try:
                     token = fetch_netflix_nftoken_api(netflix_id, secure_netflix_id)
                     is_json = token.startswith("FALLBACK:")
-                    cookie_json = urllib.parse.unquote(token[9:]) if is_json else ""
+                    if is_json:
+                        cookie_json = urllib.parse.unquote(token[9:])
+                    else:
+                        cookie_json = urllib.parse.unquote(generate_json_cookie_token(netflix_id, secure_netflix_id)[9:])
 
                     try:
                         rt_plan, rt_expire = fetch_realtime_account_info(netflix_id, secure_netflix_id)
@@ -119,10 +124,8 @@ def api_generate_nftoken():
                             database.update_plan(assigned_email, rt_plan)
                         if rt_expire:
                             acc_expire = rt_expire
-                    except CookieError:
-                        raise
                     except Exception as meta_err:
-                        print(f"Non-critical realtime metadata fetch error: {meta_err}")
+                        print(f"[Portal] Realtime metadata lookup skipped: {meta_err}")
 
                     pc_link = f"https://www.netflix.com/browse?nftoken={token}"
                     mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"
@@ -192,6 +195,11 @@ def api_generate_nftoken():
 
             try:
                 token = fetch_netflix_nftoken_api(nid, snid)
+                is_json = token.startswith("FALLBACK:")
+                if is_json:
+                    cookie_json = urllib.parse.unquote(token[9:])
+                else:
+                    cookie_json = urllib.parse.unquote(generate_json_cookie_token(nid, snid)[9:])
                 pc_link = f"https://www.netflix.com/browse?nftoken={token}"
                 mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"
                 tv_link = f"https://www.netflix.com/tv8?nftoken={token}"
@@ -202,6 +210,8 @@ def api_generate_nftoken():
                     "mobile_link": mobile_link,
                     "tv_link": tv_link,
                     "general_link": general_link,
+                    "is_json": is_json,
+                    "cookie_json": cookie_json,
                     "plan": "Premium",
                     "expire_date": "N/A"
                 })
@@ -220,7 +230,8 @@ def api_check_live_code():
         return jsonify({"success": False, "error": "Please enter Access Code"}), 400
 
     database.init_db()
-    acc_key_row = database.get_access_key(cookie_value)
+    clean_code = "".join(cookie_value.split()).upper()
+    acc_key_row = database.get_access_key(clean_code) or database.get_access_key(cookie_value)
 
     if not acc_key_row:
         return jsonify({"success": False, "error": "Invalid or non-existent access code."}), 400
@@ -294,10 +305,13 @@ def api_submit_request():
         return jsonify({"success": False, "error": "Please upload a screenshot proof of the error!"}), 400
 
     database.init_db()
-    acc_key_row = database.get_access_key(code)
+    clean_code = "".join(code.split()).upper()
+    acc_key_row = database.get_access_key(clean_code) or database.get_access_key(code)
 
     if not acc_key_row:
         return jsonify({"success": False, "error": "Invalid or non-existent access code. Please check your code!"}), 400
+
+    code = acc_key_row[0]
 
     expire_at_str = acc_key_row[2] if len(acc_key_row) > 2 else None
     if expire_at_str:

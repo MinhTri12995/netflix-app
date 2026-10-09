@@ -242,5 +242,49 @@ class TestRegressionSafety(unittest.TestCase):
         # Key must not have been rotated
         self.assertEqual(db.get_access_key(code)[1], "primary@nf.com")
 
+    # -------------------------------------------------------------------------
+    # 6. Portal Access Code Normalization & Cookie JSON Export
+    # -------------------------------------------------------------------------
+    def test_generate_nftoken_case_insensitive_and_cookie_json(self):
+        """Portal generation must support lowercase/spaced code and always return valid cookie_json."""
+        db.save_account("user_export@nf.com", "2099-12-31", "test_nid_val", secure_netflix_id="test_snid_val", plan="Premium")
+        code = "CASE123TEST456"
+        conn = db.get_sqlite_conn()
+        conn.execute("INSERT INTO access_keys (code, assigned_email, expire_at) VALUES (?, 'user_export@nf.com', '2099-12-31')", (code,))
+        conn.commit()
+        conn.close()
+
+        with patch("app.blueprints.portal.routes.fetch_netflix_nftoken_api", return_value="mock_live_token_123"):
+            res = self.client.post("/api/generate_nftoken", json={"cookie": "  case123test456  "})
+
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertTrue(data.get("success"))
+        self.assertIn("mock_live_token_123", data.get("pc_link"))
+        # cookie_json must be populated and parseable
+        cookie_json_str = data.get("cookie_json")
+        self.assertTrue(bool(cookie_json_str))
+        cookie_parsed = json.loads(cookie_json_str)
+        self.assertIsInstance(cookie_parsed, list)
+        names = [c.get("name") for c in cookie_parsed]
+        self.assertIn("NetflixId", names)
+        self.assertIn("SecureNetflixId", names)
+
+    def test_check_live_code_case_insensitive(self):
+        """Portal check_live_code must support lowercase code."""
+        db.save_account("live_chk@nf.com", "2099-12-31", "test_nid_chk", plan="Premium")
+        code = "LIVECHKCODE12"
+        conn = db.get_sqlite_conn()
+        conn.execute("INSERT INTO access_keys (code, assigned_email, expire_at) VALUES (?, 'live_chk@nf.com', '2099-12-31')", (code,))
+        conn.commit()
+        conn.close()
+
+        with patch("checker.check_account_live", return_value=("LIVE", "Premium")):
+            res = self.client.post("/api/check_live_code", json={"cookie": "livechkcode12"})
+
+        self.assertEqual(res.status_code, 200)
+        self.assertTrue(res.get_json().get("success"))
+
 if __name__ == "__main__":
     unittest.main()
+

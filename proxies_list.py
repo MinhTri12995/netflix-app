@@ -36,13 +36,32 @@ else:
 
 _LAST_SYNC_TIME = time.time()
 _SYNC_INTERVAL = 600
+_PROXY_DISABLED_UNTIL = 0
+
+def mark_proxy_failed(reason=""):
+    """Tạm ngưng proxy trong 60s khi phát hiện lỗi (400 Bad Request / 407 / timeout) để không làm chậm luồng xuất acc"""
+    global _PROXY_DISABLED_UNTIL
+    _PROXY_DISABLED_UNTIL = time.time() + 60
+    print(f"[Proxy CircuitBreaker] Tam dung Proxy 60s - Fallback to direct network (Reason: {reason})")
+
+def is_proxy_available():
+    """Kiểm tra proxy có được bật và đang sẵn sàng không"""
+    if not ENABLE_PROXY:
+        return False
+    if time.time() < _PROXY_DISABLED_UNTIL:
+        return False
+    return bool(ROTATING_PROXY_DICT or _PROXIES_CACHE)
 
 def get_rotating_proxy():
     """Trả về proxy rotating gateway của Webshare"""
+    if not is_proxy_available():
+        return None
     return ROTATING_PROXY_DICT
 
 def get_random_proxy():
     """Lấy proxy xoay vòng Webshare"""
+    if not is_proxy_available():
+        return None
     global _PROXIES_CACHE
     if _PROXIES_CACHE:
         p = random.choice(_PROXIES_CACHE)
@@ -54,9 +73,14 @@ def get_random_proxy():
 def sync_webshare_proxies():
     """Khởi tạo kết nối với Webshare rotating proxy"""
     global _PROXIES_CACHE, _LAST_SYNC_TIME
-    _PROXIES_CACHE = [ROTATING_PROXY_DICT]
+    if is_proxy_available():
+        _PROXIES_CACHE = [ROTATING_PROXY_DICT]
+    else:
+        _PROXIES_CACHE = []
     _LAST_SYNC_TIME = time.time()
     return _PROXIES_CACHE
 
 def get_proxies():
+    if not is_proxy_available():
+        return []
     return _PROXIES_CACHE

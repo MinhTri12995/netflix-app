@@ -96,13 +96,14 @@ def fetch_realtime_account_info(netflix_id, secure_netflix_id=""):
                 cookies=cookies,
                 headers=headers,
                 proxies=proxy_dict,
-                timeout=10,
+                timeout=3.5 if attempt == 0 else 5.0,
                 allow_redirects=True,
                 verify=True
             )
-            # Nếu proxy hết hạn băng thông (402) hoặc lỗi xác thực (407)
-            if r.status_code in [402, 407] and attempt == 0:
+            # Nếu proxy gặp lỗi hoặc hết hạn băng thông (400, 402, 407, 502, 503)
+            if r.status_code in [400, 402, 407, 502, 503] and attempt == 0:
                 print(f"[Account Info] Proxy HTTP {r.status_code}, retrying with direct connection...")
+                proxies_list.mark_proxy_failed(f"HTTP {r.status_code}")
                 continue
             url_lower = r.url.lower()
             html = r.text
@@ -147,6 +148,8 @@ def fetch_realtime_account_info(netflix_id, secure_netflix_id=""):
             raise
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.ProxyError) as e:
             last_network_err = e
+            if attempt == 0:
+                proxies_list.mark_proxy_failed(str(e))
             continue
         except Exception as e:
             raise CookieError(f"Error checking account status: {e}")
