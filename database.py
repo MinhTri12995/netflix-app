@@ -483,7 +483,7 @@ def get_account_by_email(email):
             response = get_supabase().table("netflix_accounts").select("*").eq("email", email).execute()
             if response.data and len(response.data) > 0:
                 r = response.data[0]
-                return (r["email"], r["expire_date"], r["netflix_id"], r["secure_netflix_id"], r.get("created_at"), r.get("plan"))
+                return (r["email"], r["expire_date"], r["netflix_id"], r["secure_netflix_id"], r.get("created_at"), r.get("plan"), r.get("status"))
             # Succeeded without exception, but record not found in Supabase -> Definitive Not Found!
             return None
         except Exception as e:
@@ -493,11 +493,14 @@ def get_account_by_email(email):
         if os.path.exists("accounts.db"):
             conn = get_sqlite_conn("accounts.db")
             c = conn.cursor()
-            c.execute("SELECT email, expire_date, netflix_id, secure_netflix_id, created_at, plan FROM netflix_accounts WHERE email = ?", (email,))
+            c.execute("PRAGMA table_info(netflix_accounts)")
+            cols = [col[1] for col in c.fetchall()]
+            status_sel = ", status" if "status" in cols else ""
+            c.execute(f"SELECT email, expire_date, netflix_id, secure_netflix_id, created_at, plan{status_sel} FROM netflix_accounts WHERE email = ?", (email,))
             r = c.fetchone()
             conn.close()
             if r:
-                return (r[0], r[1], r[2], r[3], r[4], r[5] if len(r)>5 else "Premium")
+                return (r[0], r[1], r[2], r[3], r[4], r[5] if len(r)>5 else "Premium", r[6] if len(r)>6 else None)
     except Exception:
         pass
     return None
@@ -510,7 +513,7 @@ def get_account_by_netflix_id(netflix_id):
             response = get_supabase().table("netflix_accounts").select("*").eq("netflix_id", netflix_id).limit(1).execute()
             if response.data and len(response.data) > 0:
                 r = response.data[0]
-                return (r["email"], r["expire_date"], r["netflix_id"], r["secure_netflix_id"], r.get("created_at"), r.get("plan"))
+                return (r["email"], r["expire_date"], r["netflix_id"], r["secure_netflix_id"], r.get("created_at"), r.get("plan"), r.get("status"))
             return None
         except Exception as e:
             print(f"Supabase get_account_by_netflix_id transport notice: {e}")
@@ -519,11 +522,14 @@ def get_account_by_netflix_id(netflix_id):
         if os.path.exists("accounts.db"):
             conn = get_sqlite_conn("accounts.db")
             c = conn.cursor()
-            c.execute("SELECT email, expire_date, netflix_id, secure_netflix_id, created_at, plan FROM netflix_accounts WHERE netflix_id = ? LIMIT 1", (netflix_id,))
+            c.execute("PRAGMA table_info(netflix_accounts)")
+            cols = [col[1] for col in c.fetchall()]
+            status_sel = ", status" if "status" in cols else ""
+            c.execute(f"SELECT email, expire_date, netflix_id, secure_netflix_id, created_at, plan{status_sel} FROM netflix_accounts WHERE netflix_id = ? LIMIT 1", (netflix_id,))
             r = c.fetchone()
             conn.close()
             if r:
-                return (r[0], r[1], r[2], r[3], r[4], r[5] if len(r)>5 else "Premium")
+                return (r[0], r[1], r[2], r[3], r[4], r[5] if len(r)>5 else "Premium", r[6] if len(r)>6 else None)
     except Exception:
         pass
     return None
@@ -951,7 +957,7 @@ def get_access_key(code):
             response = get_supabase().table("access_keys").select("*").eq("code", code).execute()
             if response.data and len(response.data) > 0:
                 r = response.data[0]
-                return (r["code"], r["assigned_email"], r.get("expire_at"))
+                return (r["code"], r["assigned_email"], r.get("expire_at"), r.get("plan"))
             # Succeeded without exception, but record not found -> Definitive Not Found!
             return None
         except Exception as e:
@@ -959,10 +965,14 @@ def get_access_key(code):
     try:
         conn = get_sqlite_conn()
         c = conn.cursor()
-        c.execute("SELECT code, assigned_email, expire_at FROM access_keys WHERE code = ?", (code,))
+        c.execute("PRAGMA table_info(access_keys)")
+        cols = [col[1] for col in c.fetchall()]
+        p_col = ", plan" if "plan" in cols else ""
+        c.execute(f"SELECT code, assigned_email, expire_at{p_col} FROM access_keys WHERE code = ?", (code,))
         r = c.fetchone()
         conn.close()
-        return r
+        if r:
+            return (r[0], r[1], r[2], r[3] if len(r) > 3 else None)
     except Exception:
         pass
     return None
@@ -978,7 +988,7 @@ def get_all_access_keys():
 
 def rotate_access_key(code):
     from app.services.allocation_service import replace
-    res = replace(code=code, actor="legacy:rotate_access_key", delete_old_account=False)
+    res = replace(code=code, actor="legacy:rotate_access_key", delete_old_account=False, ignore_quota=True)
     return res.is_success
 
 def delete_access_key(code):

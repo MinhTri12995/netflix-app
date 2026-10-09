@@ -41,6 +41,37 @@ def get_max_capacity(plan: str) -> int:
         return 4
     return 2
 
+UNUSABLE_ACCOUNT_STATUSES = {
+    "needs_review", "dead", "blocked_for_new_assignments",
+    "expired", "die", "pending_review", "inactive"
+}
+
+def is_account_usable(status: Optional[str]) -> bool:
+    """Check if an account's status is eligible for assignment/rotation."""
+    if not status:
+        return True
+    return str(status).strip().lower() not in UNUSABLE_ACCOUNT_STATUSES
+
+def match_plan(acc_plan: Optional[str], target_plan: Optional[str]) -> bool:
+    """Flexible matching between account plans and key plans across variant spellings."""
+    if not target_plan:
+        target_plan = "Premium"
+    tp = str(target_plan).strip().lower()
+    if not acc_plan:
+        return tp in ["premium", ""]
+    ap = str(acc_plan).strip().lower()
+    if ap == tp:
+        return True
+    if ("ad" in ap) and ("ad" in tp):
+        return True
+    if ("standard" in ap and "ad" not in ap) and ("standard" in tp and "ad" not in tp):
+        return True
+    if "basic" in ap and "basic" in tp:
+        return True
+    if "premium" in ap and "premium" in tp:
+        return True
+    return False
+
 def lookup_operation(operation_id: str) -> Optional[OperationResult]:
     """Look up an existing operation by ID for idempotency."""
     if not operation_id:
@@ -155,12 +186,27 @@ def allocate(code: str, plan: Optional[str] = None, expire_at: Optional[str] = N
                     accs_res = db.get_supabase().table("netflix_accounts").select("email, plan").eq("plan", plan).execute()
                 else:
                     raise
-            if not accs_res.data:
+
+            all_accs = accs_res.data or []
+            all_emails = [
+                a["email"] for a in all_accs
+                if match_plan(a.get("plan"), plan) and is_account_usable(a.get("status"))
+            ]
+            if not all_emails:
+                try:
+                    all_res = db.get_supabase().table("netflix_accounts").select("email, plan, status").execute()
+                    all_emails = [
+                        a["email"] for a in (all_res.data or [])
+                        if match_plan(a.get("plan"), plan) and is_account_usable(a.get("status"))
+                    ]
+                except Exception:
+                    pass
+
+            if not all_emails:
                 res = OperationResult(status="out_of_stock", operation_id=operation_id, detail_code="NO_ACCOUNTS", message=f"No {plan} accounts available in vault")
                 record_operation(operation_id, res)
                 return res
 
-            all_emails = [a["email"] for a in accs_res.data]
             keys_res = db.get_supabase().table("access_keys").select("assigned_email").in_("assigned_email", all_emails).execute()
             
             # Count current usage
@@ -210,28 +256,35 @@ def allocate(code: str, plan: Optional[str] = None, expire_at: Optional[str] = N
             # 2. Select candidates with capacity < max_cap
             c.execute("PRAGMA table_info(netflix_accounts)")
             cols = [col[1] for col in c.fetchall()]
-            status_filter = "AND (na.status IS NULL OR na.status = 'usable')" if "status" in cols else ""
+            has_status = "status" in cols
+            c.execute("SELECT email, plan" + (", status" if has_status else "") + " FROM netflix_accounts")
+            raw_accs = c.fetchall()
 
-            query = f"""
-                SELECT na.email, COUNT(ak.code) as current_cnt
-                FROM netflix_accounts na
-                LEFT JOIN access_keys ak ON ak.assigned_email = na.email
-                WHERE (na.plan = ? OR (na.plan IS NULL AND ? = 'Premium'))
-                  {status_filter}
-                GROUP BY na.email
-                HAVING current_cnt < ?
-                ORDER BY current_cnt ASC
-            """
-            c.execute(query, (plan, plan, max_cap))
-            candidates = c.fetchall()
+            candidates_pool = []
+            for r_acc in raw_accs:
+                acc_em = r_acc[0]
+                acc_pl = r_acc[1]
+                acc_st = r_acc[2] if has_status else None
+                if match_plan(acc_pl, plan) and is_account_usable(acc_st):
+                    candidates_pool.append(acc_em)
 
+            if not candidates_pool:
+                res = OperationResult(status="out_of_stock", operation_id=operation_id, detail_code="NO_CAPACITY", message=f"No available {plan} accounts in vault")
+                record_operation(operation_id, res)
+                conn.close()
+                return res
+
+            placeholders = ",".join("?" for _ in candidates_pool)
+            c.execute(f"SELECT assigned_email, COUNT(code) FROM access_keys WHERE assigned_email IN ({placeholders}) GROUP BY assigned_email", candidates_pool)
+            usage_counts = dict(c.fetchall())
+            candidates = [em for em in candidates_pool if usage_counts.get(em, 0) < max_cap]
             if not candidates:
                 res = OperationResult(status="out_of_stock", operation_id=operation_id, detail_code="NO_CAPACITY", message=f"No available {plan} accounts in vault")
                 record_operation(operation_id, res)
                 conn.close()
                 return res
 
-            chosen_email = candidates[0][0]
+            chosen_email = min(candidates, key=lambda e: usage_counts.get(e, 0))
 
             # 3. Insert access key
             c.execute("INSERT INTO access_keys (code, assigned_email, expire_at) VALUES (?, ?, ?)",
@@ -349,7 +402,24 @@ def replace(
                     raise
 
             all_accs = accs_res.data or []
-            candidate_emails = [a["email"] for a in all_accs if a["email"] != old_email]
+            candidate_emails = [
+                a["email"] for a in all_accs 
+                if a.get("email") != old_email
+                and match_plan(a.get("plan"), plan)
+                and is_account_usable(a.get("status"))
+            ]
+
+            if not candidate_emails:
+                try:
+                    all_res = db.get_supabase().table("netflix_accounts").select("email, plan, status").execute()
+                    candidate_emails = [
+                        a["email"] for a in (all_res.data or [])
+                        if a.get("email") != old_email
+                        and match_plan(a.get("plan"), plan)
+                        and is_account_usable(a.get("status"))
+                    ]
+                except Exception:
+                    pass
 
             if not candidate_emails:
                 if request_id is not None:
@@ -507,7 +577,8 @@ def replace(
             c.execute("PRAGMA table_info(access_keys)")
             ak_cols = [col[1] for col in c.fetchall()]
             v_col = ", assignment_version" if "assignment_version" in ak_cols else ""
-            c.execute(f"SELECT code, assigned_email, expire_at{v_col} FROM access_keys WHERE code = ?", (code,))
+            p_col = ", plan" if "plan" in ak_cols else ""
+            c.execute(f"SELECT code, assigned_email, expire_at{v_col}{p_col} FROM access_keys WHERE code = ?", (code,))
             key_row = c.fetchone()
             if not key_row:
                 conn.close()
@@ -517,7 +588,8 @@ def replace(
 
             old_email = key_row[1]
             expire_at_str = key_row[2]
-            curr_version = key_row[3] if len(key_row) > 3 else 1
+            curr_version = key_row[3] if len(key_row) > 3 and "assignment_version" in ak_cols else 1
+            key_plan = key_row[-1] if "plan" in ak_cols and len(key_row) > 3 else None
 
             if expected_assignment_version is not None and curr_version != expected_assignment_version:
                 conn.close()
@@ -546,28 +618,24 @@ def replace(
                     record_operation(operation_id, res)
                     return res
 
-            plan = get_plan_for_code(code)
+            plan = key_plan or get_plan_for_code(code)
             max_cap = get_max_capacity(plan)
 
             c.execute("PRAGMA table_info(netflix_accounts)")
             na_cols = [col[1] for col in c.fetchall()]
-            status_filter = "AND (na.status IS NULL OR na.status = 'usable')" if "status" in na_cols else ""
+            has_status = "status" in na_cols
+            c.execute("SELECT email, plan" + (", status" if has_status else "") + " FROM netflix_accounts WHERE email != ?", (old_email or "",))
+            raw_accs = c.fetchall()
 
-            query = f"""
-                SELECT na.email, COUNT(ak.code) as current_cnt
-                FROM netflix_accounts na
-                LEFT JOIN access_keys ak ON ak.assigned_email = na.email
-                WHERE (na.plan = ? OR (na.plan IS NULL AND ? = 'Premium'))
-                  AND na.email != ?
-                  {status_filter}
-                GROUP BY na.email
-                HAVING current_cnt < ?
-                ORDER BY current_cnt ASC
-            """
-            c.execute(query, (plan, plan, old_email or "", max_cap))
-            candidates = c.fetchall()
+            candidate_emails = []
+            for r_acc in raw_accs:
+                acc_em = r_acc[0]
+                acc_pl = r_acc[1]
+                acc_st = r_acc[2] if has_status else None
+                if match_plan(acc_pl, plan) and is_account_usable(acc_st):
+                    candidate_emails.append(acc_em)
 
-            if not candidates:
+            if not candidate_emails:
                 if request_id is not None:
                     c.execute("UPDATE requests SET status = 'pending_out_of_stock', blocked_reason = 'OUT_OF_STOCK' WHERE id = ? OR id = ?",
                               (str(request_id), int(request_id) if str(request_id).isdigit() else -1))
@@ -577,7 +645,21 @@ def replace(
                 record_operation(operation_id, res)
                 return res
 
-            new_email = candidates[0][0]
+            placeholders = ",".join("?" for _ in candidate_emails)
+            c.execute(f"SELECT assigned_email, COUNT(code) FROM access_keys WHERE assigned_email IN ({placeholders}) GROUP BY assigned_email", candidate_emails)
+            usage_counts = dict(c.fetchall())
+            valid_candidates = [em for em in candidate_emails if usage_counts.get(em, 0) < max_cap]
+            if not valid_candidates:
+                if request_id is not None:
+                    c.execute("UPDATE requests SET status = 'pending_out_of_stock', blocked_reason = 'OUT_OF_STOCK' WHERE id = ? OR id = ?",
+                              (str(request_id), int(request_id) if str(request_id).isdigit() else -1))
+                conn.commit()
+                conn.close()
+                res = OperationResult(status="out_of_stock", operation_id=operation_id, request_id=str(request_id) if request_id else None, detail_code="CAPACITY_EXCEEDED", message="All accounts at capacity")
+                record_operation(operation_id, res)
+                return res
+
+            new_email = min(valid_candidates, key=lambda e: usage_counts.get(e, 0))
 
             if "assignment_version" in ak_cols:
                 c.execute("UPDATE access_keys SET assigned_email = ?, assignment_version = COALESCE(assignment_version, 1) + 1 WHERE code = ?",

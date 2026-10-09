@@ -69,6 +69,7 @@ def api_generate_nftoken():
             code = acc_key_row[0]
             assigned_email = acc_key_row[1]
             expire_at_str = acc_key_row[2] if len(acc_key_row) > 2 else None
+            key_plan = acc_key_row[3] if len(acc_key_row) > 3 and acc_key_row[3] else None
 
             # Check expiration
             if expire_at_str:
@@ -82,7 +83,9 @@ def api_generate_nftoken():
                     print(f"Expiration parse error: {e}")
 
             # Determine expected plan
-            if len(code) == 15:
+            if key_plan:
+                expected_plan = key_plan
+            elif len(code) == 15:
                 expected_plan = "Premium"
             elif len(code) == 10:
                 expected_plan = "Standard"
@@ -96,17 +99,20 @@ def api_generate_nftoken():
             max_attempts = 4
             for attempt in range(max_attempts):
                 acc = database.get_account_by_email(assigned_email)
+                acc_status = str(acc[6] or "").strip().lower() if (acc and len(acc) > 6) else ""
 
-                if not acc:
-                    rotated = database.rotate_access_key(code)
-                    if not rotated:
+                if not acc or acc_status in ["needs_review", "dead", "blocked_for_new_assignments", "expired", "die"]:
+                    print(f"Account {assigned_email} missing or unusable (status='{acc_status}'), rotating...")
+                    from app.services.allocation_service import replace
+                    rep_res = replace(code=code, actor="system:activation", reason=f"Account status '{acc_status}' unusable", delete_old_account=False, ignore_quota=True)
+                    if not rep_res.is_success:
                         return jsonify({"success": False, "error": f"Hệ thống đã hết tài khoản dự phòng cho gói {expected_plan}!"}), 500
-                    assigned_email = database.get_access_key(code)[1]
+                    assigned_email = rep_res.assigned_email
                     continue
 
                 netflix_id = acc[2]
                 secure_netflix_id = acc[3] if acc[3] else ""
-                acc_plan = acc[5] if (acc and len(acc) > 5 and acc[5]) else "Premium"
+                acc_plan = acc[5] if (acc and len(acc) > 5 and acc[5]) else expected_plan
                 acc_expire = acc[1] if (acc and len(acc) > 1 and acc[1]) else (expire_at_str if expire_at_str else "N/A")
 
                 try:
@@ -148,8 +154,22 @@ def api_generate_nftoken():
                     continue
                 except CookieError as e:
                     print(f"Cookie {assigned_email} DIE / PAYMENT ERROR, rotating... (Error: {e})")
+                    if database.SUPABASE_KEY:
+                        try:
+                            database.get_supabase().table("netflix_accounts").update({"status": "needs_review"}).eq("email", assigned_email).execute()
+                        except Exception as update_err:
+                            print(f"Supabase mark needs_review notice: {update_err}")
+                    try:
+                        conn = database.get_sqlite_conn()
+                        c = conn.cursor()
+                        c.execute("UPDATE netflix_accounts SET status = 'needs_review' WHERE email = ?", (assigned_email,))
+                        conn.commit()
+                        conn.close()
+                    except Exception:
+                        pass
+
                     from app.services.allocation_service import replace
-                    rep_res = replace(code=code, actor="system:activation", reason=f"CookieError: {e}", delete_old_account=False)
+                    rep_res = replace(code=code, actor="system:activation", reason=f"CookieError: {e}", delete_old_account=False, ignore_quota=True)
                     if not rep_res.is_success:
                         return jsonify({"success": False, "error": f"Tài khoản lỗi và kho đã hết Cookie dự phòng cho gói {expected_plan}!"}), 500
                     assigned_email = rep_res.assigned_email
