@@ -402,18 +402,18 @@ def replace(
                     raise
 
             all_accs = accs_res.data or []
-            candidate_emails = [
-                a["email"] for a in all_accs 
+            candidate_accounts = [
+                a for a in all_accs 
                 if a.get("email") != old_email
                 and match_plan(a.get("plan"), plan)
                 and is_account_usable(a.get("status"))
             ]
 
-            if not candidate_emails:
+            if not candidate_accounts:
                 try:
                     all_res = db.get_supabase().table("netflix_accounts").select("email, plan, status").execute()
-                    candidate_emails = [
-                        a["email"] for a in (all_res.data or [])
+                    candidate_accounts = [
+                        a for a in (all_res.data or [])
                         if a.get("email") != old_email
                         and match_plan(a.get("plan"), plan)
                         and is_account_usable(a.get("status"))
@@ -421,7 +421,19 @@ def replace(
                 except Exception:
                     pass
 
-            if not candidate_emails:
+            # Auto-upgrade fallback: if no accounts for specific plan, fallback to any usable account in vault
+            if not candidate_accounts:
+                try:
+                    all_res = db.get_supabase().table("netflix_accounts").select("email, plan, status").execute()
+                    candidate_accounts = [
+                        a for a in (all_res.data or [])
+                        if a.get("email") != old_email
+                        and is_account_usable(a.get("status"))
+                    ]
+                except Exception:
+                    pass
+
+            if not candidate_accounts:
                 if request_id is not None:
                     req_id_val = int(request_id) if str(request_id).isdigit() else request_id
                     try:
@@ -435,6 +447,9 @@ def replace(
                 res = OperationResult(status="out_of_stock", operation_id=operation_id, request_id=str(request_id) if request_id else None, detail_code="NO_CAPACITY", message="No replacement accounts available in vault")
                 record_operation(operation_id, res)
                 return res
+
+            candidate_emails = [a["email"] for a in candidate_accounts]
+            status_by_email = {a["email"]: str(a.get("status") or "").strip().lower() for a in candidate_accounts}
 
             keys_res = db.get_supabase().table("access_keys").select("assigned_email").in_("assigned_email", candidate_emails).execute()
             usage = {}
@@ -459,7 +474,9 @@ def replace(
                 record_operation(operation_id, res)
                 return res
 
-            new_email = min(valid_candidates, key=lambda e: usage.get(e, 0))
+            # Prioritize verified 'live' accounts first, then least-used
+            valid_candidates.sort(key=lambda em: (0 if status_by_email.get(em) == "live" else 1, usage.get(em, 0)))
+            new_email = valid_candidates[0]
 
             # Update access key
             try:
@@ -627,15 +644,22 @@ def replace(
             c.execute("SELECT email, plan" + (", status" if has_status else "") + " FROM netflix_accounts WHERE email != ?", (old_email or "",))
             raw_accs = c.fetchall()
 
-            candidate_emails = []
+            candidate_accounts = []
             for r_acc in raw_accs:
                 acc_em = r_acc[0]
                 acc_pl = r_acc[1]
                 acc_st = r_acc[2] if has_status else None
                 if match_plan(acc_pl, plan) and is_account_usable(acc_st):
-                    candidate_emails.append(acc_em)
+                    candidate_accounts.append((acc_em, acc_st))
 
-            if not candidate_emails:
+            if not candidate_accounts:
+                for r_acc in raw_accs:
+                    acc_em = r_acc[0]
+                    acc_st = r_acc[2] if has_status else None
+                    if is_account_usable(acc_st):
+                        candidate_accounts.append((acc_em, acc_st))
+
+            if not candidate_accounts:
                 if request_id is not None:
                     c.execute("UPDATE requests SET status = 'pending_out_of_stock', blocked_reason = 'OUT_OF_STOCK' WHERE id = ? OR id = ?",
                               (str(request_id), int(request_id) if str(request_id).isdigit() else -1))
@@ -644,6 +668,9 @@ def replace(
                 res = OperationResult(status="out_of_stock", operation_id=operation_id, request_id=str(request_id) if request_id else None, detail_code="NO_CAPACITY", message=f"No available {plan} replacement accounts in vault")
                 record_operation(operation_id, res)
                 return res
+
+            candidate_emails = [a[0] for a in candidate_accounts]
+            status_by_email = {a[0]: str(a[1] or "").strip().lower() for a in candidate_accounts}
 
             placeholders = ",".join("?" for _ in candidate_emails)
             c.execute(f"SELECT assigned_email, COUNT(code) FROM access_keys WHERE assigned_email IN ({placeholders}) GROUP BY assigned_email", candidate_emails)
@@ -659,7 +686,9 @@ def replace(
                 record_operation(operation_id, res)
                 return res
 
-            new_email = min(valid_candidates, key=lambda e: usage_counts.get(e, 0))
+            # Prioritize verified 'live' accounts first, then least-used
+            valid_candidates.sort(key=lambda em: (0 if status_by_email.get(em) == "live" else 1, usage_counts.get(em, 0)))
+            new_email = valid_candidates[0]
 
             if "assignment_version" in ak_cols:
                 c.execute("UPDATE access_keys SET assigned_email = ?, assignment_version = COALESCE(assignment_version, 1) + 1 WHERE code = ?",

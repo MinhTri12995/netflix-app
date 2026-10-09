@@ -133,6 +133,11 @@ def api_generate_nftoken():
                     except Exception as meta_err:
                         print(f"[Portal] Realtime metadata lookup skipped: {meta_err}")
 
+                    try:
+                        database.mark_account_live(assigned_email)
+                    except Exception as live_err:
+                        print(f"mark_account_live notice: {live_err}")
+
                     pc_link = f"https://www.netflix.com/browse?nftoken={token}"
                     mobile_link = f"https://www.netflix.com/unsupported?nftoken={token}"
                     tv_link = f"https://www.netflix.com/tv8?nftoken={token}"
@@ -154,19 +159,10 @@ def api_generate_nftoken():
                     continue
                 except CookieError as e:
                     print(f"Cookie {assigned_email} DIE / PAYMENT ERROR, rotating... (Error: {e})")
-                    if database.SUPABASE_KEY:
-                        try:
-                            database.get_supabase().table("netflix_accounts").update({"status": "needs_review"}).eq("email", assigned_email).execute()
-                        except Exception as update_err:
-                            print(f"Supabase mark needs_review notice: {update_err}")
                     try:
-                        conn = database.get_sqlite_conn()
-                        c = conn.cursor()
-                        c.execute("UPDATE netflix_accounts SET status = 'needs_review' WHERE email = ?", (assigned_email,))
-                        conn.commit()
-                        conn.close()
-                    except Exception:
-                        pass
+                        database.update_account_status(assigned_email, "needs_review")
+                    except Exception as st_err:
+                        print(f"update_account_status notice: {st_err}")
 
                     from app.services.allocation_service import replace
                     rep_res = replace(code=code, actor="system:activation", reason=f"CookieError: {e}", delete_old_account=False, ignore_quota=True)

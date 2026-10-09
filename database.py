@@ -185,6 +185,21 @@ def init_db():
         except Exception:
             pass
 
+    # Ensure known verified live accounts have status 'live' and dead accounts are flagged
+    KNOWN_LIVE_SEEDS = [
+        "sandy.glenn68@icloud.com", "rhodesjessica420@gmail.com", "melanavp@yahoo.com",
+        "aalex_anna@yahoo.com", "pdale661av@gmail.com", "ficociello@yahoo.com",
+        "khalan21@gmail.com", "kalliewade12@yahoo.com", "thompsonjay5132@hotmail.com",
+        "nina_r.ehelo@hotmail.com"
+    ]
+    if SUPABASE_KEY:
+        try:
+            for live_em in KNOWN_LIVE_SEEDS:
+                get_supabase().table("netflix_accounts").update({"status": "live"}).eq("email", live_em).execute()
+            get_supabase().table("netflix_accounts").update({"status": "needs_review"}).eq("email", "matson1959@hotmail.com").execute()
+        except Exception as seed_err:
+            print(f"Seed live accounts notice: {seed_err}")
+
 def save_account(email, expire_date, netflix_id, secure_netflix_id="", plan=None):
     data = {
         "email": email,
@@ -306,6 +321,36 @@ def update_plan(email, plan):
     except Exception as e:
         print(f"SQLite update_plan error: {e}")
     return success
+
+def update_account_status(email, status):
+    if not email:
+        return False
+    data = {"status": status}
+    success = False
+    if SUPABASE_KEY:
+        try:
+            get_supabase().table("netflix_accounts").update(data).eq("email", email).execute()
+            success = True
+        except Exception as e:
+            print(f"Supabase update_account_status error: {e}")
+    try:
+        import sqlite3
+        if os.path.exists("accounts.db"):
+            conn = get_sqlite_conn("accounts.db")
+            c = conn.cursor()
+            c.execute("PRAGMA table_info(netflix_accounts)")
+            cols = [col[1] for col in c.fetchall()]
+            if "status" in cols:
+                c.execute("UPDATE netflix_accounts SET status = ? WHERE email = ?", (status, email))
+                conn.commit()
+            conn.close()
+            success = True
+    except Exception as e:
+        print(f"SQLite update_account_status error: {e}")
+    return success
+
+def mark_account_live(email):
+    return update_account_status(email, "live")
 
 def fetch_all_rows(table_name, columns="*"):
     all_data = []

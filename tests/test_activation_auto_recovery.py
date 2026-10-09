@@ -100,5 +100,24 @@ class TestActivationAutoRecovery(unittest.TestCase):
         key = database.get_access_key(code)
         self.assertEqual(key[1], "acc_good@nf.com")
 
+    def test_replacement_prioritizes_live_accounts(self):
+        """
+        When replacing an account, candidate accounts with status='live'
+        must be prioritized over untested status='usable' accounts.
+        """
+        conn = database.get_sqlite_conn()
+        c = conn.cursor()
+        c.execute("INSERT INTO netflix_accounts (email, netflix_id, plan, status) VALUES ('acc_untested@nf.com', 'nid1', 'Premium', 'usable')")
+        c.execute("INSERT INTO netflix_accounts (email, netflix_id, plan, status) VALUES ('acc_confirmed_live@nf.com', 'nid2', 'Premium', 'live')")
+        code = "CODE_TEST_PRIORITY"
+        c.execute("INSERT INTO access_keys (code, assigned_email, plan, expire_at) VALUES (?, 'dead_init@nf.com', 'Premium', '2099-12-31')", (code,))
+        conn.commit()
+        conn.close()
+
+        from app.services.allocation_service import replace
+        rep = replace(code=code, actor="test", ignore_quota=True)
+        self.assertTrue(rep.is_success)
+        self.assertEqual(rep.assigned_email, "acc_confirmed_live@nf.com")
+
 if __name__ == "__main__":
     unittest.main()

@@ -28,10 +28,11 @@ def check_single_account(acc, force=False, check_payment=False):
     status, plan = checker.check_account_live(netflix_id, secure_netflix_id, check_payment)
 
     if status == "LIVE":
+        database.mark_account_live(email)
         if plan and plan != "VALID":
             database.update_plan(email, plan)
     elif status == "DIE":
-        database.delete_account(email)
+        database.update_account_status(email, "dead")
 
 @admin_bp.route("/")
 @admin_bp.route("/dashboard")
