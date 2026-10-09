@@ -226,7 +226,7 @@ def allocate(code: str, plan: Optional[str] = None, expire_at: Optional[str] = N
             chosen_email = min(candidates, key=lambda e: usage.get(e, 0))
 
             # Insert key into Supabase
-            insert_data = {"code": code, "assigned_email": chosen_email}
+            insert_data = {"code": code, "assigned_email": chosen_email, "plan": plan}
             if expire_at:
                 insert_data["expire_at"] = expire_at
             db.get_supabase().table("access_keys").insert(insert_data).execute()
@@ -287,8 +287,10 @@ def allocate(code: str, plan: Optional[str] = None, expire_at: Optional[str] = N
             chosen_email = min(candidates, key=lambda e: usage_counts.get(e, 0))
 
             # 3. Insert access key
-            c.execute("INSERT INTO access_keys (code, assigned_email, expire_at) VALUES (?, ?, ?)",
-                      (code, chosen_email, expire_at))
+            if 'plan' not in {row[1] for row in c.execute('PRAGMA table_info(access_keys)')}:
+                c.execute('ALTER TABLE access_keys ADD COLUMN plan TEXT')
+            c.execute("INSERT INTO access_keys (code, assigned_email, expire_at, plan) VALUES (?, ?, ?, ?)",
+                      (code, chosen_email, expire_at, plan))
             conn.commit()
             conn.close()
 

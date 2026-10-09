@@ -68,7 +68,8 @@ def api_generate_nftoken():
             try:
                 acc_key_row = database.get_access_key(clean_code) or database.get_access_key(cookie_value)
             except Exception as e:
-                print(f"Error querying access key: {e}")
+                return register_fail('Database tạm gián đoạn. Vui lòng thử lại sau.',503,
+                                     error_code='STORE_UNAVAILABLE',retryable=True)
 
         is_access_code = acc_key_row is not None or (len("".join(cookie_value.split())) in [5, 6, 7, 8, 9, 10, 12, 15, 16] and not is_cookie_string)
 
@@ -105,6 +106,8 @@ def api_generate_nftoken():
 
             max_attempts = 4
             excluded_emails = set()
+            original_email = assigned_email
+            from app.services.activation_recovery_service import candidate, commit_verified
             for attempt in range(max_attempts):
                 email_identity = str(assigned_email or "").strip().casefold()
                 if email_identity in excluded_emails:
@@ -112,16 +115,15 @@ def api_generate_nftoken():
                 acc = database.get_account_by_email(assigned_email)
                 acc_status = str(acc[6] or "").strip().lower() if (acc and len(acc) > 6) else ""
 
-                if not acc or acc_status in ["needs_review", "dead", "blocked_for_new_assignments", "expired", "die"]:
+                if not acc or acc_status in ["needs_review", "dead", "expired", "die", "inactive", "pending_review"]:
                     excluded_emails.add(email_identity)
                     if attempt == max_attempts - 1:
                         break
-                    print(f"Account {assigned_email} missing or unusable (status='{acc_status}'), rotating...")
-                    from app.services.allocation_service import replace
-                    rep_res = replace(code=code, actor="system:activation", reason=f"Account status '{acc_status}' unusable", delete_old_account=False, ignore_quota=True, exclude_emails=excluded_emails)
-                    if not rep_res.is_success:
-                        return jsonify({"success": False, "error": f"Hệ thống đã hết tài khoản dự phòng cho gói {expected_plan}!"}), 500
-                    assigned_email = rep_res.assigned_email
+                    acc = candidate(expected_plan, excluded_emails)
+                    if not acc:
+                        return register_fail('Kho chưa có tài khoản dự phòng phù hợp. Liên kết mã được giữ nguyên.',
+                                             503, error_code='OUT_OF_STOCK', retryable=True)
+                    assigned_email = acc[0]
                     continue
 
                 netflix_id = acc[2]
@@ -130,25 +132,35 @@ def api_generate_nftoken():
                 acc_expire = acc[1] if (acc and len(acc) > 1 and acc[1]) else (expire_at_str if expire_at_str else "N/A")
 
                 try:
-                    token = fetch_netflix_nftoken_api(netflix_id, secure_netflix_id)
-                    is_json = token.startswith("FALLBACK:")
-                    if is_json:
-                        cookie_json = urllib.parse.unquote(token[9:])
-                    else:
-                        cookie_json = urllib.parse.unquote(generate_json_cookie_token(netflix_id, secure_netflix_id)[9:])
-
                     try:
                         rt_plan, rt_expire = fetch_realtime_account_info(netflix_id, secure_netflix_id)
                         if rt_plan:
+                            from app.services.allocation_service import match_plan
+                            if not match_plan(rt_plan, expected_plan):
+                                raise CookieError('Account plan does not match access code')
                             acc_plan = rt_plan
                             database.update_plan(assigned_email, rt_plan)
                         if rt_expire:
                             acc_expire = rt_expire
+                    except CookieError:
+                        raise
                     except Exception as meta_err:
-                        print(f"[Portal] Realtime metadata lookup skipped: {meta_err}")
+                        print(f"[Portal] Account verification unavailable ({type(meta_err).__name__})")
+                        return register_fail('Chưa xác minh được tình trạng tài khoản. Vui lòng thử lại sau ít phút.',
+                                             503, error_code='ACCOUNT_VERIFICATION_UNAVAILABLE', retryable=True)
 
+                    token = fetch_netflix_nftoken_api(netflix_id, secure_netflix_id)
+                    cookie_json = urllib.parse.unquote(generate_json_cookie_token(netflix_id, secure_netflix_id)[9:])
+                    is_json = False
+
+                    if assigned_email != original_email:
+                        committed = commit_verified(code, original_email, assigned_email, expected_plan)
+                        if not committed.is_success:
+                            return register_fail('Không thể lưu lần đổi tài khoản. Vui lòng thử lại.',
+                                                 503, error_code='RECOVERY_NOT_COMMITTED', retryable=True)
                     try:
-                        database.mark_account_live(assigned_email)
+                        if acc_status != 'blocked_for_new_assignments':
+                            database.mark_account_live(assigned_email)
                     except Exception as live_err:
                         print(f"mark_account_live notice: {live_err}")
 
@@ -167,7 +179,7 @@ def api_generate_nftoken():
                         "is_json": is_json,
                         "cookie_json": cookie_json,
                         "plan": acc_plan,
-                        "expire_date": acc_expire
+                        "expire_date": expire_at_str or acc_expire
                     })
                 except TokenResponseError as e:
                     return unverified_token_response(e)
@@ -184,11 +196,11 @@ def api_generate_nftoken():
 
                     if attempt == max_attempts - 1:
                         break
-                    from app.services.allocation_service import replace
-                    rep_res = replace(code=code, actor="system:activation", reason=f"CookieError: {e}", delete_old_account=False, ignore_quota=True, exclude_emails=excluded_emails)
-                    if not rep_res.is_success:
-                        return jsonify({"success": False, "error": f"Tài khoản lỗi và kho đã hết Cookie dự phòng cho gói {expected_plan}!"}), 500
-                    assigned_email = rep_res.assigned_email
+                    next_acc = candidate(expected_plan, excluded_emails)
+                    if not next_acc:
+                        return register_fail('Kho chưa có tài khoản dự phòng phù hợp. Liên kết mã được giữ nguyên.',
+                                             503, error_code='OUT_OF_STOCK', retryable=True)
+                    assigned_email = next_acc[0]
                     continue
                 except Exception as e:
                     print(f"Unexpected error: {e}")
@@ -211,6 +223,7 @@ def api_generate_nftoken():
             snid = snid_match.group(1).strip() if snid_match else ""
 
             try:
+                verified_plan, verified_expire = fetch_realtime_account_info(nid, snid)
                 token = fetch_netflix_nftoken_api(nid, snid)
                 is_json = token.startswith("FALLBACK:")
                 if is_json:
@@ -230,8 +243,8 @@ def api_generate_nftoken():
                     "general_link": general_link,
                     "is_json": is_json,
                     "cookie_json": cookie_json,
-                    "plan": "Premium",
-                    "expire_date": "N/A"
+                    "plan": verified_plan or "Unknown",
+                    "expire_date": verified_expire or "N/A"
                 })
             except TokenResponseError as e:
                 return unverified_token_response(e)
@@ -239,8 +252,9 @@ def api_generate_nftoken():
                 return register_fail(f"Could not generate token: {e}")
 
     except Exception as e:
-        print(f"Error generate token: {e}")
-        return register_fail(f"Internal error: {e}", 500)
+        print(f"[Portal] Activation unavailable ({type(e).__name__})")
+        return register_fail('Dịch vụ tạm gián đoạn. Vui lòng thử lại sau.',503,
+                             error_code='SERVICE_UNAVAILABLE',retryable=True)
 
 @portal_bp.route("/api/check_live_code", methods=["POST"])
 def api_check_live_code():

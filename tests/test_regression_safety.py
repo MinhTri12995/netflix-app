@@ -254,7 +254,8 @@ class TestRegressionSafety(unittest.TestCase):
         conn.commit()
         conn.close()
 
-        with patch("app.blueprints.portal.routes.fetch_netflix_nftoken_api", return_value="mock_live_token_123"):
+        with patch("app.blueprints.portal.routes.fetch_netflix_nftoken_api", return_value="mock_live_token_123"), \
+             patch("app.blueprints.portal.routes.fetch_realtime_account_info", return_value=("Premium", "2099-12-31")):
             res = self.client.post("/api/generate_nftoken", json={"cookie": "  case123test456  "})
 
         self.assertEqual(res.status_code, 200)
@@ -287,4 +288,3 @@ class TestRegressionSafety(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

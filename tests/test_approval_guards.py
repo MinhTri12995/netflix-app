@@ -267,7 +267,7 @@ class TestApprovalGuards(unittest.TestCase):
         with patch("app.blueprints.portal.routes.fetch_netflix_nftoken_api", side_effect=CookieError("Session invalid")):
             res = self.client.post("/api/generate_nftoken", json={"cookie": code})
 
-        self.assertEqual(res.status_code, 500)
+        self.assertEqual(res.status_code, 503)
         # Verify account was NOT deleted because rotation failed (no spare)
         self.assertIsNotNone(db.get_account_by_email("only_acc@netflix.com"),
                              "Account must NOT be deleted if vault is out of stock!")

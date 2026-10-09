@@ -43,45 +43,19 @@ def dashboard():
     search_email = request.args.get("search_email", "").strip().lower()
     search_code = request.args.get("search_code", "").strip().upper()
 
-    all_accounts = database.get_all_accounts()
-    all_access_keys = database.get_all_access_keys()
-
-    stats = database.get_dashboard_aggregates(all_accounts=all_accounts, all_access_keys=all_access_keys)
-
-    # Filter keys
-    if search_code:
-        access_keys = [k for k in all_access_keys if search_code in k[0].upper()]
-    else:
-        access_keys = all_access_keys
-
-    # Filter accounts
-    if search_email:
-        accounts = [a for a in all_accounts if search_email in a[0].lower()]
-    else:
-        accounts = all_accounts
-
-    # Pagination
+    from app.services.admin_inventory_service import inventory_page, inventory_summary
+    account_status = request.args.get('account_status','')
+    inventory_plan = request.args.get('inventory_plan','')
     try:
-        key_page = int(request.args.get("key_page", 1))
-    except ValueError:
-        key_page = 1
-
-    try:
-        acc_page = int(request.args.get("acc_page", 1))
-    except ValueError:
-        acc_page = 1
-
-    PER_PAGE = 50
-
-    total_keys_filtered = len(access_keys)
-    key_start = (key_page - 1) * PER_PAGE
-    access_keys = access_keys[key_start:key_start + PER_PAGE]
-    key_total_pages = max(1, (total_keys_filtered + PER_PAGE - 1) // PER_PAGE)
-
-    total_acc_filtered = len(accounts)
-    acc_start = (acc_page - 1) * PER_PAGE
-    accounts = accounts[acc_start:acc_start + PER_PAGE]
-    acc_total_pages = max(1, (total_acc_filtered + PER_PAGE - 1) // PER_PAGE)
+        stats = inventory_summary()
+        keys_page = inventory_page('codes',request.args.get('key_page',1),search=search_code,plan=inventory_plan)
+        accounts_page = inventory_page('accounts',request.args.get('acc_page',1),search=search_email,status=account_status,plan=inventory_plan)
+    except Exception as exc:
+        current_app.logger.warning('Admin inventory unavailable (%s)',type(exc).__name__)
+        return render_template('admin/unavailable.html'),503
+    accounts, access_keys = accounts_page['rows'],keys_page['rows']
+    key_page, key_total_pages = keys_page['page'],keys_page['pages']
+    acc_page, acc_total_pages = accounts_page['page'],accounts_page['pages']
 
     database.cleanup_old_requests()
     pending_requests = database.get_pending_requests()
@@ -105,7 +79,9 @@ def dashboard():
         "admin/dashboard.html",
         accounts=accounts,
         access_keys=access_keys,
-        total_accounts=len(all_accounts),
+        total_accounts=stats['accounts']['total'],
+        account_status=account_status,
+        inventory_plan=inventory_plan,
         search_email=search_email,
         search_code=search_code,
         key_page=key_page,
@@ -118,6 +94,44 @@ def dashboard():
         share_mode_enabled=share_mode_enabled,
         mix_plan_enabled=mix_plan_enabled
     )
+
+
+@admin_bp.route('/accounts/<path:email>/details')
+@login_required
+def account_details_route(email):
+    from app.services.admin_inventory_service import account_details
+    try:
+        return jsonify(account_details(email))
+    except Exception:
+        return jsonify({'error':'Không thể tải dữ liệu lúc này.'}),503
+
+
+@admin_bp.route('/accounts/<path:email>/check',methods=['POST'])
+@login_required
+def check_account_route(email):
+    try:
+        acc = database.get_account_by_email(email)
+        if not acc:
+            flash('Không tìm thấy tài khoản.','error')
+        else:
+            status, plan = checker.check_account_live(acc[2],acc[3] or '',check_payment=True)
+            if status == 'LIVE':
+                saved = True if acc[6] == 'blocked_for_new_assignments' else database.mark_account_live(email)
+                if not saved:
+                    raise RuntimeError('Status not saved')
+                if plan and plan != 'VALID':
+                    database.update_plan(email,plan)
+                flash('Đã xác minh tài khoản hoạt động.','success')
+            elif status == 'DIE':
+                if not database.update_account_status(email,'needs_review'):
+                    raise RuntimeError('Status not saved')
+                flash('Tài khoản cần kiểm tra. Các mã hiện tại được giữ nguyên.','warning')
+            else:
+                flash('Chưa xác minh được do lỗi dịch vụ hoặc mạng; giữ nguyên trạng thái.','warning')
+    except Exception as exc:
+        current_app.logger.warning('Account check unavailable (%s)',type(exc).__name__)
+        flash('Không thể kiểm tra hoặc lưu kết quả lúc này.','error')
+    return redirect(url_for('admin.dashboard',search_email=email))
 
 @admin_bp.route("/generate_key", methods=["POST"])
 @login_required

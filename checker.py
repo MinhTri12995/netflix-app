@@ -2,6 +2,8 @@ import requests
 import time
 import json
 import re
+from urllib.parse import urlsplit
+from html.parser import HTMLParser
 from datetime import datetime
 import proxies_list
 
@@ -62,6 +64,25 @@ PAYMENT_DIE_KEYWORDS = [
     "il tuo abbonamento è in pausa", "non siamo riusciti a elaborare il pagamento", "riattiva abbonamento",
     "reaktivera ditt medlemskap"
 ]
+
+
+def visible_account_text(html):
+    """Ignore bundled translations and scripts when matching payment banners."""
+    class VisibleText(HTMLParser):
+        def __init__(self):
+            super().__init__(); self.hidden = 0; self.parts = []
+        def handle_starttag(self, tag, attrs):
+            if tag in ('script','style'):
+                self.hidden += 1
+        def handle_endtag(self, tag):
+            if tag in ('script','style'):
+                self.hidden = max(0,self.hidden-1)
+        def handle_data(self, data):
+            if not self.hidden:
+                self.parts.append(data)
+    parser = VisibleText()
+    parser.feed(html)
+    return ' '.join(parser.parts).lower()
 
 def normalize_plan_name(raw_plan_name, fallback_text=""):
     import unicodedata
@@ -224,7 +245,9 @@ def check_web_account_status_and_plan(cookies, proxy_dict):
         text_lower = html.lower()
 
         # 0. Kiểm tra trang lạ / ISP block / Captive portal
-        if "netflix" not in url_lower and "netflix" not in text_lower:
+        target = urlsplit(response.url)
+        host = (target.hostname or '').lower()
+        if target.scheme != 'https' or not (host == 'netflix.com' or host.endswith('.netflix.com')):
             return "ERROR", None
 
         # 1. Chuyển hướng về Login, ClearCookies, hoặc Signup -> DIE (Cookie hết hạn)
@@ -240,20 +263,18 @@ def check_web_account_status_and_plan(cookies, proxy_dict):
             return "DIE", None
 
         # 4. Nội dung HTML chứa thông báo lỗi thanh toán / tạm hoãn / hết hạn -> DIE
-        if any(kw in text_lower for kw in PAYMENT_DIE_KEYWORDS):
+        if any(kw in visible_account_text(html) for kw in PAYMENT_DIE_KEYWORDS):
             return "DIE", None
 
         # 5. Kiểm tra ngày hết hạn
         date_m = re.search(r'nextBillingDate"\s*:\s*\{"fieldType":"String","value":"([^"]+)"\}', html)
         if date_m:
             expire_date = date_m.group(1).replace(r'\x20', ' ').strip()
-            if is_date_expired(expire_date):
-                return "DIE", None
 
         # Xác nhận có dấu hiệu trang Account thực sự của Netflix
         has_account_markers = (
-            "youraccount" in url_lower or
             "nextbillingdate" in text_lower or
+            "membershipstatus" in text_lower or
             "localizedplanname" in text_lower or
             "planname" in text_lower or
             "membership" in text_lower or
@@ -265,6 +286,8 @@ def check_web_account_status_and_plan(cookies, proxy_dict):
         # 6. Kiểm tra gói cước nếu còn sống (LIVE)
         plan_raw = None
         plan_m = re.search(r'(?:localizedPlanName|planName)"\s*:\s*\{"fieldType":"String","value":"([^"]+)"\}', html)
+        if not plan_m:
+            plan_m = re.search(r'(?:localizedPlanName|planName)"\s*:\s*"([^"{}]+)"',html)
         if plan_m:
             plan_raw = plan_m.group(1).replace(r'\x20', ' ').strip()
             try:
@@ -273,13 +296,13 @@ def check_web_account_status_and_plan(cookies, proxy_dict):
             except Exception:
                 pass
 
-        final_plan = normalize_plan_name(plan_raw, text_lower)
+        final_plan = normalize_plan_name(plan_raw, visible_account_text(html))
         return "LIVE", final_plan
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.ProxyError):
         return "ERROR", None
     except Exception as e:
-        print(f"Web Check Error: {e}")
+        print(f"Web Check Error ({type(e).__name__})")
         return "ERROR", None
 
 def _is_dict_dead(obj):

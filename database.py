@@ -314,10 +314,11 @@ def update_account_status(email, status):
     success = False
     if SUPABASE_KEY:
         try:
-            get_supabase().table("netflix_accounts").update(data).eq("email", email).execute()
-            success = True
+            response = get_supabase().table("netflix_accounts").update(data).eq("email", email).execute()
+            return bool(response.data)
         except Exception as e:
-            print(f"Supabase update_account_status error: {e}")
+            print(f"Supabase update_account_status unavailable ({type(e).__name__})")
+            return False
     try:
         import sqlite3
         if os.path.exists("accounts.db"):
@@ -517,7 +518,7 @@ def get_account_by_email(email):
             # Succeeded without exception, but record not found in Supabase -> Definitive Not Found!
             return None
         except Exception as e:
-            print(f"Supabase get_account_by_email transport notice: {e}")
+            raise RuntimeError('Primary account store unavailable') from None
     try:
         import sqlite3
         if os.path.exists("accounts.db"):
@@ -991,7 +992,7 @@ def get_access_key(code):
             # Succeeded without exception, but record not found -> Definitive Not Found!
             return None
         except Exception as e:
-            print(f"Supabase get_access_key transport notice: {e}")
+            raise RuntimeError('Primary code store unavailable') from None
     try:
         conn = get_sqlite_conn()
         c = conn.cursor()

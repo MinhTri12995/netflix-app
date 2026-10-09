@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static',filename='css/admin.css') }}">
+    <script defer src="{{ url_for('static',filename='js/admin.js') }}"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap" rel="stylesheet">
     
 <style>
@@ -280,9 +282,19 @@
             <h1>Admin Dashboard</h1>
             <p>Account & Access Key Management System</p>
             <a href="/" style="color: #3498db; text-decoration: none; margin-right: 15px;">[Back to Home]</a>
-            <a href="/admin/orders" style="color: #2ecc71; text-decoration: none; margin-right: 15px;">[📦 Verified Orders]</a>
             <a href="/admin/logout" style="color: #e74c3c; text-decoration: none;">[Logout]</a>
         </div>
+
+        <nav class="admin-nav" aria-label="Khu vực quản trị">
+            <a href="#overview">Tổng quan</a><a href="#code-management">Mã truy cập</a>
+            <a href="#cookie-import">Nhập kho</a><a href="#account-vault">Tài khoản</a>
+        </nav>
+        <section class="health-grid" id="overview" aria-label="Tình trạng kho">
+            <a href="{{ url_for('admin.dashboard',account_status='live') }}"><span>Đã xác minh</span><strong>{{ stats.health.get('live',0) }}</strong><small>Tài khoản hoạt động</small></a>
+            <a href="{{ url_for('admin.dashboard',account_status='usable') }}"><span>Chờ xác minh</span><strong>{{ stats.health.get('usable',0) }}</strong><small>Cần kiểm tra trước khi dùng</small></a>
+            <a href="{{ url_for('admin.dashboard',account_status='needs_review') }}"><span>Cần xử lý</span><strong>{{ stats.health.get('needs_review',0) }}</strong><small>Payment hoặc phiên lỗi</small></a>
+            <div><span>Mã mất tài khoản</span><strong>{{ stats.health.get('dangling',0) }}</strong><small>Cần đối soát liên kết</small></div>
+        </section>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}
@@ -322,10 +334,10 @@
             <div style="display: flex; gap: 20px; flex-wrap: wrap;">
                 <div style="flex: 1; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; min-width: 250px;">
                     <h4 style="margin-top: 0; color: #f1c40f; border-bottom: 1px solid #444; padding-bottom: 10px; font-weight: 400;">🔑 Access Codes (Sold)</h4>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;"><span>Premium (15 chars):</span> <strong style="color: #fff;">{{ stats.codes.Premium }}</strong></div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;"><span>Standard (10 chars):</span> <strong style="color: #fff;">{{ stats.codes.Standard }}</strong></div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;"><span>Standard w/ Ads (8 chars):</span> <strong style="color: #fff;">{{ stats.codes.Standard_Ads }}</strong></div>
-                    <div style="display: flex; justify-content: space-between;"><span>Basic (5 chars):</span> <strong style="color: #fff;">{{ stats.codes.Basic }}</strong></div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;"><span>Premium:</span> <strong style="color: #fff;">{{ stats.codes.Premium }}</strong></div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;"><span>Standard:</span> <strong style="color: #fff;">{{ stats.codes.Standard }}</strong></div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;"><span>Standard with Ads:</span> <strong style="color: #fff;">{{ stats.codes.Standard_Ads }}</strong></div>
+                    <div style="display: flex; justify-content: space-between;"><span>Basic:</span> <strong style="color: #fff;">{{ stats.codes.Basic }}</strong></div>
                 </div>
                 <div style="flex: 1; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; min-width: 250px;">
                     <h4 style="margin-top: 0; color: #2ecc71; border-bottom: 1px solid #444; padding-bottom: 10px; font-weight: 400;">📦 Accounts Vault (Stock)</h4>
@@ -522,7 +534,7 @@
 
         <div class="glass-panel">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
-                <h3 style="margin: 0; font-weight: 400;">Access Code Management (License Keys)</h3>
+                <h3 id="code-management" style="margin: 0; font-weight: 400;">Quản lý mã truy cập</h3>
                 <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
                     <form action="/admin/keys/cleanup_expired" method="POST" style="margin: 0;" onsubmit="return confirm('🧹 Bạn có chắc muốn quét và XÓA TẤT CẢ các mã Code đã hết hạn (quá ngày sử dụng)?');">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -539,10 +551,10 @@
                     <form action="/admin/generate_key" method="POST" style="margin: 0; display: flex; gap: 8px; align-items: center;" onsubmit="showLoading(this.querySelector('button'))">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <select name="plan_type" style="padding: 8px; border-radius: 6px; background: rgba(0,0,0,0.5); color: white; border: 1px solid #555;">
-                            <option value="premium">Premium (15 Chars)</option>
-                            <option value="standard">Standard (10 Chars)</option>
-                            <option value="standard_ads">Standard Ads (8 Chars)</option>
-                            <option value="basic">Basic (5 Chars)</option>
+                            <option value="premium">Premium</option>
+                            <option value="standard">Standard</option>
+                            <option value="standard_ads">Standard with Ads</option>
+                            <option value="basic">Basic</option>
                         </select>
                         <select name="duration" style="padding: 8px; border-radius: 6px; background: rgba(0,0,0,0.5); color: white; border: 1px solid #555;">
                             <option value="1">1 Month</option>
@@ -566,6 +578,7 @@
                         <tr>
                             <th>Code</th>
                             <th>Assigned Email</th>
+                            <th>Gói</th>
                             <th>Created At</th>
                             <th>Expire At</th>
                             <th>Actions</th>
@@ -576,6 +589,7 @@
                         <tr>
                             <td style="font-weight: bold; font-family: monospace; font-size: 1.3rem; color: #f1c40f; letter-spacing: 2px; cursor: pointer;" onclick="fillRequestChange('{{ key[0] }}')" title="Bấm để tải vào mục Đổi Tài Khoản">{{ key[0] }}</td>
                             <td>{{ key[1] }}</td>
+                            <td>{{ key[4] or 'Chưa xác định' }}</td>
                             <td style="font-size: 0.85rem; color: #888;">{{ key[2] }}</td>
                             <td style="font-size: 0.85rem; color: #e74c3c; font-weight: bold;">{{ key[3] if key[3] else 'Lifetime' }}</td>
                             <td style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
@@ -615,18 +629,18 @@
             {% if key_total_pages > 1 %}
             <div style="display: flex; justify-content: center; gap: 5px; margin-top: 15px;">
                 {% if key_page > 1 %}
-                <a href="?key_page={{ key_page - 1 }}&acc_page={{ acc_page }}&search_code={{ search_code }}&search_email={{ search_email }}" style="padding: 5px 10px; background: rgba(255,255,255,0.1); color: white; text-decoration: none; border-radius: 4px;">&laquo; Prev</a>
+                <a href="{{ url_for('admin.dashboard',key_page=key_page-1,acc_page=acc_page,search_code=search_code,search_email=search_email,account_status=account_status,inventory_plan=inventory_plan) }}" class="page-link">&laquo; Trước</a>
                 {% endif %}
                 <span style="padding: 5px 10px; color: #888;">Page {{ key_page }} / {{ key_total_pages }}</span>
                 {% if key_page < key_total_pages %}
-                <a href="?key_page={{ key_page + 1 }}&acc_page={{ acc_page }}&search_code={{ search_code }}&search_email={{ search_email }}" style="padding: 5px 10px; background: rgba(255,255,255,0.1); color: white; text-decoration: none; border-radius: 4px;">Next &raquo;</a>
+                <a href="{{ url_for('admin.dashboard',key_page=key_page+1,acc_page=acc_page,search_code=search_code,search_email=search_email,account_status=account_status,inventory_plan=inventory_plan) }}" class="page-link">Sau &raquo;</a>
                 {% endif %}
             </div>
             {% endif %}
         </div>
 
         <div class="glass-panel">
-            <h3 style="margin-top: 0; margin-bottom: 20px; font-weight: 400;">Import Cookies Database (Single File)</h3>
+            <h3 id="cookie-import" style="margin-top: 0; margin-bottom: 20px; font-weight: 400;">Nhập tài khoản vào kho</h3>
             <form style="display: flex; gap: 15px; align-items: center;" action="/admin/upload" method="POST" enctype="multipart/form-data" onsubmit="showLoading(this.querySelector('button'))">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="file" name="account_file" accept=".txt" required style="padding: 10px; background: rgba(0,0,0,0.2); border: 1px dashed var(--border-color); color: #ccc;">
@@ -668,7 +682,7 @@
 
         <div class="glass-panel">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h3 style="margin: 0; font-weight: 400;">Original Cookie Vault <span style="font-size: 0.9rem; color: #888;">({{ total_accounts }} accounts)</span></h3>
+                <h3 id="account-vault" style="margin: 0; font-weight: 400;">Kho tài khoản <span style="font-size: 0.9rem; color: #888;">({{ total_accounts }} tài khoản)</span></h3>
                 <div style="display: flex; gap: 10px;">
                     <form action="/admin/filter_duplicates" method="POST" onsubmit="showLoading(this.querySelector('button'))" style="margin: 0;">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -690,7 +704,17 @@
             </div>
             
             <form action="/admin" method="GET" style="display: flex; gap: 10px; margin-bottom: 20px;">
-                <input type="text" name="search_email" class="search-box" placeholder="Search by Email..." value="{{ request.args.get('search_email', '') }}">
+                <input type="text" name="search_email" class="search-box" aria-label="Tìm email" placeholder="Tìm email..." value="{{ request.args.get('search_email', '') }}">
+                <select name="account_status" aria-label="Trạng thái tài khoản">
+                    <option value="">Tất cả trạng thái</option>
+                    {% for value,label in [('live','Đã xác minh'),('usable','Chờ xác minh'),('needs_review','Cần kiểm tra'),('dead','Không hoạt động'),('blocked_for_new_assignments','Ngừng cấp mới'),('expired','Hết hạn')] %}
+                    <option value="{{ value }}" {% if account_status == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+                <select name="inventory_plan" aria-label="Lọc gói dịch vụ">
+                    <option value="">Tất cả gói</option>{% for plan in ['Premium','Standard','Standard_Ads','Basic'] %}
+                    <option {% if inventory_plan == plan %}selected{% endif %} value="{{ plan }}">{{ plan }}</option>{% endfor %}
+                </select>
                 <button type="submit" style="background: #3498db; white-space: nowrap;">🔍 Search Email</button>
             </form>
             
@@ -701,6 +725,7 @@
                             <th>Email</th>
                             <th>Plan</th>
                             <th>Cookie</th>
+                            <th>Trạng thái</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -710,11 +735,16 @@
                             <td style="font-weight: 600;">{{ acc[0] }}</td>
                             <td style="font-weight: bold; color: {% if 'Premium' in (acc[5] or '') %}#f1c40f{% else %}#bdc3c7{% endif %};">{{ acc[5] if acc[5] else 'Unknown' }}</td>
                             <td style="font-size: 0.8rem; font-family: monospace; max-width: 200px;">
-                                <span class="masked-cookie" style="cursor: pointer; background: rgba(255,255,255,0.06); padding: 4px 8px; border-radius: 4px; display: inline-block; color: #a0a5b8;" onclick="toggleMask(this, '{{ acc[2] }}')" title="Click to reveal / hide cookie" data-revealed="false">
+                                <span class="masked-cookie" role="button" tabindex="0" style="cursor: pointer; background: rgba(255,255,255,0.06); padding: 4px 8px; border-radius: 4px; display: inline-block; color: #a0a5b8;" data-cookie="{{ acc[2] }}" onclick="toggleMask(this, this.dataset.cookie)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleMask(this,this.dataset.cookie)}" title="Click to reveal / hide cookie" data-revealed="false">
                                     •••••••••••••••• (click to reveal)
                                 </span>
                             </td>
-                            <td style="display: flex; gap: 8px;">
+                            <td><span class="status-badge status-{{ acc[6] or 'unknown' }}">{{ {'live':'Đã xác minh','usable':'Chờ xác minh','needs_review':'Cần kiểm tra','dead':'Không hoạt động','expired':'Hết hạn','blocked_for_new_assignments':'Ngừng cấp mới'}.get(acc[6],'Chưa xác định') }}</span></td>
+                            <td class="account-actions">
+                                <form method="POST" action="{{ url_for('admin.check_account_route',email=acc[0]) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit">Kiểm tra</button>
+                                </form>
+                                <button type="button" class="account-details-btn" data-details-url="{{ url_for('admin.account_details_route',email=acc[0]) }}">Mã & lịch sử</button>
                                 <form action="/admin/delete/{{ acc[0] }}" method="POST" style="margin: 0;" onsubmit="return confirm('Delete this cookie?');">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" style="background: #e74c3c; padding: 6px 12px; font-size: 0.8rem;">Delete</button>
@@ -722,7 +752,7 @@
                             </td>
                         </tr>
                         {% else %}
-                        <tr><td colspan="4" style="text-align: center; color: #666; padding: 20px;">No accounts in database. Please upload a file!</td></tr>
+                        <tr><td colspan="5" style="text-align: center; color: #999; padding: 20px;">Không có tài khoản phù hợp với bộ lọc.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -731,11 +761,11 @@
             {% if acc_total_pages > 1 %}
             <div style="display: flex; justify-content: center; gap: 5px; margin-top: 15px;">
                 {% if acc_page > 1 %}
-                <a href="?key_page={{ key_page }}&acc_page={{ acc_page - 1 }}&search_code={{ search_code }}&search_email={{ search_email }}" style="padding: 5px 10px; background: rgba(255,255,255,0.1); color: white; text-decoration: none; border-radius: 4px;">&laquo; Prev</a>
+                <a href="{{ url_for('admin.dashboard',key_page=key_page,acc_page=acc_page-1,search_code=search_code,search_email=search_email,account_status=account_status,inventory_plan=inventory_plan) }}" class="page-link">&laquo; Trước</a>
                 {% endif %}
                 <span style="padding: 5px 10px; color: #888;">Page {{ acc_page }} / {{ acc_total_pages }}</span>
                 {% if acc_page < acc_total_pages %}
-                <a href="?key_page={{ key_page }}&acc_page={{ acc_page + 1 }}&search_code={{ search_code }}&search_email={{ search_email }}" style="padding: 5px 10px; background: rgba(255,255,255,0.1); color: white; text-decoration: none; border-radius: 4px;">Next &raquo;</a>
+                <a href="{{ url_for('admin.dashboard',key_page=key_page,acc_page=acc_page+1,search_code=search_code,search_email=search_email,account_status=account_status,inventory_plan=inventory_plan) }}" class="page-link">Sau &raquo;</a>
                 {% endif %}
             </div>
             {% endif %}
@@ -1356,5 +1386,9 @@
             }
         });
     </script>
+    <dialog id="accountDetailsDialog" aria-labelledby="detailsTitle">
+        <div class="details-header"><h2 id="detailsTitle">Mã liên quan & lịch sử đổi</h2><button type="button" id="closeDetails">Đóng</button></div>
+        <div id="accountDetailsContent" aria-live="polite"></div>
+    </dialog>
 </body>
 </html>

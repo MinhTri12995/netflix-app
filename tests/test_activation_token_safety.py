@@ -33,7 +33,9 @@ def assigned_client(client):
                      "VALUES ('spare@example.test', 'spare-cookie', 'Premium', 'live')")
         conn.execute("INSERT INTO access_keys (code, assigned_email, plan, expire_at) "
                      "VALUES ('LOCALACTIVATION01', 'first@example.test', 'Premium', '2099-12-31')")
-    return client
+    # Token tests independently provide a successful membership verification.
+    with patch('app.blueprints.portal.routes.fetch_realtime_account_info', return_value=('Premium', None)):
+        yield client
 
 
 @pytest.mark.parametrize("data", [
@@ -236,9 +238,10 @@ def test_old_schema_never_rotates_back_to_attempted_account(assigned_client):
             patch('app.blueprints.portal.routes.fetch_netflix_nftoken_api', side_effect=unauthorized):
         response = assigned_client.post('/api/generate_nftoken', json={'cookie': 'LOCALACTIVATION01'})
     assert response.json['success'] is False
-    assert attempted == ['cookie-A', 'cookie-B']
-    assert cloud.rows['access_keys'][0]['assigned_email'] == 'spare@example.test'
-    assert cloud.rows['access_keys'][0]['assignment_version'] == 2
+    # Missing recovery RPC fails closed without mutating a legacy assignment.
+    assert attempted == ['cookie-A']
+    assert cloud.rows['access_keys'][0]['assigned_email'] == 'first@example.test'
+    assert cloud.rows['access_keys'][0]['assignment_version'] == 1
 
 
 def test_attempt_budget_does_not_rotate_to_untested_fifth_account(assigned_client):
@@ -257,10 +260,10 @@ def test_attempt_budget_does_not_rotate_to_untested_fifth_account(assigned_clien
     assert response.status_code == 503
     assert len(attempted) == len(set(attempted)) == 4
     with database.get_sqlite_conn() as conn:
-        assert conn.execute('SELECT COUNT(*) FROM rotation_events').fetchone()[0] == 3
+        assert conn.execute('SELECT COUNT(*) FROM rotation_events').fetchone()[0] == 0
         assigned_cookie = conn.execute('SELECT netflix_id FROM netflix_accounts '
                                       'WHERE email = (SELECT assigned_email FROM access_keys)').fetchone()[0]
-        assert assigned_cookie == attempted[-1]
+        assert assigned_cookie == attempted[0]
 
 
 @pytest.mark.parametrize('store', ['sqlite', 'cloud'])

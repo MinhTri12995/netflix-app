@@ -1,0 +1,26 @@
+/* Focused overrides for the existing admin interface. */
+html{scroll-behavior:smooth;scroll-padding-top:88px}
+body{background:#0f141c!important}
+.container{max-width:1400px!important;width:calc(100% - 48px)!important;margin-top:24px!important}
+.header{text-align:left!important;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.header h1{font-size:1.8rem!important;flex-basis:100%}
+.header p{flex:1}
+.glass-panel{background:#181f2b!important;backdrop-filter:none!important;box-shadow:none!important;border-radius:12px!important;padding:24px!important}
+.admin-nav{position:sticky;top:0;z-index:5;background:#0f141cf5;border-bottom:1px solid #303b4c;display:flex;gap:8px;padding:12px 0;margin:20px 0}
+.admin-nav a{padding:10px 16px;border-radius:8px;color:#c7d3e3;text-decoration:none}
+.admin-nav a:hover,.admin-nav a:focus-visible{background:#263247;color:#fff}
+.health-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin:0 0 24px}
+.health-grid>a,.health-grid>div{background:#181f2b;border:1px solid #303b4c;border-radius:12px;padding:20px;color:#c7d3e3;text-decoration:none;display:flex;flex-direction:column;gap:8px}
+.health-grid strong{font-size:32px;color:#fff}.health-grid small{color:#99acc2}
+.status-badge{display:inline-block;padding:5px 9px;border-radius:6px;background:#303b4c;white-space:nowrap;font-size:12px}
+.page-link{padding:8px 12px;background:#293a53;color:#fff;text-decoration:none;border-radius:6px}
+.status-live{background:#173a31;color:#a2e9c5}.status-needs_review,.status-dead{background:#493329;color:#ffc69e}
+.account-actions{display:flex;gap:6px;flex-wrap:wrap;min-width:230px}.account-actions form{margin:0}.account-actions button{font-size:12px;padding:8px 10px;background:#293a53;color:#eef2f6;border-radius:6px}
+select{background:#101723;color:#e4ecf6;border:1px solid #45536a;border-radius:8px;padding:10px;max-width:100%}
+form:has(select[name=account_status]){flex-wrap:wrap}form:has(select[name=account_status]) input{flex:1;min-width:220px}
+button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid #85b8ff;outline-offset:3px}
+dialog{background:#181f2b;color:#e4ecf6;border:1px solid #45536a;border-radius:12px;max-width:720px;width:calc(100% - 40px);max-height:80vh;padding:24px}
+dialog::backdrop{background:#0009}.details-header{display:flex;align-items:center;justify-content:space-between;gap:16px}.details-header h2{font-size:18px}.details-header button{padding:8px 12px;background:#293a53;color:#fff}
+@media(max-width:900px){.health-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.container{width:calc(100% - 24px)!important}.glass-panel{padding:16px!important}.header{gap:10px}}
+@media(max-width:480px){.admin-nav{gap:0}.admin-nav a{padding:10px 8px;font-size:13px}.health-grid{gap:8px}.health-grid>a,.health-grid>div{padding:14px}.health-grid strong{font-size:26px}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important}}

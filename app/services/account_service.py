@@ -109,6 +109,13 @@ def fetch_realtime_account_info(netflix_id, secure_netflix_id=""):
             html = r.text
             text_lower = html.lower()
 
+            target = urllib.parse.urlsplit(r.url)
+            host = (target.hostname or '').lower()
+            if (r.status_code != 200 or target.scheme != 'https'
+                    or not (host == 'netflix.com' or host.endswith('.netflix.com'))
+                    or not html.strip()):
+                raise ProxyError('Account verification response unavailable')
+
             if "netflix.com/login" in url_lower or "/clearcookies" in url_lower or "signup" in url_lower:
                 raise CookieError("Cookie session expired or invalid (Redirected to login)")
 
@@ -120,19 +127,27 @@ def fetch_realtime_account_info(netflix_id, secure_netflix_id=""):
             if any(kw in url_lower for kw in payment_urls):
                 raise CookieError("Account requires Payment Update (Payment Hold URL detected)")
 
+            if any(pattern.search(html) for pattern in checker.PAYMENT_FLAG_PATTERNS):
+                raise CookieError('Account membership is inactive or on payment hold')
+
             die_kws = getattr(checker, 'PAYMENT_DIE_KEYWORDS', [])
-            if any(kw in text_lower for kw in die_kws):
+            if any(kw in checker.visible_account_text(html) for kw in die_kws):
                 raise CookieError("Account requires Payment Update (Payment Hold text detected)")
 
             expire_date = None
             date_m = re.search(r'nextBillingDate"\s*:\s*\{"fieldType":"String","value":"([^"]+)"\}', html)
             if date_m:
                 expire_date = date_m.group(1).replace(r'\x20', ' ').strip()
-                if is_date_expired(expire_date):
-                    raise CookieError(f"Account next billing date ({expire_date}) has expired.")
+
+            if not any(marker in text_lower for marker in (
+                    'membershipstatus', 'ismembershipactive', 'nextbillingdate',
+                    'localizedplanname', 'planname', 'plan:')):
+                raise ProxyError('Account page could not be verified')
 
             plan_raw = None
             plan_m = re.search(r'(?:localizedPlanName|planName)"\s*:\s*\{"fieldType":"String","value":"([^"]+)"\}', html)
+            if not plan_m:
+                plan_m = re.search(r'(?:localizedPlanName|planName)"\s*:\s*"([^"{}]+)"',html)
             if plan_m:
                 plan_raw = plan_m.group(1).replace(r'\x20', ' ').strip()
                 import codecs
@@ -141,17 +156,17 @@ def fetch_realtime_account_info(netflix_id, secure_netflix_id=""):
                 except Exception:
                     pass
 
-            plan = checker.normalize_plan_name(plan_raw, text_lower) or "Premium"
+            plan = checker.normalize_plan_name(plan_raw)
             return plan, expire_date
 
-        except CookieError:
+        except (CookieError, ProxyError):
             raise
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.ProxyError) as e:
             last_network_err = e
             if attempt == 0:
-                proxies_list.mark_proxy_failed(str(e))
+                proxies_list.mark_proxy_failed(type(e).__name__)
             continue
         except Exception as e:
-            raise CookieError(f"Error checking account status: {e}")
+            raise ProxyError(f"Account verification failed ({type(e).__name__})") from None
 
-    raise ProxyError(f"Network / Proxy error connecting to Netflix Account page: {last_network_err}")
+    raise ProxyError(f"Account verification network error ({type(last_network_err).__name__})")
