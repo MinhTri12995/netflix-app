@@ -3,7 +3,7 @@ import string
 import threading
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor
-from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, jsonify, session
 
 import database
 import parser
@@ -147,12 +147,135 @@ def generate_key():
 @admin_bp.route("/keys/<code>/rotate", methods=["POST"])
 @login_required
 def rotate_key(code):
-    success = database.rotate_access_key(code)
-    if success:
-        flash(f"Đã đổi tài khoản mới cho mã: {code}", "success")
+    database.init_db()
+    from app.services.allocation_service import replace
+    mode = (request.form.get("mode") or request.args.get("mode") or "").strip().lower()
+    delete_param = request.form.get("delete_old") or request.args.get("delete_old")
+    if mode == "delete" or str(delete_param).lower() in ("1", "true", "yes"):
+        delete_old = True
+    elif mode == "keep" or str(delete_param).lower() in ("0", "false", "no"):
+        delete_old = False
     else:
-        flash("Lỗi: Không còn tài khoản khả dụng trong kho để thay thế.", "error")
+        delete_old = None
+
+    admin_user = session.get("user", "admin")
+    del_label = "xóa khỏi kho" if delete_old is True else "giữ lại trong kho" if delete_old is False else "tự động"
+    res = replace(
+        code=code,
+        actor=f"admin:{admin_user}",
+        reason=f"Admin manual rotation ({del_label})",
+        delete_old_account=delete_old,
+        ignore_quota=True
+    )
+    if res.is_success:
+        flash(f"✅ {res.message}", "success")
+    else:
+        flash(f"❌ Lỗi đổi tài khoản: {res.message}", "error")
     return redirect(url_for("admin.dashboard"))
+
+@admin_bp.route("/request_change", methods=["POST"])
+@login_required
+def admin_request_change():
+    database.init_db()
+    from app.services.allocation_service import replace
+
+    code = (request.form.get("code") or (request.json.get("code") if request.is_json else "") or "").strip().upper()
+    mode = (request.form.get("mode") or (request.json.get("mode") if request.is_json else "") or "keep").strip().lower()
+    reason_cat = (request.form.get("reason_category") or (request.json.get("reason_category") if request.is_json else "") or "").strip()
+    note = (request.form.get("note") or (request.json.get("note") if request.is_json else "") or "").strip()
+
+    is_ajax = request.is_json or request.headers.get("X-Requested-With") == "XMLHttpRequest" or "application/json" in request.headers.get("Accept", "")
+
+    if not code:
+        if is_ajax:
+            return jsonify({"success": False, "error": "Vui lòng nhập Access Code!"}), 400
+        flash("❌ Vui lòng nhập Access Code!", "error")
+        return redirect(url_for("admin.dashboard"))
+
+    key_row = database.get_access_key(code)
+    if not key_row:
+        if is_ajax:
+            return jsonify({"success": False, "error": f"Không tìm thấy mã truy cập '{code}' trong hệ thống!"}), 404
+        flash(f"❌ Không tìm thấy mã truy cập '{code}' trong hệ thống!", "error")
+        return redirect(url_for("admin.dashboard"))
+
+    # Mode 1: keep (đổi acc, giữ acc cũ trong kho) -> delete_old_account=False
+    # Mode 2: delete (đổi acc và xóa acc cũ ra lists) -> delete_old_account=True
+    delete_old = True if mode == "delete" else False
+
+    reason_parts = []
+    if reason_cat:
+        reason_parts.append(f"[{reason_cat}]")
+    if note:
+        reason_parts.append(note)
+    full_reason = "Admin Request Change: " + (" ".join(reason_parts) if reason_parts else f"Chế độ: {'Xóa acc cũ' if delete_old else 'Giữ acc cũ'}")
+
+    admin_user = session.get("user", "admin")
+    op_id = f"admin_req_change_{code}_{int(datetime.now().timestamp())}"
+
+    res = replace(
+        code=code,
+        actor=f"admin:{admin_user}",
+        reason=full_reason,
+        delete_old_account=delete_old,
+        ignore_quota=True,
+        operation_id=op_id
+    )
+
+    if res.is_success:
+        if is_ajax:
+            return jsonify({
+                "success": True,
+                "message": res.message,
+                "assigned_email": res.assigned_email,
+                "code": code,
+                "mode": mode,
+                "deleted_old": delete_old
+            })
+        flash(f"✅ {res.message}", "success")
+        return redirect(url_for("admin.dashboard"))
+    else:
+        err_msg = res.message or "Đổi tài khoản không thành công."
+        if is_ajax:
+            return jsonify({"success": False, "error": err_msg, "code": code}), 400
+        flash(f"❌ Lỗi: {err_msg}", "error")
+        return redirect(url_for("admin.dashboard"))
+
+@admin_bp.route("/api/key_info/<code>", methods=["GET"])
+@login_required
+def api_key_info(code):
+    database.init_db()
+    from app.services.allocation_service import get_plan_for_code
+    code_clean = (code or "").strip().upper()
+    key_row = database.get_access_key(code_clean)
+    if not key_row:
+        return jsonify({"success": False, "error": f"Không tìm thấy Access Code: {code_clean}"}), 404
+
+    assigned_email = key_row[1] if len(key_row) > 1 and key_row[1] else ""
+    expire_at_str = key_row[2] if len(key_row) > 2 and key_row[2] else ""
+    plan = get_plan_for_code(code_clean)
+    rotations_today = database.get_today_rotation_count(code_clean)
+
+    is_expired = False
+    if expire_at_str and expire_at_str != "Lifetime":
+        try:
+            exp_dt = datetime.strptime(expire_at_str, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
+            if datetime.now() > exp_dt:
+                is_expired = True
+        except Exception:
+            pass
+
+    return jsonify({
+        "success": True,
+        "key": {
+            "code": code_clean,
+            "assigned_email": assigned_email or "Chưa gán tài khoản",
+            "expire_at": expire_at_str or "Lifetime",
+            "plan": plan,
+            "today_rotations": rotations_today,
+            "is_expired": is_expired
+        }
+    })
 
 @admin_bp.route("/delete_key/<code>", methods=["POST"])
 @admin_bp.route("/keys/<code>/delete", methods=["POST"])

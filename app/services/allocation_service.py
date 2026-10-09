@@ -254,7 +254,9 @@ def replace(
     actor: str = "system",
     operation_id: Optional[str] = None,
     expected_assignment_version: Optional[int] = None,
-    reason: str = ""
+    reason: str = "",
+    delete_old_account: Optional[bool] = None,
+    ignore_quota: bool = False
 ) -> OperationResult:
     """
     Atomically replace an access key's assigned account with idempotency,
@@ -270,7 +272,8 @@ def replace(
         try:
             req_row = None
             if request_id is not None:
-                req_res = db.get_supabase().table("requests").select("*").eq("id", request_id).execute()
+                req_id_val = int(request_id) if str(request_id).isdigit() else request_id
+                req_res = db.get_supabase().table("requests").select("*").eq("id", req_id_val).execute()
                 if not req_res.data:
                     res = OperationResult(status="invalid_input", operation_id=operation_id, request_id=str(request_id), detail_code="REQUEST_NOT_FOUND", message=f"Request #{request_id} not found")
                     record_operation(operation_id, res)
@@ -328,7 +331,7 @@ def replace(
                     pass
 
             today_count = db.get_today_rotation_count(code)
-            if today_count >= 5:
+            if not ignore_quota and actor != "admin" and today_count >= 5:
                 res = OperationResult(status="limit_exceeded", operation_id=operation_id, request_id=str(request_id) if request_id else None, detail_code="QUOTA_EXCEEDED", message="Maximum replacement limit (5 times per 24 hours) reached")
                 record_operation(operation_id, res)
                 return res
@@ -403,15 +406,23 @@ def replace(
                 else:
                     raise
 
-            # Protect shared accounts: keep and mark needs_review if shared; delete if solitary
+            # Protect shared accounts: delete if delete_old_account=True, keep if False, or auto if None
             if old_email:
-                if db.is_account_shared_by_others(old_email, exclude_code=code):
+                if delete_old_account is True:
+                    db.delete_account(old_email, force=True)
+                elif delete_old_account is False:
                     try:
                         db.get_supabase().table("netflix_accounts").update({"status": "needs_review"}).eq("email", old_email).execute()
                     except Exception as e:
                         print(f"Supabase update status notice (status column might not exist): {e}")
                 else:
-                    db.get_supabase().table("netflix_accounts").delete().eq("email", old_email).execute()
+                    if db.is_account_shared_by_others(old_email, exclude_code=code):
+                        try:
+                            db.get_supabase().table("netflix_accounts").update({"status": "needs_review"}).eq("email", old_email).execute()
+                        except Exception as e:
+                            print(f"Supabase update status notice (status column might not exist): {e}")
+                    else:
+                        db.get_supabase().table("netflix_accounts").delete().eq("email", old_email).execute()
 
             # Update request status
             if request_id is not None:
@@ -421,7 +432,8 @@ def replace(
 
             # Outbox & events
             from app.services.outbox_service import send_notification_outbox
-            alert_msg = f"⚡ <b>Đổi tài khoản thành công!</b>\n- Mã: <code>{code}</code>\n- Tài khoản mới: <code>{new_email}</code>\n- Tác tử: {actor}"
+            del_note = " (Đã xóa tài khoản cũ)" if delete_old_account is True else " (Đã giữ tài khoản cũ trong kho)" if delete_old_account is False else ""
+            alert_msg = f"⚡ <b>Đổi tài khoản thành công!</b>\n- Mã: <code>{code}</code>\n- Tài khoản mới: <code>{new_email}</code>{del_note}\n- Tác tử: {actor}"
             send_notification_outbox("telegram_alert", {
                 "message": alert_msg,
                 "code": code,
@@ -434,7 +446,7 @@ def replace(
                 request_id=str(request_id) if request_id else None,
                 assigned_email=new_email,
                 detail_code="ROTATED",
-                message="Account replaced successfully"
+                message=f"Đổi tài khoản thành công! Tài khoản mới: {new_email}{del_note}"
             )
             record_operation(operation_id, res)
             return res
@@ -525,13 +537,14 @@ def replace(
                 except Exception:
                     pass
 
-            c.execute("SELECT COUNT(*) FROM requests WHERE code = ? AND (status LIKE '%accepted%' OR status = 'auto_accepted') AND datetime(created_at) > datetime('now', '-24 hours')", (code,))
-            quota_row = c.fetchone()
-            if quota_row and quota_row[0] >= 5:
-                conn.close()
-                res = OperationResult(status="limit_exceeded", operation_id=operation_id, request_id=str(request_id) if request_id else None, detail_code="QUOTA_EXCEEDED", message="Maximum replacement limit (5 times per 24 hours) reached")
-                record_operation(operation_id, res)
-                return res
+            if not ignore_quota and actor != "admin":
+                c.execute("SELECT COUNT(*) FROM requests WHERE code = ? AND (status LIKE '%accepted%' OR status = 'auto_accepted') AND datetime(created_at) > datetime('now', '-24 hours')", (code,))
+                quota_row = c.fetchone()
+                if quota_row and quota_row[0] >= 5:
+                    conn.close()
+                    res = OperationResult(status="limit_exceeded", operation_id=operation_id, request_id=str(request_id) if request_id else None, detail_code="QUOTA_EXCEEDED", message="Maximum replacement limit (5 times per 24 hours) reached")
+                    record_operation(operation_id, res)
+                    return res
 
             plan = get_plan_for_code(code)
             max_cap = get_max_capacity(plan)
@@ -573,13 +586,19 @@ def replace(
                 c.execute("UPDATE access_keys SET assigned_email = ? WHERE code = ?", (new_email, code))
 
             if old_email:
-                c.execute("SELECT code FROM access_keys WHERE assigned_email = ? AND code != ? LIMIT 1", (old_email, code))
-                is_shared = c.fetchone() is not None
-                if is_shared:
+                if delete_old_account is True:
+                    c.execute("DELETE FROM netflix_accounts WHERE email = ?", (old_email,))
+                elif delete_old_account is False:
                     if "status" in na_cols:
                         c.execute("UPDATE netflix_accounts SET status = 'needs_review' WHERE email = ?", (old_email,))
                 else:
-                    c.execute("DELETE FROM netflix_accounts WHERE email = ?", (old_email,))
+                    c.execute("SELECT code FROM access_keys WHERE assigned_email = ? AND code != ? LIMIT 1", (old_email, code))
+                    is_shared = c.fetchone() is not None
+                    if is_shared:
+                        if "status" in na_cols:
+                            c.execute("UPDATE netflix_accounts SET status = 'needs_review' WHERE email = ?", (old_email,))
+                    else:
+                        c.execute("DELETE FROM netflix_accounts WHERE email = ?", (old_email,))
 
             if request_id is not None:
                 new_status = "auto_accepted" if actor.startswith("ai") else "accepted"
@@ -600,7 +619,8 @@ def replace(
                       (code, old_email, new_email, actor, reason, str(request_id) if request_id else None))
 
             from app.services.outbox_service import record_outbox_event, deliver_event
-            alert_msg = f"⚡ <b>Đổi tài khoản thành công!</b>\n- Mã: <code>{code}</code>\n- Tài khoản mới: <code>{new_email}</code>\n- Tác tử: {actor}"
+            del_note = " (Đã xóa tài khoản cũ)" if delete_old_account is True else " (Đã giữ tài khoản cũ trong kho)" if delete_old_account is False else ""
+            alert_msg = f"⚡ <b>Đổi tài khoản thành công!</b>\n- Mã: <code>{code}</code>\n- Tài khoản mới: <code>{new_email}</code>{del_note}\n- Tác tử: {actor}"
             outbox_id = record_outbox_event(
                 "telegram_alert",
                 {"message": alert_msg, "code": code, "request_id": str(request_id) if request_id else None},
@@ -622,7 +642,7 @@ def replace(
                 request_id=str(request_id) if request_id else None,
                 assigned_email=new_email,
                 detail_code="ROTATED",
-                message="Account replaced successfully"
+                message=f"Đổi tài khoản thành công! Tài khoản mới: {new_email}{del_note}"
             )
             record_operation(operation_id, res)
             return res

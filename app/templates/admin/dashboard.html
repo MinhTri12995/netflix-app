@@ -426,6 +426,100 @@
             </div>
         </div>
 
+        <!-- Dedicated Panel: Request Change (Full tính năng như bên Buyer + 2 Chế độ) -->
+        <div class="glass-panel" id="requestChangePanel" style="border: 1px solid rgba(52, 152, 219, 0.4); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #3498db, #2980b9); display: flex; align-items: center; justify-content: center; font-size: 22px; box-shadow: 0 4px 12px rgba(52, 152, 219, 0.35);">🔄</div>
+                    <div>
+                        <h3 style="margin: 0; font-size: 1.25rem; font-weight: 700; color: #fff;">Yêu Cầu Đổi Tài Khoản (Request Change)</h3>
+                        <p style="margin: 3px 0 0 0; font-size: 0.83rem; color: var(--text-sub);">
+                            Đổi tài khoản Netflix mới cho Access Code lập tức. Hỗ trợ 2 chế độ: <b>Đổi giữ acc cũ</b> hoặc <b>Đổi & xóa vĩnh viễn acc cũ khỏi kho</b>.
+                        </p>
+                    </div>
+                </div>
+                <div style="font-size: 0.8rem; padding: 5px 12px; border-radius: 20px; background: rgba(52, 152, 219, 0.15); border: 1px solid rgba(52, 152, 219, 0.4); color: #3498db; font-weight: 600;">
+                    ⚡ Quyền Admin: Bỏ qua giới hạn 5 lần/24h
+                </div>
+            </div>
+
+            <form id="adminRequestChangeForm" onsubmit="event.preventDefault();" style="display: flex; flex-direction: column; gap: 16px;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+                    <!-- Input Code -->
+                    <div>
+                        <label for="adminReqCode" style="font-size: 0.85rem; font-weight: 600; color: #cbd5e1; display: block; margin-bottom: 6px;">
+                            Access Code <span style="color: #ef4444;">*</span>
+                        </label>
+                        <div style="position: relative;">
+                            <input type="text" id="adminReqCode" name="code" class="code-input" placeholder="Nhập hoặc dán Access Code..." style="width: 100%; padding: 12px 14px; font-family: monospace; font-size: 1.05rem; letter-spacing: 1px; font-weight: bold; color: #f1c40f; text-transform: uppercase;" required oninput="onAdminCodeInput(this.value)">
+                            <button type="button" onclick="lookupAdminCode()" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: #3498db; color: #fff; border: none; border-radius: 6px; padding: 6px 12px; font-size: 0.8rem; cursor: pointer;">🔍 Kiểm tra</button>
+                        </div>
+                    </div>
+
+                    <!-- Lý do / Reason Category -->
+                    <div>
+                        <label for="adminReqReasonCat" style="font-size: 0.85rem; font-weight: 600; color: #cbd5e1; display: block; margin-bottom: 6px;">
+                            Lý do đổi (Reason) <span style="color: #ef4444;">*</span>
+                        </label>
+                        <select id="adminReqReasonCat" name="reason_category" class="code-input" style="width: 100%; padding: 12px 14px; font-size: 0.9rem; background: rgba(0,0,0,0.5); color: #fff; cursor: pointer;">
+                            <option value="TOO_MANY_PEOPLE">⚡ Quá số màn hình xem cùng lúc (Screen limit / Too many people)</option>
+                            <option value="PAYMENT_ERROR">💳 Lỗi nợ cước / Membership on hold</option>
+                            <option value="EXPIRED_DIE">💀 Cookie hết hạn / Die cookie</option>
+                            <option value="WRONG_PLAN">📋 Sai gói cước / Không đăng nhập được</option>
+                            <option value="MANUAL_ADMIN" selected>🛠️ Admin thao tác thủ công (Manual Change)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Live Preview Card for the Code -->
+                <div id="adminCodePreview" style="display: none; background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 10px; padding: 14px 18px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                        <div>
+                            <span style="font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 1px;">Thông tin Code:</span>
+                            <div style="margin-top: 4px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                                <span id="prevCodeDisplay" style="font-family: monospace; font-weight: 800; font-size: 1.15rem; color: #f1c40f;"></span>
+                                <span id="prevPlanBadge" style="padding: 2px 8px; border-radius: 4px; font-size: 0.78rem; font-weight: bold; background: rgba(46, 213, 115, 0.2); color: #2ed573;"></span>
+                                <span id="prevExpireDisplay" style="font-size: 0.82rem; color: #aaa;"></span>
+                                <span id="prevRotationCount" style="font-size: 0.82rem; color: #f39c12;"></span>
+                            </div>
+                        </div>
+                        <div>
+                            <span style="font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 1px;">Acc Netflix hiện tại:</span>
+                            <div id="prevEmailDisplay" style="margin-top: 4px; font-size: 0.95rem; color: #3498db; font-weight: 600; word-break: break-all;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ghi chú / Note -->
+                <div>
+                    <label for="adminReqNote" style="font-size: 0.85rem; font-weight: 600; color: #cbd5e1; display: block; margin-bottom: 6px;">
+                        Ghi chú thêm (Tùy chọn)
+                    </label>
+                    <input type="text" id="adminReqNote" name="note" class="code-input" placeholder="Ví dụ: Đổi theo yêu cầu đơn hàng U7BUY #123456, nợ cước..." style="width: 100%; padding: 10px 14px; font-size: 0.9rem;">
+                </div>
+
+                <!-- Result Message Box -->
+                <div id="adminReqResult" style="display: none; padding: 14px 18px; border-radius: 10px; font-size: 0.92rem; font-weight: 600; line-height: 1.5;"></div>
+
+                <!-- 2 Action Buttons: Mode 1 & Mode 2 -->
+                <div style="display: flex; gap: 14px; flex-wrap: wrap; margin-top: 4px;">
+                    <!-- Mode 1: Đổi acc & giữ acc cũ -->
+                    <button type="button" id="btnModeKeep" onclick="submitRequestChangeMode('keep')" style="flex: 1; min-width: 260px; padding: 14px 20px; border-radius: 10px; font-size: 0.95rem; font-weight: 700; background: linear-gradient(135deg, #f39c12, #d35400); color: #fff; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 4px 15px rgba(243, 156, 18, 0.35); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                        <span>🔄</span>
+                        <span>1. Đổi Acc (Giữ acc cũ trong kho)</span>
+                    </button>
+
+                    <!-- Mode 2: Đổi acc & xóa acc cũ ra lists -->
+                    <button type="button" id="btnModeDelete" onclick="submitRequestChangeMode('delete')" style="flex: 1; min-width: 260px; padding: 14px 20px; border-radius: 10px; font-size: 0.95rem; font-weight: 700; background: linear-gradient(135deg, #e74c3c, #c0392b); color: #fff; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 4px 15px rgba(231, 76, 60, 0.35); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                        <span>🗑️</span>
+                        <span>2. Đổi Acc & XÓA Acc Cũ Khỏi Kho</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+
         <div class="glass-panel">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
                 <h3 style="margin: 0; font-weight: 400;">Access Code Management (License Keys)</h3>
@@ -480,19 +574,34 @@
                     <tbody>
                         {% for key in access_keys %}
                         <tr>
-                            <td style="font-weight: bold; font-family: monospace; font-size: 1.3rem; color: #f1c40f; letter-spacing: 2px;">{{ key[0] }}</td>
+                            <td style="font-weight: bold; font-family: monospace; font-size: 1.3rem; color: #f1c40f; letter-spacing: 2px; cursor: pointer;" onclick="fillRequestChange('{{ key[0] }}')" title="Bấm để tải vào mục Đổi Tài Khoản">{{ key[0] }}</td>
                             <td>{{ key[1] }}</td>
                             <td style="font-size: 0.85rem; color: #888;">{{ key[2] }}</td>
                             <td style="font-size: 0.85rem; color: #e74c3c; font-weight: bold;">{{ key[3] if key[3] else 'Lifetime' }}</td>
-                            <td style="display: flex; gap: 10px; flex-wrap: wrap;">
-                                <button class="btn-copy" onclick="copyCookie('{{ key[0] }}', this)">Copy Code</button>
-                                <form action="/admin/rotate_key/{{ key[0] }}" method="POST" style="margin: 0;" onsubmit="return confirm('Do you want to rotate a new account for this code?');">
+                            <td style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
+                                <button class="btn-copy" onclick="copyCookie('{{ key[0] }}', this)" title="Copy Code">📋</button>
+                                
+                                <!-- Mode 1: Đổi Acc & Giữ Acc Cũ -->
+                                <form action="/admin/rotate_key/{{ key[0] }}" method="POST" style="margin: 0;" onsubmit="return confirm('🔄 Chế độ 1: Bạn muốn đổi tài khoản mới cho mã {{ key[0] }} và GIỮ NGUYÊN tài khoản cũ trong kho?');">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" style="background: #f39c12; padding: 6px 12px; font-size: 0.8rem;">Change Acc</button>
+                                    <input type="hidden" name="mode" value="keep">
+                                    <button type="submit" style="background: #f39c12; padding: 6px 10px; font-size: 0.78rem; border-radius: 6px;" title="Đổi acc mới và GIỮ acc cũ trong kho">🔄 Đổi Acc</button>
                                 </form>
+
+                                <!-- Mode 2: Đổi Acc & XÓA Acc Cũ Ra Khỏi Kho -->
+                                <form action="/admin/rotate_key/{{ key[0] }}" method="POST" style="margin: 0;" onsubmit="return confirm('⚠️ Chế độ 2 (CẨN THẬN):\nBạn muốn đổi tài khoản mới cho mã {{ key[0] }} và XÓA VĨNH VIỄN tài khoản cũ khỏi kho?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="hidden" name="mode" value="delete">
+                                    <button type="submit" style="background: #c0392b; padding: 6px 10px; font-size: 0.78rem; border-radius: 6px;" title="Đổi acc mới và XÓA acc cũ khỏi kho">🗑️ Đổi & Xóa</button>
+                                </form>
+
+                                <!-- Nạp vào form Request Change -->
+                                <button type="button" onclick="fillRequestChange('{{ key[0] }}')" style="background: #3498db; padding: 6px 10px; font-size: 0.78rem; border-radius: 6px; color: #fff; border: none; cursor: pointer;" title="Điền vào bảng Đổi Tài Khoản ở trên">⚡ Request</button>
+
+                                <!-- Xóa Access Code -->
                                 <form action="/admin/delete_key/{{ key[0] }}" method="POST" style="margin: 0;" onsubmit="return confirm('Delete this code? Customers will no longer be able to use it.');">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" style="background: #e74c3c; padding: 6px 12px; font-size: 0.8rem;">Delete</button>
+                                    <button type="submit" style="background: #e74c3c; padding: 6px 8px; font-size: 0.78rem; border-radius: 6px;" title="Xóa mã truy cập này">❌</button>
                                 </form>
                             </td>
                         </tr>
@@ -1065,6 +1174,146 @@
                 pauseBtn.style.display = "none";
                 stopBtn.style.display = "none";
                 document.getElementById('scanActionArea').style.display = "block";
+            }
+        }
+
+        /* --- Request Change (Admin) JavaScript Functions --- */
+        let _adminLookupTimer = null;
+
+        function onAdminCodeInput(val) {
+            clearTimeout(_adminLookupTimer);
+            val = (val || '').trim();
+            if (val.length >= 4) {
+                _adminLookupTimer = setTimeout(() => {
+                    lookupAdminCode();
+                }, 400);
+            } else {
+                const prev = document.getElementById('adminCodePreview');
+                if (prev) prev.style.display = 'none';
+            }
+        }
+
+        async function lookupAdminCode() {
+            const input = document.getElementById('adminReqCode');
+            if (!input) return;
+            const code = input.value.trim().toUpperCase();
+            if (!code) return;
+
+            try {
+                const res = await fetch(`/admin/api/key_info/${encodeURIComponent(code)}`);
+                const data = await res.json();
+                const prev = document.getElementById('adminCodePreview');
+
+                if (data.success && data.key) {
+                    document.getElementById('prevCodeDisplay').textContent = data.key.code;
+                    document.getElementById('prevPlanBadge').textContent = 'Gói: ' + (data.key.plan || 'N/A');
+                    document.getElementById('prevExpireDisplay').textContent = 'Hạn: ' + (data.key.expire_at || 'Lifetime');
+                    document.getElementById('prevRotationCount').textContent = `Đã đổi hôm nay: ${data.key.today_rotations} lần`;
+                    document.getElementById('prevEmailDisplay').textContent = data.key.assigned_email || 'Chưa gán tài khoản';
+                    if (prev) prev.style.display = 'block';
+                } else {
+                    if (prev) prev.style.display = 'none';
+                }
+            } catch (err) {
+                console.error("Lỗi tra cứu mã code:", err);
+            }
+        }
+
+        function fillRequestChange(code) {
+            const input = document.getElementById('adminReqCode');
+            if (input) {
+                input.value = code;
+                lookupAdminCode();
+                const panel = document.getElementById('requestChangePanel');
+                if (panel) {
+                    panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+                input.focus();
+            }
+        }
+
+        async function submitRequestChangeMode(mode) {
+            const codeInput = document.getElementById('adminReqCode');
+            const code = codeInput ? codeInput.value.trim().toUpperCase() : '';
+            if (!code) {
+                alert('Vui lòng nhập Access Code!');
+                if (codeInput) codeInput.focus();
+                return;
+            }
+
+            const isDelete = (mode === 'delete');
+            const confirmMsg = isDelete
+                ? `⚠️ XÁC NHẬN CHẾ ĐỘ 2 (ĐỔI & XÓA):\n\nBạn có chắc muốn cấp tài khoản Netflix mới cho mã [${code}] và XÓA VĨNH VIỄN tài khoản Netflix cũ ra khỏi kho dữ liệu?`
+                : `🔄 XÁC NHẬN CHẾ ĐỘ 1 (ĐỔI GIỮ ACC):\n\nĐổi tài khoản Netflix mới cho mã [${code}] và GIỮ NGUYÊN tài khoản cũ trong kho để kiểm tra lại?`;
+
+            if (!confirm(confirmMsg)) return;
+
+            const btnKeep = document.getElementById('btnModeKeep');
+            const btnDelete = document.getElementById('btnModeDelete');
+            const resultBox = document.getElementById('adminReqResult');
+
+            if (btnKeep) btnKeep.disabled = true;
+            if (btnDelete) btnDelete.disabled = true;
+
+            if (resultBox) {
+                resultBox.style.display = 'block';
+                resultBox.style.background = 'rgba(52, 152, 219, 0.2)';
+                resultBox.style.border = '1px solid rgba(52, 152, 219, 0.4)';
+                resultBox.style.color = '#3498db';
+                resultBox.innerHTML = `⏳ Đang thực hiện đổi tài khoản cho mã <code>${code}</code> (${isDelete ? 'Xóa acc cũ' : 'Giữ acc cũ'})...`;
+            }
+
+            const csrfToken = document.querySelector('#adminRequestChangeForm input[name="csrf_token"]')?.value 
+                || document.querySelector('input[name="csrf_token"]')?.value || '';
+            const reasonCat = document.getElementById('adminReqReasonCat')?.value || 'MANUAL_ADMIN';
+            const note = document.getElementById('adminReqNote')?.value || '';
+
+            const formData = new FormData();
+            formData.append('csrf_token', csrfToken);
+            formData.append('code', code);
+            formData.append('mode', mode);
+            formData.append('reason_category', reasonCat);
+            formData.append('note', note);
+
+            try {
+                const response = await fetch('/admin/request_change', {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-Token': csrfToken
+                    },
+                    body: formData
+                });
+                const res = await response.json();
+
+                if (response.ok && res.success) {
+                    resultBox.style.background = 'rgba(46, 213, 115, 0.2)';
+                    resultBox.style.border = '1px solid rgba(46, 213, 115, 0.5)';
+                    resultBox.style.color = '#2ed573';
+                    const delStatusText = res.deleted_old ? '🗑️ Đã xóa tài khoản cũ khỏi kho' : '💾 Đã giữ tài khoản cũ trong kho';
+                    resultBox.innerHTML = `🎉 <b>Đổi tài khoản thành công!</b><br>` +
+                        `• Mã Access Code: <code>${res.code}</code><br>` +
+                        `• Tài khoản mới: <b style="color: #fff;">${res.assigned_email || ''}</b><br>` +
+                        `• Trạng thái kho: <span style="color: #f1c40f;">${delStatusText}</span><br>` +
+                        `<small style="color: #bbb;">Trang sẽ tự tải lại sau 2.5 giây để cập nhật toàn bộ bảng...</small>`;
+                    lookupAdminCode();
+                    setTimeout(() => { window.location.reload(); }, 2500);
+                } else {
+                    resultBox.style.background = 'rgba(255, 71, 87, 0.2)';
+                    resultBox.style.border = '1px solid rgba(255, 71, 87, 0.5)';
+                    resultBox.style.color = '#ff4757';
+                    resultBox.innerHTML = `❌ <b>Thất bại:</b> ${res.error || 'Không thể đổi tài khoản.'}`;
+                }
+            } catch (err) {
+                if (resultBox) {
+                    resultBox.style.background = 'rgba(255, 71, 87, 0.2)';
+                    resultBox.style.border = '1px solid rgba(255, 71, 87, 0.5)';
+                    resultBox.style.color = '#ff4757';
+                    resultBox.innerHTML = `❌ <b>Lỗi kết nối:</b> ${err.message}`;
+                }
+            } finally {
+                if (btnKeep) btnKeep.disabled = false;
+                if (btnDelete) btnDelete.disabled = false;
             }
         }
     </script>

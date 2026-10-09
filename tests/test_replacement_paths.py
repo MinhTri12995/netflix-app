@@ -147,5 +147,65 @@ class TestReplacementPaths(unittest.TestCase):
         self.assertEqual(evt[2], "system:activation")
         conn.close()
 
+    def test_delete_old_account_false_keeps_account_in_list(self):
+        """Mode 1: delete_old_account=False must keep the old solitary account in netflix_accounts."""
+        conn = database.get_sqlite_conn()
+        c = conn.cursor()
+        c.execute("INSERT INTO netflix_accounts (email, plan, status) VALUES ('keep_old@nf.com', 'Premium', 'usable')")
+        c.execute("INSERT INTO netflix_accounts (email, plan, status) VALUES ('new_acc@nf.com', 'Premium', 'usable')")
+        code = "MODE1_KEEP_KEY"
+        c.execute("INSERT INTO access_keys (code, assigned_email, plan) VALUES (?, 'keep_old@nf.com', 'Premium')", (code,))
+        conn.commit()
+        conn.close()
+
+        res = replace(code=code, actor="admin", reason="Mode 1 test", delete_old_account=False)
+        self.assertTrue(res.is_success)
+        self.assertEqual(res.assigned_email, "new_acc@nf.com")
+
+        # Verify old account STILL EXISTS in netflix_accounts
+        acc = database.get_account_by_email("keep_old@nf.com")
+        self.assertIsNotNone(acc, "Old account must be kept in netflix_accounts when delete_old_account=False")
+
+    def test_delete_old_account_true_deletes_account_from_list(self):
+        """Mode 2: delete_old_account=True must permanently delete old account from netflix_accounts."""
+        conn = database.get_sqlite_conn()
+        c = conn.cursor()
+        c.execute("INSERT INTO netflix_accounts (email, plan, status) VALUES ('del_old@nf.com', 'Premium', 'usable')")
+        c.execute("INSERT INTO netflix_accounts (email, plan, status) VALUES ('new_acc2@nf.com', 'Premium', 'usable')")
+        code = "MODE2_DELETE_KEY"
+        c.execute("INSERT INTO access_keys (code, assigned_email, plan) VALUES (?, 'del_old@nf.com', 'Premium')", (code,))
+        conn.commit()
+        conn.close()
+
+        res = replace(code=code, actor="admin", reason="Mode 2 test", delete_old_account=True)
+        self.assertTrue(res.is_success)
+        self.assertEqual(res.assigned_email, "new_acc2@nf.com")
+
+        # Verify old account is DELETED from netflix_accounts
+        acc = database.get_account_by_email("del_old@nf.com")
+        self.assertIsNone(acc, "Old account must be deleted from netflix_accounts when delete_old_account=True")
+
+    def test_admin_ignores_quota(self):
+        """Admin or ignore_quota=True must succeed even if code reached quota in 24h."""
+        conn = database.get_sqlite_conn()
+        c = conn.cursor()
+        c.execute("INSERT INTO netflix_accounts (email, plan, status) VALUES ('quota_adm@nf.com', 'Premium', 'usable')")
+        c.execute("INSERT INTO netflix_accounts (email, plan, status) VALUES ('spare_adm@nf.com', 'Premium', 'usable')")
+        code = "QUOTA_ADMIN_KEY"
+        c.execute("INSERT INTO access_keys (code, assigned_email, plan) VALUES (?, 'quota_adm@nf.com', 'Premium')", (code,))
+        for i in range(5):
+            c.execute("INSERT INTO requests (code, u7buy_order_id, image_url, reason, status, created_at) VALUES (?, 'U7_Q', 'img', 'err', 'accepted', datetime('now', '-1 hour'))", (code,))
+        conn.commit()
+        conn.close()
+
+        # Normal actor gets limit_exceeded
+        res_fail = replace(code=code, actor="user", reason="User rotation")
+        self.assertEqual(res_fail.status, "limit_exceeded")
+
+        # Admin actor bypasses quota
+        res_admin = replace(code=code, actor="admin", reason="Admin rotation", ignore_quota=True)
+        self.assertTrue(res_admin.is_success)
+        self.assertEqual(res_admin.assigned_email, "spare_adm@nf.com")
+
 if __name__ == "__main__":
     unittest.main()
