@@ -1,8 +1,8 @@
 (() => {
   const panel = document.getElementById('inventory-progress');
   if (!panel) return;
-  const labels = {full_scan: 'Check All', payment_scan: 'Kiểm tra thanh toán', missing_plans: 'Cập nhật gói còn thiếu', duplicates: 'Lọc trùng', import: 'Kiểm tra & nhập kho'};
-  const results = {LIVE:'Hoạt động', DIE:'Cần kiểm tra', UNKNOWN:'Chưa xác định', ERROR:'Lỗi xử lý', MISSING:'Không còn tài khoản', CHANGED:'Thông tin đã thay đổi', KEPT:'Giữ lại', DELETED:'Đã xóa trùng', PROTECTED:'Giữ mã đang sử dụng'};
+  const labels = {full_scan: 'Check All', payment_scan: 'Kiểm tra thanh toán', missing_plans: 'Cập nhật gói còn thiếu', duplicates: 'Lọc trùng', import: 'Kiểm tra & nhập kho', cleanup: 'Recheck & dọn tài khoản lỗi'};
+  const results = {LIVE:'Hoạt động', DIE:'Cần kiểm tra', UNKNOWN:'Chưa xác định', ERROR:'Lỗi xử lý', MISSING:'Không còn tài khoản', CHANGED:'Thông tin đã thay đổi', KEPT:'Giữ lại', DELETED:'Đã xóa', PROTECTED:'Giữ tài khoản còn code'};
   let selected = null, timer = null;
   function node(tag, value) { const el=document.createElement(tag); el.textContent=value; return el; }
   async function refresh() {

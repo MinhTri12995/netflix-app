@@ -51,6 +51,9 @@ def get_config(key, default=None):
         except Exception:
             pass
 
+    if SUPABASE_KEY:
+        return default
+
     # 2. Fallback lấy từ config.json local
     try:
         with open(CONFIG_FILE, "r") as f:
@@ -59,7 +62,13 @@ def get_config(key, default=None):
         return default
 
 def set_config(key, value):
-    # 1. Lưu vào local config.json
+    if SUPABASE_KEY:
+        try:
+            result = get_supabase().table("system_config").upsert({"key": key, "value": str(value)}).execute()
+            return bool(result.data)
+        except Exception as exc:
+            print(f"Supabase config write failed ({type(exc).__name__})")
+            return False
     try:
         data = {}
         if os.path.exists(CONFIG_FILE):
@@ -68,15 +77,10 @@ def set_config(key, value):
         data[key] = value
         with open(CONFIG_FILE, "w") as f:
             json.dump(data, f)
-    except:
-        pass
-        
-    # 2. Lưu vào Supabase DB (nếu có bảng system_config) để giữ cấu hình vĩnh viễn
-    if SUPABASE_KEY:
-        try:
-            get_supabase().table("system_config").upsert({"key": key, "value": str(value)}).execute()
-        except Exception as e:
-            print(f"Supabase set_config notice: {e}")
+        return True
+    except Exception:
+        return False
+
 
 def init_db():
     try:

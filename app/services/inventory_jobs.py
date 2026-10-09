@@ -9,7 +9,7 @@ import time
 import uuid
 import database
 
-KINDS = {'full_scan', 'payment_scan', 'missing_plans', 'duplicates', 'import'}
+KINDS = {'full_scan', 'payment_scan', 'missing_plans', 'duplicates', 'import', 'cleanup'}
 log = logging.getLogger(__name__)
 _workers = []
 _worker_lock = threading.Lock()
@@ -69,6 +69,7 @@ def enqueue(kind, records=None):
             conn.executemany('INSERT INTO inventory_items(run_id,email,payload) VALUES(?,?,?)', [(run_id, r['email'], json.dumps(r)) for r in records])
         else:
             cond = " WHERE COALESCE(trim(plan),'') IN ('','Unknown','UNKNOWN','VALID')" if kind == 'missing_plans' else ''
+            if kind == 'cleanup': cond = " WHERE status IN ('needs_review','dead','expired')"
             conn.execute('INSERT INTO inventory_items(run_id,email) SELECT ?,email FROM netflix_accounts' + cond + ' ORDER BY email', (run_id,))
         n = conn.execute('SELECT count(*) FROM inventory_items WHERE run_id=?', (run_id,)).fetchone()[0]
         conn.execute('UPDATE inventory_runs SET total=?,status=? WHERE id=?', (n, 'running' if n else 'completed', run_id))
@@ -124,9 +125,14 @@ def finish(item, result, plan=None):
             if not keeper or keeper['email'] == lease['email']: result = 'KEPT'
             elif conn.execute("SELECT 1 FROM access_keys WHERE instr(','||replace(assigned_email,' ','')||',',','||?||',')>0 LIMIT 1", (lease['email'],)).fetchone(): result = 'PROTECTED'
             else: conn.execute('DELETE FROM netflix_accounts WHERE email=?', (lease['email'],)); result = 'DELETED'
+        elif item['kind'] == 'cleanup' and result == 'DIE_CONFIRMED':
+            if a['status'] not in ('needs_review','dead','expired'): result = 'CHANGED'
+            elif conn.execute("SELECT 1 FROM access_keys WHERE instr(','||replace(assigned_email,' ','')||',',','||?||',')>0 LIMIT 1", (lease['email'],)).fetchone(): result = 'PROTECTED'
+            else:
+                conn.execute('DELETE FROM netflix_accounts WHERE email=?', (lease['email'],)); result = 'DELETED'
         elif result == 'LIVE':
             conn.execute("UPDATE netflix_accounts SET status=CASE WHEN status='blocked_for_new_assignments' THEN status ELSE 'live' END WHERE email=?", (lease['email'],))
-            if plan in ('Premium','Standard','Standard with Ads','Basic') and item['kind'] != 'payment_scan':
+            if plan in ('Premium','Standard','Standard with Ads','Basic') and item['kind'] not in ('payment_scan','cleanup'):
                 conn.execute('UPDATE netflix_accounts SET plan=? WHERE email=?', (plan, lease['email']))
         elif result == 'DIE':
             conn.execute("UPDATE netflix_accounts SET status=CASE WHEN status='blocked_for_new_assignments' THEN status ELSE 'needs_review' END WHERE email=?", (lease['email'],))
@@ -166,6 +172,15 @@ def work_once():
     except Exception as exc:
         log.warning('Inventory check failed run=%s item=%s type=%s',item['run_id'],item['id'],type(exc).__name__)
         result,plan='ERROR',None
+    if item['kind'] == 'cleanup' and result == 'DIE':
+        time.sleep(5)
+        try:
+            second, second_plan = checker.check_account_live(item['netflix_id'],item['secure_netflix_id'] or '',check_payment=True)
+            if second == 'DIE': result,plan = 'DIE_CONFIRMED',None
+            else: result,plan = second,second_plan
+        except Exception as exc:
+            log.warning('Inventory confirmation failed run=%s item=%s type=%s',item['run_id'],item['id'],type(exc).__name__)
+            result,plan = 'ERROR',None
     finish(item,result,plan); return True
 
 

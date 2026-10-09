@@ -70,6 +70,59 @@ def match_plan(acc_plan: Optional[str], target_plan: Optional[str]) -> bool:
         return True
     return False
 
+
+def assignment_plans(code, plan):
+    """The switch is limited to legacy 15-character Premium codes."""
+    plans = [plan]
+    if len(code or '') == 15 and str(plan).strip().lower() == 'premium' and db.get_config('MIX_PREMIUM_STANDARD', False) is True:
+        plans.append('Standard')
+    return plans
+
+
+def assignment_matches(account_plan, code, plan, existing_standard=False):
+    plans = assignment_plans(code, plan)
+    if existing_standard and len(code or '') == 15 and str(plan).strip().lower() == 'premium':
+        plans.append('Standard')
+    return any(match_plan(account_plan, allowed) for allowed in plans)
+
+
+def account_plan_query(plans, with_status=True):
+    query = db.get_supabase().table('netflix_accounts').select('email, plan, status' if with_status else 'email, plan')
+    # The mixed pool must include legacy spellings before ranking Premium first.
+    # Exact IN labels could otherwise hide available Premium behind Standard.
+    query = query.eq('plan', plans[0]) if len(plans) == 1 else query
+    return query.neq('status', 'blocked_for_new_assignments') if with_status else query
+
+
+def load_assignment_accounts(plans, with_status=True):
+    if len(plans) == 1:
+        return account_plan_query(plans, with_status).execute()
+    # PostgREST caps each response; include every page before choosing a fallback.
+    from types import SimpleNamespace
+    rows, offset = [], 0
+    while True:
+        page = account_plan_query(plans, with_status).order('email').range(offset, offset + 499).execute().data or []
+        rows.extend(page)
+        if len(page) < 500:
+            return SimpleNamespace(data=rows)
+        offset += 500
+
+
+def load_assignment_usage(emails, mixed=False):
+    if not mixed:
+        return db.get_supabase().table('access_keys').select('assigned_email').in_('assigned_email', emails).execute()
+    from types import SimpleNamespace
+    rows = []
+    for start in range(0, len(emails), 100):
+        batch, offset = emails[start:start + 100], 0
+        while True:
+            page = db.get_supabase().table('access_keys').select('assigned_email').in_('assigned_email', batch).order('code').range(offset, offset + 499).execute().data or []
+            rows.extend(page)
+            if len(page) < 500:
+                break
+            offset += 500
+    return SimpleNamespace(data=rows)
+
 def lookup_operation(operation_id: str) -> Optional[OperationResult]:
     """Look up an existing operation by ID for idempotency."""
     if not operation_id:
@@ -164,6 +217,7 @@ def allocate(code: str, plan: Optional[str] = None, expire_at: Optional[str] = N
             return cached
 
     max_cap = get_max_capacity(plan)
+    allowed_plans = assignment_plans(code, plan)
 
     # Authoritative store: Supabase
     if db.SUPABASE_KEY:
@@ -177,25 +231,26 @@ def allocate(code: str, plan: Optional[str] = None, expire_at: Optional[str] = N
 
             # Query candidate accounts
             try:
-                accs_res = db.get_supabase().table("netflix_accounts").select("email, plan, status").eq("plan", plan).neq("status", "blocked_for_new_assignments").execute()
+                accs_res = load_assignment_accounts(allowed_plans)
             except Exception as e:
                 err_str = str(e).lower()
                 if "status" in err_str or "42703" in err_str:
-                    accs_res = db.get_supabase().table("netflix_accounts").select("email, plan").eq("plan", plan).execute()
+                    accs_res = load_assignment_accounts(allowed_plans, with_status=False)
                 else:
                     raise
 
             all_accs = accs_res.data or []
             all_emails = [
                 a["email"] for a in all_accs
-                if match_plan(a.get("plan"), plan) and is_account_usable(a.get("status"))
+                if any(match_plan(a.get("plan"), p) for p in allowed_plans) and is_account_usable(a.get("status"))
             ]
             if not all_emails:
                 try:
                     all_res = db.get_supabase().table("netflix_accounts").select("email, plan, status").execute()
+                    all_accs = all_res.data or []
                     all_emails = [
                         a["email"] for a in (all_res.data or [])
-                        if match_plan(a.get("plan"), plan) and is_account_usable(a.get("status"))
+                        if any(match_plan(a.get("plan"), p) for p in allowed_plans) and is_account_usable(a.get("status"))
                     ]
                 except Exception:
                     pass
@@ -205,7 +260,7 @@ def allocate(code: str, plan: Optional[str] = None, expire_at: Optional[str] = N
                 record_operation(operation_id, res)
                 return res
 
-            keys_res = db.get_supabase().table("access_keys").select("assigned_email").in_("assigned_email", all_emails).execute()
+            keys_res = load_assignment_usage(all_emails, mixed=len(allowed_plans) > 1)
             
             # Count current usage
             usage = {}
@@ -221,7 +276,8 @@ def allocate(code: str, plan: Optional[str] = None, expire_at: Optional[str] = N
                 record_operation(operation_id, res)
                 return res
 
-            chosen_email = min(candidates, key=lambda e: usage.get(e, 0))
+            plan_by_email = {a["email"]:a.get("plan") for a in all_accs}
+            chosen_email = min(candidates, key=lambda e: (0 if match_plan(plan_by_email.get(e),plan) else 1,usage.get(e, 0)))
 
             # Insert key into Supabase
             insert_data = {"code": code, "assigned_email": chosen_email, "plan": plan}
@@ -263,7 +319,7 @@ def allocate(code: str, plan: Optional[str] = None, expire_at: Optional[str] = N
                 acc_em = r_acc[0]
                 acc_pl = r_acc[1]
                 acc_st = r_acc[2] if has_status else None
-                if match_plan(acc_pl, plan) and is_account_usable(acc_st):
+                if any(match_plan(acc_pl, p) for p in allowed_plans) and is_account_usable(acc_st):
                     candidates_pool.append(acc_em)
 
             if not candidates_pool:
@@ -282,7 +338,8 @@ def allocate(code: str, plan: Optional[str] = None, expire_at: Optional[str] = N
                 conn.close()
                 return res
 
-            chosen_email = min(candidates, key=lambda e: usage_counts.get(e, 0))
+            plan_by_email = {a[0]:a[1] for a in raw_accs}
+            chosen_email = min(candidates, key=lambda e: (0 if match_plan(plan_by_email.get(e),plan) else 1,usage_counts.get(e, 0)))
 
             # 3. Insert access key
             if 'plan' not in {row[1] for row in c.execute('PRAGMA table_info(access_keys)')}:
@@ -393,13 +450,14 @@ def replace(
 
             plan = key_data.get("plan") or get_plan_for_code(code)
             max_cap = get_max_capacity(plan)
+            allowed_plans = assignment_plans(code, plan)
 
             try:
-                accs_res = db.get_supabase().table("netflix_accounts").select("email, plan, status").eq("plan", plan).neq("status", "blocked_for_new_assignments").execute()
+                accs_res = load_assignment_accounts(allowed_plans)
             except Exception as e:
                 err_str = str(e).lower()
                 if "status" in err_str or "42703" in err_str:
-                    accs_res = db.get_supabase().table("netflix_accounts").select("email, plan").eq("plan", plan).execute()
+                    accs_res = load_assignment_accounts(allowed_plans, with_status=False)
                 else:
                     raise
 
@@ -408,7 +466,7 @@ def replace(
                 a for a in all_accs 
                 if a.get("email") != old_email
                 and str(a.get("email") or "").strip().casefold() not in excluded
-                and match_plan(a.get("plan"), plan)
+                and any(match_plan(a.get("plan"), p) for p in allowed_plans)
                 and is_account_usable(a.get("status"))
             ]
 
@@ -419,20 +477,7 @@ def replace(
                         a for a in (all_res.data or [])
                         if a.get("email") != old_email
                         and str(a.get("email") or "").strip().casefold() not in excluded
-                        and match_plan(a.get("plan"), plan)
-                        and is_account_usable(a.get("status"))
-                    ]
-                except Exception:
-                    pass
-
-            # Auto-upgrade fallback: if no accounts for specific plan, fallback to any usable account in vault
-            if not candidate_accounts:
-                try:
-                    all_res = db.get_supabase().table("netflix_accounts").select("email, plan, status").execute()
-                    candidate_accounts = [
-                        a for a in (all_res.data or [])
-                        if a.get("email") != old_email
-                        and str(a.get("email") or "").strip().casefold() not in excluded
+                        and any(match_plan(a.get("plan"), p) for p in allowed_plans)
                         and is_account_usable(a.get("status"))
                     ]
                 except Exception:
@@ -456,7 +501,7 @@ def replace(
             candidate_emails = [a["email"] for a in candidate_accounts]
             status_by_email = {a["email"]: str(a.get("status") or "").strip().lower() for a in candidate_accounts}
 
-            keys_res = db.get_supabase().table("access_keys").select("assigned_email").in_("assigned_email", candidate_emails).execute()
+            keys_res = load_assignment_usage(candidate_emails, mixed=len(allowed_plans) > 1)
             usage = {}
             for k in (keys_res.data or []):
                 em = k.get("assigned_email")
@@ -480,7 +525,8 @@ def replace(
                 return res
 
             # Prioritize verified 'live' accounts first, then least-used
-            valid_candidates.sort(key=lambda em: (0 if status_by_email.get(em) == "live" else 1, usage.get(em, 0)))
+            plan_by_email = {a["email"]:a.get("plan") for a in candidate_accounts}
+            valid_candidates.sort(key=lambda em: (0 if match_plan(plan_by_email.get(em),plan) else 1,0 if status_by_email.get(em) == "live" else 1, usage.get(em, 0)))
             new_email = valid_candidates[0]
 
             # Update access key
@@ -642,6 +688,7 @@ def replace(
 
             plan = key_plan or get_plan_for_code(code)
             max_cap = get_max_capacity(plan)
+            allowed_plans = assignment_plans(code, plan)
 
             c.execute("PRAGMA table_info(netflix_accounts)")
             na_cols = [col[1] for col in c.fetchall()]
@@ -655,15 +702,8 @@ def replace(
                 acc_pl = r_acc[1]
                 acc_st = r_acc[2] if has_status else None
                 if (str(acc_em).strip().casefold() not in excluded
-                        and match_plan(acc_pl, plan) and is_account_usable(acc_st)):
+                        and any(match_plan(acc_pl, p) for p in allowed_plans) and is_account_usable(acc_st)):
                     candidate_accounts.append((acc_em, acc_st))
-
-            if not candidate_accounts:
-                for r_acc in raw_accs:
-                    acc_em = r_acc[0]
-                    acc_st = r_acc[2] if has_status else None
-                    if str(acc_em).strip().casefold() not in excluded and is_account_usable(acc_st):
-                        candidate_accounts.append((acc_em, acc_st))
 
             if not candidate_accounts:
                 if request_id is not None:
@@ -693,7 +733,8 @@ def replace(
                 return res
 
             # Prioritize verified 'live' accounts first, then least-used
-            valid_candidates.sort(key=lambda em: (0 if status_by_email.get(em) == "live" else 1, usage_counts.get(em, 0)))
+            plan_by_email = {a[0]:a[1] for a in raw_accs}
+            valid_candidates.sort(key=lambda em: (0 if match_plan(plan_by_email.get(em),plan) else 1,0 if status_by_email.get(em) == "live" else 1, usage_counts.get(em, 0)))
             new_email = valid_candidates[0]
 
             if "assignment_version" in ak_cols:

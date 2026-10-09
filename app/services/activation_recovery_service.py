@@ -1,17 +1,22 @@
 """Verify replacement outside transactions; commit only a verified assignment."""
 import json
 import database as db
-from app.services.allocation_service import get_max_capacity, match_plan, is_account_usable
+from app.services.allocation_service import get_max_capacity, match_plan, is_account_usable, assignment_plans, assignment_matches
 from app.services.business_result import OperationResult
 
 
-def candidate(plan, excluded):
+def candidate(plan, excluded, code=None):
+    allowed_plans = assignment_plans(code, plan)
     excluded = {str(email or '').casefold() for email in excluded}
     capacity = get_max_capacity(plan)
     if db.SUPABASE_KEY:
         # A backend-only RPC performs filtering and usage counts in PostgreSQL.
-        result = db.get_supabase().rpc('activation_candidate', {
-            'p_plan': plan, 'p_excluded': sorted(excluded), 'p_capacity': capacity}).execute()
+        params = {'p_plan': plan, 'p_excluded': sorted(excluded), 'p_capacity': capacity}
+        rpc = 'activation_candidate'
+        if code is not None:
+            rpc = 'activation_candidate_for_code'
+            params['p_code'] = code
+        result = db.get_supabase().rpc(rpc, params).execute()
         rows = result.data or []
         if not rows:
             return None
@@ -23,8 +28,9 @@ def candidate(plan, excluded):
         rows = conn.execute("""SELECT a.email,a.expire_date,a.netflix_id,a.secure_netflix_id,a.created_at,a.plan,a.status,
                     (SELECT COUNT(*) FROM access_keys k WHERE k.assigned_email=a.email) AS used
                 FROM netflix_accounts a ORDER BY CASE WHEN a.status='live' THEN 0 ELSE 1 END, used, a.email""").fetchall()
+        rows.sort(key=lambda row: 0 if match_plan(row[5],plan) else 1)
         return next((row[:7] for row in rows if row[0].casefold() not in excluded
-                     and match_plan(row[5], plan) and is_account_usable(row[6]) and row[7] < capacity), None)
+                     and any(match_plan(row[5],p) for p in allowed_plans) and is_account_usable(row[6]) and row[7] < capacity), None)
     finally:
         conn.close()
 
@@ -62,7 +68,7 @@ def commit_verified(code, old_email, new_email, plan):
             return OperationResult(status='invalid_input')
         account = conn.execute('SELECT plan,status FROM netflix_accounts WHERE email=?',(new_email,)).fetchone()
         count = conn.execute('SELECT COUNT(*) FROM access_keys WHERE assigned_email=?',(new_email,)).fetchone()[0]
-        if not account or not match_plan(account[0],plan) or not is_account_usable(account[1]) or count >= capacity:
+        if not account or not assignment_matches(account[0],code,plan) or not is_account_usable(account[1]) or count >= capacity:
             return OperationResult(status='out_of_stock')
         columns = {r[1] for r in conn.execute('PRAGMA table_info(access_keys)')}
         version = ',assignment_version=COALESCE(assignment_version,1)+1' if 'assignment_version' in columns else ''

@@ -66,4 +66,28 @@ const third=await call('claim',['retry2']);assert.equal(third.id,retry.id);
 await call('finish',[third.id,'retry2','UNKNOWN',null]);
 assert.equal((await call('progress',['retry'])).counts.UNKNOWN,1);
 console.log('Inventory migrations: privileges, leases, retries, progress and protected links passed');
+if(process.argv[3]) {
+ while(true) {const item=await call('claim',['drain']);if(!item)break;await call('finish',[item.id,'drain','LIVE',null]);}
+ await db.exec('RESET ROLE');
+ const cleanup=await readFile(resolve(process.argv[3]),'utf8');
+ await db.exec(cleanup);await db.exec(cleanup);
+ await db.exec("INSERT INTO netflix_accounts VALUES('bad','fake-bad','','Premium','needs_review'),('linked','fake-linked','','Premium','needs_review'),('restored','fake-restored','','Premium','needs_review'),('null-restored','fake-null','','Premium','needs_review');INSERT INTO access_keys VALUES('PROTECT','other, linked')");
+ await db.exec('SET ROLE service_role');
+ await call('enqueue',['cleanup','cleanup']);
+ assert.equal((await call('progress',['cleanup'])).run.total,4);
+ while(true) {
+  const item=await call('claim',['clean']);if(!item)break;
+  if(item.email==='restored')await db.exec("UPDATE netflix_accounts SET status='live' WHERE email='restored'");
+  if(item.email==='null-restored')await db.exec("UPDATE netflix_accounts SET status=NULL WHERE email='null-restored'");
+  await call('finish',[item.id,'clean','DIE_CONFIRMED',null]);
+ }
+ assert.deepEqual((await call('progress',['cleanup'])).counts,{CHANGED:2,DELETED:1,PROTECTED:1});
+ assert.equal((await db.query("SELECT count(*) AS n FROM netflix_accounts WHERE email IN ('linked','restored')")).rows[0].n,2);
+ assert.equal((await db.query("SELECT assigned_email FROM access_keys WHERE code='PROTECT'")).rows[0].assigned_email,'other, linked');
+ await call('enqueue',['cleanup-live','cleanup']);const live=await call('claim',['clean-live']);
+ await call('finish',[live.id,'clean-live','LIVE','Basic']);
+ assert.equal((await db.query("SELECT plan,status FROM netflix_accounts WHERE email='linked'")).rows[0].plan,'Premium');
+ assert.equal((await db.query("SELECT status FROM netflix_accounts WHERE email='linked'")).rows[0].status,'live');
+ console.log('PASS cleanup migration, protected comma links, changed status and preserved plans');
+}
 await db.close();

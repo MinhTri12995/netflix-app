@@ -25,7 +25,8 @@ This document provides the authoritative reference for all runtime environment v
 | `WEBSHARE_USERNAME` | String | `""` | Optional | Username for rotating HTTP residential proxy. |
 | `WEBSHARE_PASSWORD` | String | `""` | Optional | Password for rotating HTTP residential proxy. |
 | `WEBSHARE_HOST` | String | `p.webshare.io` | Optional | Hostname for residential proxy gateway. |
-| `WEBSHARE_PORT` | Integer | `80` | Optional | Port for residential proxy gateway. |
+| `WEBSHARE_PORT` | Integer | `9999` | Optional | Configured proxy port is honored; use `80` for the supplied Webshare endpoint. |
+| `WEBSHARE_PROTOCOL` | String | `http` | Optional | `http`, `https`, `socks5` or `socks5h`. SOCKS5 uses remote DNS (`socks5h`); the supplied configuration uses port 80. |
 | `TELEGRAM_BOT_TOKEN` | String | `""` | Optional | Bot token for outbox warranty alert notifications. |
 | `TELEGRAM_CHAT_ID` | String | `""` | Optional | Target chat ID for admin alerts. |
 

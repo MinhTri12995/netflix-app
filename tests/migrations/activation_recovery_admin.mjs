@@ -79,4 +79,36 @@ if(process.argv[3]) {
  assert.equal((await db.query("SELECT count(*)::int AS n FROM access_keys WHERE assigned_email='fresh'")).rows[0].n,2);
  console.log('PASS Premium two-code capacity and preservation of existing four-code assignments');
 }
+if(process.argv[4]) {
+ await db.exec(await readFile(resolve(process.argv[4]),'utf8'));
+ await db.exec(await readFile(resolve(process.argv[4]),'utf8'));
+ assert.equal((await db.query("SELECT activation_assignment_allowed('Standard','Premium','PREMIUMKEY00001') AS v")).rows[0].v,false);
+ await db.exec("UPDATE system_config SET value='True' WHERE key='MIX_PREMIUM_STANDARD'");
+ assert.equal((await db.query("SELECT activation_assignment_allowed('Standard','Premium','PREMIUMKEY00001') AS v")).rows[0].v,true);
+ for (const plan of ['Basic','Standard with Ads','Standard_Ads']) {
+  assert.equal((await db.query("SELECT activation_assignment_allowed($1,'Premium','PREMIUMKEY00001') AS v",[plan])).rows[0].v,false);
+ }
+ assert.equal((await db.query("SELECT activation_assignment_allowed('Standard','Premium','PREMIUMKEY00001X') AS v")).rows[0].v,false);
+ await db.exec("INSERT INTO netflix_accounts(email,netflix_id,plan,status) VALUES('prefpremium','fake-pref','Premium','usable'),('prefstandard','fake-standard','Standard','live')");
+ await db.exec("INSERT INTO access_keys(code,assigned_email,plan) VALUES('PREF1','prefpremium','Premium')");
+ assert.equal((await db.query("SELECT email FROM activation_candidate_for_code('PREMIUMKEY00001','Premium',ARRAY['old','new','fresh'],'2')")).rows[0].email,'prefpremium');
+ await db.exec("INSERT INTO access_keys(code,assigned_email,plan) VALUES('PREF2','prefpremium','Premium')");
+ await db.exec("INSERT INTO access_keys(code,assigned_email,plan) VALUES('PREMIUMKEY00001','prefstandard','Premium')");
+ await assert.rejects(db.exec("INSERT INTO access_keys(code,assigned_email,plan) VALUES('PREMIUMKEY00001X','prefstandard','Premium')"),/plan mismatch/i);
+ await db.exec("UPDATE system_config SET value='False' WHERE key='MIX_PREMIUM_STANDARD'");
+ await db.exec("UPDATE access_keys SET expire_at='2099-12-31' WHERE code='PREMIUMKEY00001'");
+ await assert.rejects(db.exec("INSERT INTO access_keys(code,assigned_email,plan) VALUES('PREMIUMKEY00002','prefstandard','Premium')"),/plan mismatch/i);
+ await db.exec("INSERT INTO access_keys(code,assigned_email,plan,expire_at) VALUES('PREMIUMKEY00003','old','Premium','2099-12-31')");
+ assert.equal((await db.query("SELECT commit_activation_recovery('PREMIUMKEY00003','old','prefstandard','Premium',2) AS r")).rows[0].r.status,'out_of_stock');
+ await db.exec("UPDATE system_config SET value='True' WHERE key='MIX_PREMIUM_STANDARD'");
+ assert.equal((await db.query("SELECT commit_activation_recovery('PREMIUMKEY00003','old','prefstandard','Premium',2) AS r")).rows[0].r.status,'success');
+ assert.equal((await db.query("SELECT plan FROM access_keys WHERE code='PREMIUMKEY00003'")).rows[0].plan,'Premium');
+ assert.equal((await db.query("SELECT plan FROM netflix_accounts WHERE email='prefstandard'")).rows[0].plan,'Standard');
+ for(const role of ['anon','authenticated']) {
+  await db.exec(`SET ROLE ${role}`);
+  await assert.rejects(db.query("SELECT activation_candidate_for_code('PREMIUMKEY00001','Premium',ARRAY[]::text[],2)"),/permission denied/);
+  await db.exec('RESET ROLE');
+ }
+ console.log('PASS legacy Premium switch, priority, exclusions, capacity and preserved Standard links');
+}
 await db.close();

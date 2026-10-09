@@ -8,11 +8,14 @@ Chế độ chia sẻ: một tài khoản tối đa hai mã, mỗi mã vẫn ch�
 - **SCAN PAYMENT ERRORS**: kiểm tra trạng thái thanh toán, giữ gói đã lưu.
 - **UPDATE MISSING PLANS**: chỉ kiểm tra những tài khoản chưa xác định gói.
 - **FILTER DUPLICATES**: giữ tài khoản có mã tham chiếu, kể cả liên kết cũ chứa nhiều email; chỉ xóa bản trùng không được tham chiếu.
+- **Recheck & dọn tài khoản lỗi**: chỉ chọn tài khoản cần kiểm tra/hết phiên. Phải xác nhận lỗi hai lần, cách nhau 5 giây, mới xóa tài khoản không còn mã tham chiếu. Tài khoản còn mã, lỗi mạng/chưa rõ, cookie đã thay hoặc trạng thái đã phục hồi được giữ. Kết quả LIVE phục hồi trạng thái và giữ gói đã lưu.
 - **Nhập tệp/thư mục**: gửi danh sách lên máy chủ và theo dõi chung. Chỉ nhập khi xác minh hoạt động và nhận diện được gói; dữ liệu không rõ không tự gán Premium. Giữ thư mục gốc để nhập lại những dòng chưa xác minh.
 
 Mỗi tác vụ có tiến trình, tổng đã xử lý, kết quả gần nhất và lịch sử. Chỉ có một tác vụ kho đang chạy; thao tác thêm được báo đang bận, không nhập âm thầm danh sách mới. Có thể tải lại hoặc rời trang sau khi danh sách được lưu thành công. Lịch sử hiển thị 10 tác vụ gần nhất, mỗi tác vụ 20 kết quả gần nhất; tất cả kết quả từng dòng vẫn được lưu trong cơ sở dữ liệu.
 
 ## Bảo vệ dữ liệu
+
+Công tắc **Premium 15 ký tự → Standard dự phòng** chỉ áp dụng mã Premium dài đúng 15 ký tự. Ưu tiên tài khoản Premium còn chỗ trước Standard thường; không dùng Basic hoặc Standard có quảng cáo. Tắt công tắc chặn cấp/đổi mới sang Standard, giữ liên kết đã có. Gói tài khoản thực tế vẫn là Standard, gói mã vẫn là Premium. Mã mới tối thiểu 16 ký tự không thuộc công tắc này.
 
 Gói lấy từ thông tin thành viên hiện tại, không lấy từ quảng cáo nâng cấp. Chuỗi Unicode được giữ nguyên; gói không nhận diện được giữ dữ liệu cũ. Lỗi mạng/proxy/HTTP không xác định không đổi liên kết. Tài khoản xác nhận lỗi chuyển `needs_review`; không xóa tài khoản khách đang dùng. Tài khoản admin đã ngừng cấp mới không bị tự mở lại.
 

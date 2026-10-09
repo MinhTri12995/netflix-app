@@ -319,11 +319,11 @@ def delete_acc(email):
 @admin_bp.route("/toggle_mix_plan", methods=["POST"])
 @login_required
 def toggle_mix_plan():
-    current_mode = database.get_config("MIX_PREMIUM_STANDARD", False)
-    new_mode = not current_mode
-    database.set_config("MIX_PREMIUM_STANDARD", new_mode)
-    status_str = "BẬT" if new_mode else "TẮT"
-    flash(f"✅ Đã {status_str} chế độ Mix Plan (Premium + Standard không ads).", "success")
+    new_mode = request.form.get('enabled') == 'true'
+    if database.set_config("MIX_PREMIUM_STANDARD", new_mode):
+        flash("Đã " + ("BẬT" if new_mode else "TẮT") + " Standard dự phòng cho code Premium 15 ký tự. Liên kết hiện hữu được giữ nguyên.", "success")
+    else:
+        flash("Không thể lưu công tắc. Cấu hình trên máy chủ chưa được cập nhật.", "error")
     return redirect(url_for("admin.dashboard"))
 
 @admin_bp.route("/toggle_share_mode", methods=["POST"])
@@ -364,6 +364,12 @@ def force_check_all():
 @login_required
 def check_payment_route():
     return queue_inventory_task('payment_scan')
+
+
+@admin_bp.route("/recheck_cleanup", methods=["POST"])
+@login_required
+def recheck_cleanup():
+    return queue_inventory_task('cleanup')
 
 
 @admin_bp.route("/filter_duplicates", methods=["POST"])

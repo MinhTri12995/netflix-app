@@ -119,7 +119,7 @@ def api_generate_nftoken():
                     excluded_emails.add(email_identity)
                     if attempt == max_attempts - 1:
                         break
-                    acc = candidate(expected_plan, excluded_emails)
+                    acc = candidate(expected_plan, excluded_emails, code=code)
                     if not acc:
                         return register_fail('Kho chưa có tài khoản dự phòng phù hợp. Liên kết mã được giữ nguyên.',
                                              503, error_code='OUT_OF_STOCK', retryable=True)
@@ -135,8 +135,9 @@ def api_generate_nftoken():
                     try:
                         rt_plan, rt_expire = fetch_realtime_account_info(netflix_id, secure_netflix_id)
                         if rt_plan:
-                            from app.services.allocation_service import match_plan
-                            if not match_plan(rt_plan, expected_plan):
+                            from app.services.allocation_service import assignment_matches, match_plan
+                            existing_standard = assigned_email == original_email and match_plan(acc[5], "Standard")
+                            if not assignment_matches(rt_plan, code, expected_plan, existing_standard=existing_standard):
                                 raise CookieError('Account plan does not match access code')
                             acc_plan = rt_plan
                             database.update_plan(assigned_email, rt_plan)
@@ -196,7 +197,7 @@ def api_generate_nftoken():
 
                     if attempt == max_attempts - 1:
                         break
-                    next_acc = candidate(expected_plan, excluded_emails)
+                    next_acc = candidate(expected_plan, excluded_emails, code=code)
                     if not next_acc:
                         return register_fail('Kho chưa có tài khoản dự phòng phù hợp. Liên kết mã được giữ nguyên.',
                                              503, error_code='OUT_OF_STOCK', retryable=True)

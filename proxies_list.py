@@ -2,6 +2,7 @@ import os
 import random
 import requests
 import time
+from urllib.parse import quote
 
 from dotenv import load_dotenv
 
@@ -9,13 +10,15 @@ load_dotenv()
 
 # Cấu hình Webshare Rotating Proxy (Hỗ trợ proxy xoay vòng với fallback tự động)
 ENABLE_PROXY = os.environ.get("ENABLE_PROXY", "true").lower() in ["true", "1"]
-WEBSHARE_USERNAME = os.environ.get("WEBSHARE_USERNAME", "qizklnon-rotate").strip()
-WEBSHARE_PASSWORD = os.environ.get("WEBSHARE_PASSWORD", "e8y63lmvp8v3").strip()
+WEBSHARE_USERNAME = os.environ.get("WEBSHARE_USERNAME", "").strip()
+WEBSHARE_PASSWORD = os.environ.get("WEBSHARE_PASSWORD", "").strip()
 WEBSHARE_HOST = os.environ.get("WEBSHARE_HOST", "p.webshare.io").strip()
 WEBSHARE_PORT = os.environ.get("WEBSHARE_PORT", "9999").strip()
-# Webshare rotating gateway p.webshare.io bắt buộc dùng cổng 9999 cho HTTPS Tunnel đến Netflix (cổng 80 sẽ bị 400 Bad Request)
-if WEBSHARE_HOST == "p.webshare.io" and str(WEBSHARE_PORT) in ["80", "8080", ""]:
-    WEBSHARE_PORT = "9999"
+WEBSHARE_PROTOCOL = os.environ.get("WEBSHARE_PROTOCOL", "http").strip().lower()
+if WEBSHARE_PROTOCOL == "socks5":
+    WEBSHARE_PROTOCOL = "socks5h"
+if WEBSHARE_PROTOCOL not in ("http", "https", "socks5h"):
+    raise ValueError("Unsupported proxy protocol")
 
 # Tự động gắn hậu tố -rotate nếu dùng gateway p.webshare.io và người dùng chỉ điền username thường
 proxy_user = WEBSHARE_USERNAME
@@ -24,7 +27,7 @@ if WEBSHARE_HOST == "p.webshare.io" and proxy_user and not proxy_user.endswith("
 
 # Gateway xoay IP tự động của Webshare
 if ENABLE_PROXY and proxy_user and WEBSHARE_PASSWORD and WEBSHARE_HOST:
-    ROTATING_PROXY_URL = f"http://{proxy_user}:{WEBSHARE_PASSWORD}@{WEBSHARE_HOST}:{WEBSHARE_PORT}"
+    ROTATING_PROXY_URL = f"{WEBSHARE_PROTOCOL}://{quote(proxy_user, safe='')}:{quote(WEBSHARE_PASSWORD, safe='')}@{WEBSHARE_HOST}:{WEBSHARE_PORT}"
     ROTATING_PROXY_DICT = {
         "http": ROTATING_PROXY_URL,
         "https": ROTATING_PROXY_URL

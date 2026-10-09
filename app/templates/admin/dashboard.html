@@ -308,7 +308,13 @@
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
                 <h3 style="margin: 0; font-weight: 400; color: #3498db;">📊 System Stock & Proxy</h3>
                 <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
-                    <span style="font-size: 0.9rem; color: #aaa;">Cấp và khôi phục giữ đúng gói của mã.</span>
+                    <form action="/admin/toggle_mix_plan" method="POST" style="margin:0;display:flex;align-items:center;gap:8px">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <label title="Chỉ code Premium 15 ký tự: ưu tiên Premium, dùng Standard thường khi Premium hết chỗ. Không dùng gói có quảng cáo hoặc Basic.">
+                            <input type="checkbox" name="enabled" value="true" aria-label="Standard dự phòng cho Premium 15 ký tự" onchange="this.form.submit()" {% if mix_plan_enabled %}checked{% endif %}>
+                            Premium 15 ký tự → Standard dự phòng
+                        </label>
+                    </form>
                     <form action="/admin/toggle_share_mode" method="POST" style="margin: 0; display: flex; align-items: center; gap: 5px;">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <span style="font-size: 0.9rem; color: #aaa;">Chia sẻ (tối đa 2 mã/tài khoản):</span>
@@ -670,9 +676,13 @@
         </div>
 
         <div class="glass-panel">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 16px;">
                 <h3 id="account-vault" style="margin: 0; font-weight: 400;">Kho tài khoản <span style="font-size: 0.9rem; color: #888;">({{ total_accounts }} tài khoản)</span></h3>
-                <div style="display: flex; gap: 10px;">
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <form action="/admin/recheck_cleanup" method="POST" style="margin:0" onsubmit="if(!confirm('Kiểm tra lại hai lần. Tài khoản vẫn xác nhận lỗi và không còn code sử dụng sẽ bị xóa. Tài khoản còn code hoặc lỗi chưa rõ được giữ lại. Tiếp tục?')) return false; showLoading(this.querySelector('button'))">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" style="background:#9b59b6;padding:8px 15px;font-size:0.9rem">Recheck &amp; dọn tài khoản lỗi</button>
+                    </form>
                     <form action="/admin/filter_duplicates" method="POST" onsubmit="showLoading(this.querySelector('button'))" style="margin: 0;">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" style="background: #f39c12; padding: 8px 15px; font-size: 0.9rem;" title="Filter and delete duplicates with same NetflixId">🧹 FILTER DUPLICATES</button>
