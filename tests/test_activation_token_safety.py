@@ -101,6 +101,43 @@ def test_http_401_still_signals_invalid_cookie():
             token_service.fetch_netflix_nftoken_api('private-cookie')
 
 
+def test_missing_token_with_confirmed_netflix_login_redirect_signals_cookie_error():
+    login_redirect = upstream(status=302)
+    login_redirect.headers['Location'] = 'https://www.netflix.com/login?nextpage=%2FYourAccount'
+    with patch.object(token_service.proxies_list, 'get_random_proxy', return_value=None), \
+            patch.object(token_service.requests, 'get', side_effect=[upstream({}), login_redirect]):
+        with pytest.raises(token_service.CookieError):
+            token_service.fetch_netflix_nftoken_api('private-cookie')
+
+
+@pytest.mark.parametrize('status,location', [
+    (403, ''), (429, ''), (500, ''), (200, ''),
+    (302, 'https://other.example/login'), (302, 'http://www.netflix.com/login'),
+    (302, 'https://www.netflix.com/account'),
+])
+def test_unverified_account_page_never_confirms_dead_cookie(status, location):
+    page = upstream(status=status)
+    page.headers['Location'] = location
+    with patch.object(token_service.proxies_list, 'get_random_proxy', return_value=None), \
+            patch.object(token_service.requests, 'get', side_effect=[upstream({}), page]):
+        with pytest.raises(token_service.TokenResponseError):
+            token_service.fetch_netflix_nftoken_api('private-cookie')
+
+
+def test_confirmed_login_redirect_uses_real_rotation_handler(assigned_client):
+    login_redirect = upstream(status=302)
+    login_redirect.headers['Location'] = '/login'
+    responses = [upstream({}), login_redirect, upstream(token_response('verified-spare-token'))]
+    with patch.object(token_service.proxies_list, 'get_random_proxy', return_value=None), \
+            patch.object(token_service.requests, 'get', side_effect=responses), \
+            patch('app.blueprints.portal.routes.fetch_realtime_account_info', return_value=('Premium', None)):
+        response = assigned_client.post('/api/generate_nftoken', json={'cookie': 'LOCALACTIVATION01'})
+    assert response.status_code == 200
+    assert response.json['success'] is True
+    assert database.get_access_key('LOCALACTIVATION01')[1] == 'spare@example.test'
+    assert database.get_account_by_email('first@example.test')[6] == 'needs_review'
+
+
 def test_transport_error_diagnostics_do_not_expose_secrets(capsys):
     with patch.object(token_service.proxies_list, 'get_random_proxy', return_value=None), \
             patch.object(token_service.requests, 'get', side_effect=requests.ConnectionError('private-cookie proxy-password')):

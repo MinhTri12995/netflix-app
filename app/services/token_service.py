@@ -19,6 +19,52 @@ class TokenResponseError(ProxyError):
         self.shape = shape
         super().__init__(f"Token response unverified (HTTP {status_code}; shape={shape})")
 
+
+def _cookie_session_rejected(netflix_id, secure_netflix_id, proxy):
+    """Only a trusted sign-in redirect or explicit 401 confirms lost authorization."""
+    cookies = {"NetflixId": netflix_id}
+    if secure_netflix_id:
+        cookies["SecureNetflixId"] = secure_netflix_id
+    url = "https://www.netflix.com/YourAccount"
+    try:
+        response = requests.get(
+            url, cookies=cookies,
+            headers={"User-Agent": "Mozilla/5.0", "Accept": "text/html"},
+            proxies=proxy, timeout=4, allow_redirects=False, verify=True)
+    except requests.exceptions.RequestException:
+        return False
+    if response.status_code == 401:
+        return True
+    if response.status_code not in (301, 302, 303, 307, 308):
+        return False
+    target = urllib.parse.urlsplit(urllib.parse.urljoin(url, response.headers.get("Location", "")))
+    host = (target.hostname or "").lower()
+    return (target.scheme == "https" and (host == "netflix.com" or host.endswith(".netflix.com"))
+            and target.path.rstrip("/").lower() == "/login")
+
+
+def _extract_verified_token(response):
+    try:
+        data = response.json()
+    except ValueError:
+        raise TokenResponseError(response.status_code, "non_json") from None
+    # Diagnostics never include response values.
+    token_data = data
+    for field in ('value', 'account', 'token', 'default'):
+        if not isinstance(token_data, dict) or field not in token_data:
+            raise TokenResponseError(response.status_code, f"missing_{field}")
+        token_data = token_data[field]
+    if isinstance(token_data, dict):
+        token_data = token_data.get('token')
+    if not isinstance(token_data, str):
+        raise TokenResponseError(response.status_code, "invalid_token_type")
+    token = token_data.strip()
+    if (not token or any(c.isspace() for c in token)
+            or token.lower().startswith(('http:', 'https:', 'fallback:'))
+            or token.lower().rstrip('/') in ('netflix.com', 'www.netflix.com')):
+        raise TokenResponseError(response.status_code, "invalid_token_value")
+    return token
+
 def generate_json_cookie_token(nid, snid):
     exp_time = int(time.time()) + 86400 * 365
     cookie_data = [
@@ -65,6 +111,7 @@ def fetch_netflix_nftoken_api(netflix_id, secure_netflix_id=""):
     }
 
     proxy_dict = proxies_list.get_random_proxy()
+    used_proxy = proxy_dict
     response = None
 
     # 1. Thử kết nối qua Proxy xoay vòng
@@ -86,6 +133,7 @@ def fetch_netflix_nftoken_api(netflix_id, secure_netflix_id=""):
 
     # 2. Tu dong ket noi truc tiep (Direct) neu Proxy bi loi hoac khong co proxy
     if response is None:
+        used_proxy = None
         try:
             response = requests.get(
                 url, params=params, headers=headers,
@@ -110,26 +158,11 @@ def fetch_netflix_nftoken_api(netflix_id, secure_netflix_id=""):
     if not 200 <= response.status_code < 300:
         raise ProxyError(f"Netflix API HTTP {response.status_code}")
     try:
-        data = response.json()
-    except ValueError:
-        raise TokenResponseError(response.status_code, "non_json") from None
-
-    # Inspect only the supported envelope; diagnostics never include response values.
-    token_data = data
-    for field in ('value', 'account', 'token', 'default'):
-        if not isinstance(token_data, dict) or field not in token_data:
-            raise TokenResponseError(response.status_code, f"missing_{field}")
-        token_data = token_data[field]
-    if isinstance(token_data, dict):
-        token_data = token_data.get('token')
-    if not isinstance(token_data, str):
-        raise TokenResponseError(response.status_code, "invalid_token_type")
-    token = token_data.strip()
-    if (not token or any(c.isspace() for c in token)
-            or token.lower().startswith(('http:', 'https:', 'fallback:'))
-            or token.lower().rstrip('/') in ('netflix.com', 'www.netflix.com')):
-        raise TokenResponseError(response.status_code, "invalid_token_value")
-    return token
+        return _extract_verified_token(response)
+    except TokenResponseError:
+        if _cookie_session_rejected(netflix_id, secure_netflix_id, used_proxy):
+            raise CookieError("Netflix account page requires sign-in") from None
+        raise
 
 # --- Rate limiting logic per code ---
 _rate_limit_lock = threading.Lock()

@@ -4,7 +4,8 @@ Nền mã: `b98aa31900a45af97556fc1376dd87009ebebf4f`. Phạm vi được duyệ
 
 ## Kết quả sửa
 
-- Phản hồi thiếu token, token rỗng/sai kiểu, URL gốc Netflix hoặc nội dung không phải JSON trả HTTP 503 với `error_code=TOKEN_RESPONSE_UNVERIFIED`, `retryable=true`. Giữ nguyên liên kết và trạng thái tài khoản; không suy ra cookie hỏng từ việc thiếu token.
+- Phản hồi thiếu token, token rỗng/sai kiểu, URL gốc Netflix hoặc nội dung không phải JSON chưa đủ chứng minh cookie hỏng. Nếu không xác minh được lỗi phiên, trả HTTP 503 với `error_code=TOKEN_RESPONSE_UNVERIFIED`, `retryable=true` và giữ nguyên liên kết/trạng thái.
+- Khi token không hợp lệ, kiểm tra trang tài khoản Netflix bằng đúng phiên đó, không theo redirect. Chỉ HTTP 401 hoặc redirect HTTPS tới `/login` trên miền Netflix mới xác nhận lỗi phiên và cho phép luồng đổi tài khoản. HTTP 403/429/5xx, lỗi mạng, trang chưa nhận diện hoặc redirect sang miền khác vẫn chưa đủ bằng chứng.
 - HTTP 401 tiếp tục thuộc `CookieError`, cho phép luồng tìm tài khoản thay thế. Lỗi mạng, 403/429/5xx giữ phân loại dịch vụ/proxy, không gây đổi tài khoản vì thiếu token.
 - Danh sách loại trừ tài khoản vừa lỗi áp dụng vào mọi nhánh tìm tài khoản thay thế, kể cả nhánh khác gói, ở cả SQLite và Supabase. Trong một yêu cầu không quay lại A sau khi A đã thất bại; hết ngân sách bốn lần thử không đổi tiếp sang tài khoản thứ năm chưa được thử.
 - Bỏ việc ép các email cố định thành `live`/`needs_review` khi khởi tạo ứng dụng. Trạng thái hiện hữu không bị ghi đè bởi danh sách seed.
@@ -19,6 +20,7 @@ Nền mã: `b98aa31900a45af97556fc1376dd87009ebebf4f`. Phạm vi được duyệ
 | 23 tình huống mới chạy trên mã HEAD cũ | 22 thất bại đúng hành vi cần sửa, 1 đạt (HTTP 401 tương thích) |
 | Toàn bộ bộ kiểm thử sau sửa | 143 đạt |
 | Sau bổ sung header nhận diện bản Render | 147 đạt |
+| Sau bổ sung xác minh phiên khi token thiếu | 156 đạt |
 | Migration trên PostgreSQL nhúng PGlite 0.5.8 | 7 tình huống đạt |
 
 Bài thất bại sẵn là `tests/test_phase_c.py::TestPhaseC::test_submit_request_too_many_people_auto_rotate`: bài kiểm thử mock phản hồi AI nhưng không cấp `Config.MISTRAL_API_KEY` giả, khiến handler bỏ qua AI. Đã thêm khóa chỉ dùng trong kiểm thử; không thay đổi quy tắc AI của ứng dụng.
@@ -85,7 +87,7 @@ Sau khi được duyệt triển khai: chạy migration trong giao dịch, kiể
 
 ## Giới hạn chưa xác minh trên production
 
-- Chưa xác định vì sao phản hồi Netflix thật thiếu token: cookie hết hiệu lực, dịch vụ thay đổi hoặc lỗi mạng/proxy đều cần thêm bằng chứng. Bản sửa xử lý an toàn các phản hồi đó, không bảo đảm Netflix sẽ cấp token trở lại.
+- Với tài khoản được người dùng cho phép kiểm tra, API token trả HTTP 200 nhưng `value` rỗng, còn trang tài khoản trả 302 về `/login`. Đây là bằng chứng phiên đó không còn được chấp nhận, không phải lỗi schema đơn thuần. Chưa xác minh cookie của toàn bộ kho hoặc thành công đăng nhập của tài khoản thay thế; phải có cookie còn hiệu lực mới tạo được token thật.
 - Migration đã áp dụng qua Supabase API và kiểm tra lại cột trạng thái, outbox, quyền truy cập và số lượng bản ghi. Việc website đã chạy commit mới phải được xác minh riêng qua trạng thái triển khai Render.
 - PGlite xác minh giao dịch/DDL/quyền và bảo toàn dữ liệu giả; chưa xác minh PostgREST schema cache, chính sách/quyền tùy chỉnh hoặc dữ liệu production thực tế.
 - Danh sách loại trừ chỉ tồn tại trong một yêu cầu. Cần sửa schema và lưu trạng thái thành công để các yêu cầu sau cùng loại trừ tài khoản đã lỗi.
