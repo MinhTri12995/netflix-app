@@ -42,7 +42,7 @@ def test_single_check_unknown_keeps_previous_status(test_app):
     assert database.get_account_by_email('item060@test.invalid')[6] == 'needs_review'
 
 
-def test_pages_clamp_and_stats_use_explicit_plan(test_app):
+def test_pages_clamp_and_summary_uses_requested_legacy_counter(test_app):
     populate()
     from app.services.admin_inventory_service import inventory_page, inventory_summary
     page = inventory_page('accounts', page=-1, per_page=10)
@@ -50,9 +50,23 @@ def test_pages_clamp_and_stats_use_explicit_plan(test_app):
     assert page['page'] == 1
     assert page['total'] == 61
     stats = inventory_summary()
-    assert stats['codes']['Standard'] == 1
-    assert stats['codes']['Premium'] == 0
+    assert stats['codes']['Standard'] == 0
+    assert stats['codes']['Premium'] == 1
     assert stats['health']['needs_review'] == 1
+
+
+def test_legacy_counter_groups_unrecognized_account_names_as_premium(test_app):
+    populate()
+    conn = database.get_sqlite_conn()
+    conn.execute("UPDATE netflix_accounts SET plan='Standard with Ads' WHERE email='item060@test.invalid'")
+    conn.execute("UPDATE netflix_accounts SET plan=' Basic ' WHERE email='item059@test.invalid'")
+    conn.commit(); conn.close()
+    from app.services.admin_inventory_service import inventory_summary
+    stats = inventory_summary()
+    assert stats['accounts']['Premium'] == 60
+    assert stats['accounts']['Basic'] == 1
+    assert stats['accounts']['Standard_Ads'] == 0
+    assert sum(stats['accounts'][p] for p in ('Premium','Standard','Standard_Ads','Basic')) == 61
 
 
 def test_admin_cloud_failure_shows_unavailable_instead_of_local_data(test_app):

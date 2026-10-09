@@ -63,12 +63,16 @@ def inventory_summary():
         stats = {'accounts':dict.fromkeys(('total','Premium','Standard','Standard_Ads','Basic'),0),
                  'codes':dict.fromkeys(('total','Premium','Standard','Standard_Ads','Basic'),0),
                  'health':dict.fromkeys((*STATUSES,'unknown','dangling'),0)}
-        for table,key in [('netflix_accounts','accounts'),('access_keys','codes')]:
-            for plan,count in conn.execute(f'SELECT plan,COUNT(*) FROM {table} GROUP BY plan'):
-                stats[key]['total'] += count
-                normalized = 'Standard_Ads' if plan == 'Standard with Ads' else plan
-                if normalized in stats[key]:
-                    stats[key][normalized] += count
+        # User-requested legacy display rules; never change stored business plans.
+        for plan,count in conn.execute('SELECT plan,COUNT(*) FROM netflix_accounts GROUP BY plan'):
+            label = str(plan or 'Premium').strip()
+            label = label if label in ('Premium','Standard','Standard_Ads','Basic') else 'Premium'
+            stats['accounts']['total'] += count
+            stats['accounts'][label] += count
+        for length,count in conn.execute('SELECT length(code),COUNT(*) FROM access_keys GROUP BY length(code)'):
+            label = {15:'Premium',10:'Standard',8:'Standard_Ads',5:'Basic'}.get(length,'Premium')
+            stats['codes']['total'] += count
+            stats['codes'][label] += count
         for status,count in conn.execute('SELECT status,COUNT(*) FROM netflix_accounts GROUP BY status'):
             stats['health'][status if status in STATUSES else 'unknown'] += count
         stats['health']['dangling'] = conn.execute('SELECT COUNT(*) FROM access_keys k LEFT JOIN netflix_accounts a ON a.email=k.assigned_email WHERE a.email IS NULL').fetchone()[0]

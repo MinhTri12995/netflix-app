@@ -47,4 +47,24 @@ await assert.rejects(db.exec("UPDATE access_keys SET assigned_email='new' WHERE 
 await db.exec("UPDATE access_keys SET expire_at='2099-12-31' WHERE assigned_email='new'");
 assert.equal((await db.query("SELECT count(*)::int n FROM access_keys WHERE assigned_email='new'")).rows[0].n,4);
 console.log('PASS legacy backfill, repeat migration, restricted RPCs, plan protection, capacity, retry idempotency, one event, summary');
+{
+ const legacySql=await readFile(new URL('../../supabase/migrations/20261009093237_restore_legacy_dashboard_counter.sql',import.meta.url),'utf8');
+ await db.exec(legacySql); await db.exec(legacySql);
+ await db.exec("INSERT INTO netflix_accounts(email,netflix_id,plan) VALUES('ads','n4','Standard with Ads'),('basic','n5',' Basic ')");
+ await db.exec("INSERT INTO access_keys(code,assigned_email,plan) VALUES('NEWSTANDARDKEY16','standard','Standard')");
+ const restored=(await db.query('SELECT admin_inventory_summary() AS r')).rows[0].r;
+ assert.equal(restored.accounts.Premium,3);
+ assert.equal(restored.accounts.Standard_Ads,0);
+ assert.equal(restored.accounts.Basic,1);
+ assert.equal(restored.codes.Standard,0);
+ assert.equal(restored.codes.Premium,3);
+ assert.equal(restored.codes.Basic,3);
+ assert.equal((await db.query("SELECT plan FROM access_keys WHERE code='NEWSTANDARDKEY16'")).rows[0].plan,'Standard');
+ for(const role of ['anon','authenticated']) {
+  await db.exec(`SET ROLE ${role}`);
+  await assert.rejects(db.query('SELECT admin_inventory_summary()'),/permission denied/);
+  await db.exec('RESET ROLE');
+ }
+ console.log('PASS legacy counter restored without changing business plans or RPC permissions');
+}
 await db.close();

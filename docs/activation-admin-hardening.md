@@ -1,5 +1,9 @@
 # Củng cố xuất link và quản trị kho — 2026-10-09
 
+## Cập nhật theo yêu cầu khôi phục bộ đếm cũ
+
+Migration `20261009093237_restore_legacy_dashboard_counter` khôi phục riêng thống kê hiển thị: tài khoản dùng tên gói khớp chính xác, tên không khớp cộng vào Premium; mã đếm theo chiều dài cũ, chiều dài khác cộng vào Premium. Gói lưu trên mã/tài khoản và quy tắc cấp, khôi phục, xác minh không thay đổi. Các số theo cách đếm cũ không phải chứng nhận gói thực tế của tài khoản.
+
 ## Thay đổi vận hành
 
 - Xác minh trang tài khoản/payment trước khi xin token. Token hợp lệ chưa đủ để bỏ qua payment.
