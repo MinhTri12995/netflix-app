@@ -13,6 +13,8 @@ sys.stdout.reconfigure(encoding='utf-8')
 app = create_app()
 
 if __name__ == "__main__":
+    from app.services.inventory_jobs import start_worker
+    start_worker(app)
     port = Config.PORT
     print(f"🚀 [10/10] Netflix Access Platform running on port {port}!")
     print(f"👉 Customer Portal: http://127.0.0.1:{port}")

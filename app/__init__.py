@@ -60,7 +60,4 @@ def create_app(config_class=Config):
             "error": "Hệ thống gặp sự cố tạm thời. Vui lòng thử lại sau giây lát."
         }), 500
 
-    from app.services.inventory_jobs import start_worker
-    start_worker(app)
-
     return app
