@@ -1,6 +1,6 @@
 # Kiểm tra kho và giới hạn chia sẻ
 
-Chế độ chia sẻ: một tài khoản tối đa hai mã, mỗi mã vẫn chỉ gắn một tài khoản. Chế độ riêng: một mã. Giữ các liên kết cũ vượt giới hạn, chỉ chặn cấp thêm. Bộ đếm dashboard cũ được giữ theo yêu cầu; bộ đếm không chứng minh gói thực tế.
+Chế độ chia sẻ: một tài khoản tối đa hai mã, mỗi mã vẫn chỉ gắn một tài khoản. Chế độ riêng: một mã. Giữ các liên kết cũ vượt giới hạn, chỉ chặn cấp thêm. Bộ đếm dashboard chuẩn hóa tên gói đã lưu; tên chưa nhận diện vào nhóm riêng, không tự tính Premium. Code đếm theo gói đã lưu, chỉ dùng độ dài cho mã cũ chưa có gói. Bộ đếm không chứng minh tài khoản còn hoạt động; xem trạng thái kiểm tra riêng.
 
 ## Các nút quản trị
 

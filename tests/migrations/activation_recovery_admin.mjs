@@ -111,4 +111,17 @@ if(process.argv[4]) {
  }
  console.log('PASS legacy Premium switch, priority, exclusions, capacity and preserved Standard links');
 }
+if(process.argv[5]) {
+ const counter=await readFile(resolve(process.argv[5]),'utf8');
+ await db.exec(counter);await db.exec(counter);
+ const grouped=(await db.query('SELECT admin_plan_counts() AS r')).rows[0].r;
+ assert.equal(grouped.accounts.reduce((sum,row)=>sum+row.quantity,0),(await db.query('SELECT count(*)::int n FROM netflix_accounts')).rows[0].n);
+ assert.ok(grouped.codes.some(row=>row.plan==='Standard' && row.length===16));
+ for(const role of ['anon','authenticated']) {
+  await db.exec(`SET ROLE ${role}`);
+  await assert.rejects(db.query('SELECT admin_plan_counts()'),/permission denied/);
+  await db.exec('RESET ROLE');
+ }
+ console.log('PASS grouped display counter, explicit code plans and restricted aggregate RPC');
+}
 await db.close();

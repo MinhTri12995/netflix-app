@@ -55,30 +55,34 @@ def inventory_page(kind, page=1, per_page=50, search='', status='', plan=''):
     return {'rows':rows,'total':total,'page':page,'pages':pages}
 
 
+def count_plan_groups(groups, codes=False):
+    from app.services.plan_parser import normalize_plan
+    counts = dict.fromkeys(('total','Premium','Standard','Standard_Ads','Basic','Unknown'),0)
+    for row in groups:
+        plan = normalize_plan(row['plan'])
+        if codes and not str(row['plan'] or '').strip():
+            plan = {15:'Premium',10:'Standard',8:'Standard with Ads',5:'Basic'}.get(row.get('length'))
+        label = 'Standard_Ads' if plan == 'Standard with Ads' else plan or 'Unknown'
+        counts[label] += row['quantity']
+        counts['total'] += row['quantity']
+    return counts
+
+
 def inventory_summary():
     if db.SUPABASE_KEY:
-        return db.get_supabase().rpc('admin_inventory_summary',{}).execute().data
-    conn = db.get_sqlite_conn()
-    try:
-        stats = {'accounts':dict.fromkeys(('total','Premium','Standard','Standard_Ads','Basic'),0),
-                 'codes':dict.fromkeys(('total','Premium','Standard','Standard_Ads','Basic'),0),
-                 'health':dict.fromkeys((*STATUSES,'unknown','dangling'),0)}
-        # User-requested legacy display rules; never change stored business plans.
-        for plan,count in conn.execute('SELECT plan,COUNT(*) FROM netflix_accounts GROUP BY plan'):
-            label = str(plan or 'Premium').strip()
-            label = label if label in ('Premium','Standard','Standard_Ads','Basic') else 'Premium'
-            stats['accounts']['total'] += count
-            stats['accounts'][label] += count
-        for length,count in conn.execute('SELECT length(code),COUNT(*) FROM access_keys GROUP BY length(code)'):
-            label = {15:'Premium',10:'Standard',8:'Standard_Ads',5:'Basic'}.get(length,'Premium')
-            stats['codes']['total'] += count
-            stats['codes'][label] += count
-        for status,count in conn.execute('SELECT status,COUNT(*) FROM netflix_accounts GROUP BY status'):
-            stats['health'][status if status in STATUSES else 'unknown'] += count
-        stats['health']['dangling'] = conn.execute('SELECT COUNT(*) FROM access_keys k LEFT JOIN netflix_accounts a ON a.email=k.assigned_email WHERE a.email IS NULL').fetchone()[0]
-        return stats
-    finally:
-        conn.close()
+        raw = db.get_supabase().rpc('admin_plan_counts',{}).execute().data
+    else:
+        conn = db.get_sqlite_conn()
+        try:
+            raw = {'accounts':[{'plan':p,'quantity':n} for p,n in conn.execute('SELECT plan,COUNT(*) FROM netflix_accounts GROUP BY plan')],
+                   'codes':[{'plan':p,'length':length,'quantity':n} for p,length,n in conn.execute('SELECT plan,length(code),COUNT(*) FROM access_keys GROUP BY plan,length(code)')],
+                   'health':dict.fromkeys((*STATUSES,'unknown','dangling'),0)}
+            for status,count in conn.execute('SELECT status,COUNT(*) FROM netflix_accounts GROUP BY status'):
+                raw['health'][status if status in STATUSES else 'unknown'] += count
+            raw['health']['dangling'] = conn.execute('SELECT COUNT(*) FROM access_keys k LEFT JOIN netflix_accounts a ON a.email=k.assigned_email WHERE a.email IS NULL').fetchone()[0]
+        finally:
+            conn.close()
+    return {'accounts':count_plan_groups(raw['accounts']), 'codes':count_plan_groups(raw['codes'],codes=True), 'health':raw['health']}
 
 
 def account_details(email):

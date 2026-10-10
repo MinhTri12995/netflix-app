@@ -335,6 +335,7 @@
                     <div style="display: flex; justify-content: space-between; margin-bottom: 8px;"><span>Standard:</span> <strong style="color: #fff;">{{ stats.codes.Standard }}</strong></div>
                     <div style="display: flex; justify-content: space-between; margin-bottom: 8px;"><span>Standard with Ads:</span> <strong style="color: #fff;">{{ stats.codes.Standard_Ads }}</strong></div>
                     <div style="display: flex; justify-content: space-between;"><span>Basic:</span> <strong style="color: #fff;">{{ stats.codes.Basic }}</strong></div>
+                    <div style="display:flex;justify-content:space-between;margin-top:8px"><span>Chưa xác định:</span><strong>{{ stats.codes.Unknown or 0 }}</strong></div>
                 </div>
                 <div style="flex: 1; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; min-width: 250px;">
                     <h4 style="margin-top: 0; color: #2ecc71; border-bottom: 1px solid #444; padding-bottom: 10px; font-weight: 400;">📦 Accounts Vault (Stock)</h4>
@@ -342,6 +343,7 @@
                     <div style="display: flex; justify-content: space-between; margin-bottom: 8px;"><span>Standard:</span> <strong style="color: #fff;">{{ stats.accounts.Standard }}</strong></div>
                     <div style="display: flex; justify-content: space-between; margin-bottom: 8px;"><span>Standard w/ Ads:</span> <strong style="color: #fff;">{{ stats.accounts.Standard_Ads }}</strong></div>
                     <div style="display: flex; justify-content: space-between;"><span>Basic:</span> <strong style="color: #fff;">{{ stats.accounts.Basic }}</strong></div>
+                    <div style="display:flex;justify-content:space-between;margin-top:8px"><span>Chưa xác định:</span><strong>{{ stats.accounts.Unknown or 0 }}</strong></div>
                 </div>
                 <div style="flex: 1; background: rgba(0,0,0,0.25); padding: 15px; border-radius: 12px; min-width: 260px; text-align: center; border: 1px solid rgba(255,255,255,0.08);">
                     <h4 style="margin-top: 0; color: #00a8ff; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; font-weight: 500;">📊 Phân Bổ Gói Kho (Real-time)</h4>
@@ -1252,15 +1254,16 @@
                 new Chart(chartCanvas, {
                     type: 'doughnut',
                     data: {
-                        labels: ['Premium', 'Standard', 'Ads', 'Basic'],
+                        labels: ['Premium', 'Standard', 'Ads', 'Basic', 'Chưa xác định'],
                         datasets: [{
                             data: [
                                 {{ stats.accounts.Premium or 0 }},
                                 {{ stats.accounts.Standard or 0 }},
                                 {{ stats.accounts.Standard_Ads or 0 }},
-                                {{ stats.accounts.Basic or 0 }}
+                                {{ stats.accounts.Basic or 0 }},
+                                {{ stats.accounts.Unknown or 0 }}
                             ],
-                            backgroundColor: ['#E50914', '#00a8ff', '#f1c40f', '#a55eea'],
+                            backgroundColor: ['#E50914', '#00a8ff', '#f1c40f', '#a55eea', '#64748b'],
                             borderWidth: 0
                         }]
                     },

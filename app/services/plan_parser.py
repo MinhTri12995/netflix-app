@@ -5,16 +5,21 @@ import unicodedata
 from html.parser import HTMLParser
 
 
+def _plan_text(raw):
+    text = ''.join(c for c in unicodedata.normalize('NFKD', raw.casefold())
+                   if not unicodedata.combining(c))
+    return re.sub(r'[\u200b-\u200f\ufeff]', '', text).strip()
+
+
 def normalize_plan(raw):
     if not isinstance(raw, str):
         return None
     raw = re.sub(r'\\[ux]([0-9a-fA-F]{4}|[0-9a-fA-F]{2})', lambda m: chr(int(m[1], 16)), raw)
-    text = ''.join(c for c in unicodedata.normalize('NFKD', raw.casefold())
-                   if not unicodedata.combining(c))
-    text = re.sub(r'[\u200b-\u200f\ufeff]', '', text).strip()
+    text = _plan_text(raw)
     if re.search(r'\b(not|upgrade|offer|switch)\b', text):
         return None
-    if re.fullmatch(r'(standard[ _-]*(with[ _-]*)?ads|standard con anuncios|standard z reklamami|standard avec pub|reklam iceren|standar dengan iklan|tieu chuan co quang cao|広告つきスタンダード)', text):
+    ads_pattern = _plan_text(r'(standard[ _-]*(with[ _-]*)?ads|standard con anuncios|standard z reklamami|standard avec pub|reklam iceren|standar dengan iklan|tieu chuan co quang cao|広告つきスタンダード)')
+    if re.fullmatch(ads_pattern, text):
         return 'Standard with Ads'
     aliases = {
         'Premium': ['premium', 'cao cap', 'พรีเมียม', 'プレミアム', 'المميزة', '프리미엄', 'премиум', 'premjum'],
@@ -23,6 +28,7 @@ def normalize_plan(raw):
     }
     for plan, names in aliases.items():
         for name in names:
+            name = _plan_text(name)
             if text == name or text in (name + ' hd', name + ' ultra hd', name + ' 4k', name + ' plan'):
                 return plan
     return None

@@ -42,5 +42,5 @@ jobs:
     - name: Test PostgreSQL migrations in isolation
       run: |
         npm install --prefix "$RUNNER_TEMP/migration-tests" @electric-sql/pglite@0.5.8
-        node tests/migrations/activation_recovery_admin.mjs "$RUNNER_TEMP/migration-tests" supabase/migrations/20261009155342_premium_two_code_capacity.sql supabase/migrations/20261009175623_premium_standard_switch.sql
+        node tests/migrations/activation_recovery_admin.mjs "$RUNNER_TEMP/migration-tests" supabase/migrations/20261009155342_premium_two_code_capacity.sql supabase/migrations/20261009175623_premium_standard_switch.sql supabase/migrations/20261010020644_admin_plan_counts.sql
         node tests/migrations/inventory_jobs.mjs "$RUNNER_TEMP/migration-tests" supabase/migrations/20261009175648_inventory_cleanup.sql
