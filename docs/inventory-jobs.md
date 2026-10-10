@@ -4,7 +4,7 @@ Chế độ chia sẻ: một tài khoản tối đa hai mã, mỗi mã vẫn ch�
 
 ## Các nút quản trị
 
-- **CHECK ALL**: kiểm tra lại toàn kho, gồm gói hiện tại và lỗi thanh toán.
+- **CHECK ALL**: kiểm tra lại toàn kho bằng thuật toán cũ ở mốc `b98aa31`, gồm nhận diện gói, lỗi thanh toán và ngày hết hạn.
 - **SCAN PAYMENT ERRORS**: kiểm tra trạng thái thanh toán, giữ gói đã lưu.
 - **UPDATE MISSING PLANS**: chỉ kiểm tra những tài khoản chưa xác định gói.
 - **FILTER DUPLICATES**: giữ tài khoản có mã tham chiếu, kể cả liên kết cũ chứa nhiều email; chỉ xóa bản trùng không được tham chiếu.
@@ -17,7 +17,7 @@ Mỗi tác vụ có tiến trình, tổng đã xử lý, kết quả gần nhấ
 
 Công tắc **Premium 15 ký tự → Standard dự phòng** chỉ áp dụng mã Premium dài đúng 15 ký tự. Ưu tiên tài khoản Premium còn chỗ trước Standard thường; không dùng Basic hoặc Standard có quảng cáo. Tắt công tắc chặn cấp/đổi mới sang Standard, giữ liên kết đã có. Gói tài khoản thực tế vẫn là Standard, gói mã vẫn là Premium. Mã mới tối thiểu 16 ký tự không thuộc công tắc này.
 
-Gói lấy từ thông tin thành viên hiện tại, không lấy từ quảng cáo nâng cấp. Chuỗi Unicode được giữ nguyên; gói không nhận diện được giữ dữ liệu cũ. Lỗi mạng/proxy/HTTP không xác định không đổi liên kết. Tài khoản xác nhận lỗi chuyển `needs_review`; không xóa tài khoản khách đang dùng. Tài khoản admin đã ngừng cấp mới không bị tự mở lại.
+Theo yêu cầu khôi phục, checker dùng từ khóa gói trong Token API/HTML như `b98aa31`, kiểm tra thông báo thanh toán trong toàn bộ HTML và ngày hết hạn. Cách cũ có thể nhận nhầm Premium từ nội dung giới thiệu nâng cấp; không coi kết quả này là bằng chứng gói hiện tại tuyệt đối. Bộ phân tích nghiêm ngặt vẫn dùng cho luồng xuất link và bộ đếm tên gói đã lưu. Gói không nhận diện được giữ dữ liệu cũ. Lỗi mạng/proxy/HTTP không xác định không đổi liên kết. Tài khoản xác nhận lỗi chuyển `needs_review`; không xóa tài khoản khách đang dùng. Tài khoản admin đã ngừng cấp mới không bị tự mở lại. Giữ kiểm tra tên miền HTTPS và log không chứa thông tin đăng nhập.
 
 `inventory_runs` và `inventory_items` là nguồn tiến trình trong Supabase, không dùng SQLite dự phòng khi dịch vụ lỗi. Cả hai bảng bật RLS và chỉ service_role có quyền. Endpoint tiến trình chỉ dành cho admin, không trả cookie hay lease token. Payload cookie nhập kho nằm trong bảng riêng có quyền hạn chế, được xóa khỏi tác vụ sau khi xử lý xong; cookie tài khoản hoạt động vẫn được lưu trong kho hiện hữu.
 
