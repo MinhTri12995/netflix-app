@@ -186,6 +186,11 @@ def work_once():
 
 def start_worker(app):
     if app.testing or os.environ.get('DISABLE_ADMIN_WORKER')=='1': return
+    if database.SUPABASE_KEY:
+        # Complete the SDK's lazy transport imports on the startup thread.
+        # Starting SDK constructors from workers while web.py is importing
+        # can leave requests waiting on Python's module import locks.
+        database.get_supabase()
     def run():
         with app.app_context():
             while True:
