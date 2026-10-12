@@ -34,10 +34,11 @@ def normalize_plan(raw):
     return None
 
 
-def current_plan(data):
+def _plan_candidates(data):
     found = set()
     containers = {'value', 'account', 'user', 'userinfo', 'member', 'membership',
-                  'currentplan', 'models', 'data', 'reactcontext', 'json'}
+                  'currentplan', 'models', 'data', 'reactcontext', 'json',
+                  'signupcontext', 'flow', 'fields'}
     def walk(obj):
         if not isinstance(obj, dict):
             return
@@ -51,10 +52,40 @@ def current_plan(data):
             elif key.lower() in containers:
                 walk(value)
     walk(data)
+    return found
+
+
+def current_plan(data):
+    found = _plan_candidates(data)
     return next(iter(found)) if len(found) == 1 else None
 
 
-def html_plan(html):
+def _javascript_code_mask(script):
+    """Retain offsets while hiding strings/comments from assignment matching."""
+    masked = list(script)
+    i = 0
+    while i < len(script):
+        if script[i] in ('"', "'", '`'):
+            quote = script[i]
+            masked[i] = ' '; i += 1
+            while i < len(script):
+                char = script[i]; masked[i] = ' '; i += 1
+                if char == '\\' and i < len(script):
+                    masked[i] = ' '; i += 1
+                elif char == quote:
+                    break
+        elif script.startswith('//', i) or script.startswith('/*', i):
+            end = script.find('\n', i + 2) if script.startswith('//', i) else script.find('*/', i + 2)
+            end = len(script) if end < 0 else end + (2 if script.startswith('/*', i) else 0)
+            masked[i:end] = ' ' * (end - i)
+            i = end
+        else:
+            i += 1
+    return ''.join(masked)
+
+
+def account_data(html):
+    """Decode known account JSON roots, excluding translation/offer assignments."""
     class Scripts(HTMLParser):
         def __init__(self):
             super().__init__(); self.inside = False; self.scripts = []; self.visible = []
@@ -65,19 +96,34 @@ def html_plan(html):
         def handle_data(self, data):
             (self.scripts if self.inside else self.visible).append(data)
     parser = Scripts(); parser.feed(html)
-    plans = set(); decoder = json.JSONDecoder()
-    for script in parser.scripts:
+    roots = []; decoder = json.JSONDecoder()
+    scripts = list(parser.scripts)
+    if html.lstrip().startswith('{'):
+        scripts.append(html)
+    for script in scripts:
         script = re.sub(r'\\x([0-9a-fA-F]{2})', r'\\u00\1', script)
         # Only JSON roots or known current-account assignments. No offer subtrees.
         starts = [0] if script.lstrip().startswith('{') else []
-        starts += [m.end() for m in re.finditer(r'(?:netflix\.reactContext|account|userInfo)\s*=\s*', script)]
+        pattern = r'(?<![\w$.])(?:window\.)?(?:netflix\.reactContext|account|userInfo)\s*=\s*'
+        starts += [m.end() for m in re.finditer(pattern, _javascript_code_mask(script))]
         for start in starts:
             try:
                 data, _ = decoder.raw_decode(script[start:].lstrip())
-                plan = current_plan(data)
-                if plan: plans.add(plan)
+                if isinstance(data, dict): roots.append(data)
             except (ValueError, TypeError):
                 continue
+    return roots
+
+
+def html_plan_candidates(html):
+    plans = set()
+    for data in account_data(html):
+        plans.update(_plan_candidates(data))
+    return plans
+
+
+def html_plan(html):
+    plans = html_plan_candidates(html)
     if len(plans) == 1:
         return next(iter(plans))
     if plans:

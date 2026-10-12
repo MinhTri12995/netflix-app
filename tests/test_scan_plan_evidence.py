@@ -38,3 +38,30 @@ def test_visible_upgrade_labels_never_supply_current_plan():
     from app.services.plan_parser import html_plan
     for advert in ('Upgrade your plan: Premium','Recommended plan: Premium','plan: Premium'):
         assert html_plan('<script>account={"membershipStatus":"CURRENT_MEMBER"};</script><p>'+advert+'</p>') is None
+
+
+def test_real_current_plan_paths_from_demo_ignore_offers():
+    data = {'models': {
+        'signupContext': {'data': {'flow': {'fields': {
+            'currentPlan': {'fields': {'localizedPlanName': 'Basic HD'}},
+            'offers': [{'localizedPlanName': 'Premium'}],
+        }}}},
+        'flow': {'data': {'fields': {
+            'currentPlan': {'fields': {'localizedPlanName': 'Basic HD'}}
+        }}},
+    }}
+    import json
+    assert current_plan(data) == 'Basic'
+    assert html_plan('<script>netflix.reactContext = '+json.dumps(data)+';</script>') == 'Basic'
+
+
+def test_conflicting_current_plan_sources_remain_unknown():
+    data = {'models': {
+        'signupContext': {'data': {'flow': {'fields': {'currentPlan': {'fields': {'localizedPlanName': 'Basic'}}}}}},
+        'flow': {'data': {'fields': {'currentPlan': {'fields': {'localizedPlanName': 'Premium'}}}}},
+    }}
+    assert current_plan(data) is None
+
+
+def test_window_prefixed_account_context_is_supported():
+    assert html_plan('<script>window.netflix.reactContext={"account":{"planName":"Basic"}};</script>') == 'Basic'

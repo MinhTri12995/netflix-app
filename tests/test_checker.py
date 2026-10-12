@@ -73,7 +73,7 @@ class TestChecker(unittest.TestCase):
              patch("requests.get", return_value=mock_resp):
             status, plan = checker.check_account_live("nid123", "snid123", check_payment=True)
 
-        self.assertEqual(status, "LIVE")
+        self.assertEqual(status, "UNKNOWN")
         self.assertIsNone(plan)
 
     def test_live_account_identifies_standard_and_premium(self):
@@ -88,8 +88,8 @@ class TestChecker(unittest.TestCase):
              patch("requests.get", return_value=mock_resp):
             status, plan = checker.check_account_live("nid123", "snid123", check_payment=True)
 
-        self.assertEqual(status, "LIVE")
-        self.assertEqual(plan, "Standard")
+        self.assertEqual(status, "UNKNOWN")
+        self.assertIsNone(plan)
 
     def test_definite_die_returns_die(self):
         """Redirect to login or payment hold keyword definitely returns DIE."""

@@ -127,7 +127,7 @@ def fetch_realtime_account_info(netflix_id, secure_netflix_id=""):
             if any(kw in url_lower for kw in payment_urls):
                 raise CookieError("Account requires Payment Update (Payment Hold URL detected)")
 
-            if any(pattern.search(html) for pattern in checker.PAYMENT_FLAG_PATTERNS):
+            if checker.account_has_dead_flags(html):
                 raise CookieError('Account membership is inactive or on payment hold')
 
             die_kws = getattr(checker, 'PAYMENT_DIE_KEYWORDS', [])

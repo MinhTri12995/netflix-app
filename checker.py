@@ -8,6 +8,7 @@ from datetime import datetime
 import proxies_list
 
 NETFLIX_API_URL = "https://ios.prod.ftl.netflix.com/nq/mobile/nqios/~15.48.0/user"
+PLAN_CONFLICT = "PLAN_CONFLICT"
 
 # Global flag: once we know API is dead, skip it entirely to save time
 _api_is_dead = False
@@ -85,64 +86,8 @@ def visible_account_text(html):
     return ' '.join(parser.parts).lower()
 
 def normalize_plan_name(raw_plan_name, fallback_text=""):
-    import unicodedata
-    import re
-
-    # 1. Nếu đã trích xuất được plan_name cụ thể từ JSON / Metadata (e.g. "Premium", "Standard", "Cao cấp", "Standard with Ads")
-    if raw_plan_name and str(raw_plan_name).strip():
-        # Loại bỏ các ký tự vô hình zero-width (\ufeff, \u200b, v.v.)
-        raw_str = re.sub(r'[\ufeff\u200b\u200c\u200d\u200e\u200f\xa0]', '', str(raw_plan_name)).strip()
-        p_clean = unicodedata.normalize('NFKD', raw_str.lower()).encode('ASCII', 'ignore').decode('utf-8')
-
-        # Nhận diện Ads trước (trên tất cả ngôn ngữ)
-        if any(kw in p_clean for kw in ['ads', 'advert', 'anuncio', 'pub', 'werbung', 'quang cao', 'reklam', 'iklan', 'publicit']):
-            return "Standard with Ads"
-        elif any(kw in raw_str for kw in ['広告つきスタンダード', '広告']):
-            return "Standard with Ads"
-
-        # Nhận diện Premium (trên tất cả ngôn ngữ)
-        if any(kw in p_clean for kw in ['premium', 'ultra', '4k', '4-screen', 'cao cap', 'ozel', 'premjum']):
-            return "Premium"
-        elif any(kw in raw_str for kw in ['المميزة', 'プレミアム', 'Cao cấp']):
-            return "Premium"
-
-        # Nhận diện Standard (trên tất cả ngôn ngữ)
-        if any(kw in p_clean for kw in ['standard', 'estandar', 'standardowy', 'padrao', 'hd', 'standar', 'tieu chuan']):
-            return "Standard"
-        elif any(kw in raw_str for kw in ['القياسية', 'スタンダード', 'Tiêu chuẩn']):
-            return "Standard"
-
-        # Nhận diện Basic & Mobile
-        if any(kw in p_clean for kw in ['basic', 'basico', 'podstawowy', 'co ban', 'temel', 'mobil']):
-            return "Basic"
-        elif any(kw in raw_str for kw in ['ベーシック', 'Cơ bản']):
-            return "Basic"
-
-        return raw_str
-
-    # 2. Fallback: Tìm trong các cụm từ gói cước chính xác từ HTML/JSON response
-    if fallback_text:
-        text_orig = str(fallback_text)
-        text_clean = unicodedata.normalize('NFKD', text_orig.lower()).encode('ASCII', 'ignore').decode('utf-8')
-
-        if any(kw in text_clean for kw in ['"standard with ads"', '"standard_ads"', 'standard with ads', 'standard con anuncios', 'standard z reklamami', 'standard avec pub', 'reklam iceren', 'standar dengan iklan']):
-            return "Standard with Ads"
-        elif any(kw in text_orig for kw in ['広告つきスタンダード']):
-            return "Standard with Ads"
-        elif any(kw in text_clean for kw in ['"premium"', 'plan: premium', 'premium plan', 'ultra hd', '4k uhd', 'cao cap']):
-            return "Premium"
-        elif any(kw in text_orig for kw in ['المميزة', 'プレミアム']):
-            return "Premium"
-        elif any(kw in text_clean for kw in ['"standard"', 'plan: standard', 'standard plan', 'standardowy', 'padrao', 'tieu chuan']):
-            return "Standard"
-        elif any(kw in text_orig for kw in ['القياسية', 'スタンダード']):
-            return "Standard"
-        elif any(kw in text_clean for kw in ['"basic"', 'plan: basic', 'podstawowy', 'co ban', 'basico', 'mobile']):
-            return "Basic"
-        elif any(kw in text_orig for kw in ['ベーシック']):
-            return "Basic"
-
-    return None
+    from app.services.plan_parser import normalize_plan
+    return normalize_plan(raw_plan_name)
 
 def is_date_expired(date_str):
     if not date_str or str(date_str).strip() in ['N/A', 'None', '', 'null']:
@@ -233,7 +178,9 @@ def check_web_account_status_and_plan(cookies, proxy_dict):
             timeout=15,
             verify=True
         )
-        if response.status_code in [403, 429] or response.status_code >= 500:
+        if response.status_code == 429:
+            return "RATE_LIMITED", None
+        if response.status_code == 403 or response.status_code >= 500:
             return "ERROR", None
         if not response.ok:
             return "ERROR", None
@@ -259,24 +206,22 @@ def check_web_account_status_and_plan(cookies, proxy_dict):
             return "DIE", None
 
         # 3. Flags thanh toán / cấu trúc cờ nợ cước -> DIE
-        if any(p.search(html) for p in PAYMENT_FLAG_PATTERNS):
+        if account_has_dead_flags(html):
             return "DIE", None
 
         # 4. Nội dung HTML chứa thông báo lỗi thanh toán / tạm hoãn / hết hạn -> DIE
-        if any(kw in text_lower for kw in PAYMENT_DIE_KEYWORDS):
+        if any(kw in visible_account_text(html) for kw in PAYMENT_DIE_KEYWORDS):
             return "DIE", None
 
         # 5. Kiểm tra ngày hết hạn
         date_m = re.search(r'nextBillingDate"\s*:\s*\{"fieldType":"String","value":"([^"]+)"\}', html)
         if date_m:
             expire_date = date_m.group(1).replace(r'\x20', ' ').strip()
-            if is_date_expired(expire_date):
-                return "DIE", None
 
         # Xác nhận có dấu hiệu trang Account thực sự của Netflix
         has_account_markers = (
-            "youraccount" in url_lower or
             "nextbillingdate" in text_lower or
+            "membershipstatus" in text_lower or
             "localizedplanname" in text_lower or
             "planname" in text_lower or
             "membership" in text_lower or
@@ -286,17 +231,9 @@ def check_web_account_status_and_plan(cookies, proxy_dict):
             return "ERROR", None
 
         # 6. Kiểm tra gói cước nếu còn sống (LIVE)
-        plan_raw = None
-        plan_m = re.search(r'(?:localizedPlanName|planName)"\s*:\s*\{"fieldType":"String","value":"([^"]+)"\}', html)
-        if plan_m:
-            plan_raw = plan_m.group(1).replace(r'\x20', ' ').strip()
-            try:
-                import codecs
-                plan_raw = codecs.decode(plan_raw, 'unicode_escape')
-            except Exception:
-                pass
-
-        final_plan = normalize_plan_name(plan_raw, text_lower)
+        from app.services.plan_parser import html_plan_candidates
+        candidates = html_plan_candidates(html)
+        final_plan = PLAN_CONFLICT if len(candidates) > 1 else next(iter(candidates), None)
         return "LIVE", final_plan
 
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.ProxyError):
@@ -320,7 +257,7 @@ def _is_dict_dead(obj):
                 return True
             if kl == "membershipstatus" and str(v).lower() in ["former_member", "never_member", "rejoin", "anonymous", "hold", "canceled", "cancelled"]:
                 return True
-            if isinstance(v, (dict, list)):
+            if kl in ('value','account','user','userinfo','member','membership','models','data','signupcontext','flow','fields') and isinstance(v, (dict, list)):
                 if _is_dict_dead(v):
                     return True
     elif isinstance(obj, list):
@@ -329,6 +266,11 @@ def _is_dict_dead(obj):
                 if _is_dict_dead(item):
                     return True
     return False
+
+
+def account_has_dead_flags(html):
+    from app.services.plan_parser import account_data
+    return any(_is_dict_dead(data) for data in account_data(html))
 
 def check_account_live(netflix_id, secure_netflix_id="", check_payment=True):
     """
@@ -349,6 +291,8 @@ def check_account_live(netflix_id, secure_netflix_id="", check_payment=True):
     if plan_api == "ERROR":
         plan_api = _get_token_and_plan_api(netflix_id, secure_netflix_id, None)
 
+    if plan_api == "RATE_LIMITED":
+        return "UNKNOWN", None
     if plan_api is None:
         return "DIE", None
     elif plan_api == "API_DEAD":
@@ -357,7 +301,7 @@ def check_account_live(netflix_id, secure_netflix_id="", check_payment=True):
             web_status, web_plan = check_web_account_status_and_plan(cookies, None)
         if web_status == "ERROR":
             return "UNKNOWN", None
-        return web_status, web_plan
+        return ("DIE", None) if web_status == "DIE" else ("UNKNOWN", None)
     elif plan_api == "ERROR":
         web_status, web_plan = check_web_account_status_and_plan(cookies, proxy_dict)
         if web_status == "ERROR":
@@ -365,7 +309,7 @@ def check_account_live(netflix_id, secure_netflix_id="", check_payment=True):
         if web_status == "DIE":
             return "DIE", None
         elif web_status == "LIVE":
-            return "LIVE", web_plan
+            return "UNKNOWN", None
         else:
             return "UNKNOWN", None
 
@@ -378,13 +322,17 @@ def check_account_live(netflix_id, secure_netflix_id="", check_payment=True):
         if web_status == "DIE":
             return "DIE", None
         elif web_status == "LIVE":
+            if PLAN_CONFLICT in (plan_api, web_plan):
+                return "LIVE", None
+            if web_plan and plan_api not in ("VALID", web_plan):
+                return "LIVE", None
             final_plan = web_plan if web_plan else (plan_api if plan_api != "VALID" else None)
             return "LIVE", final_plan
-        elif web_status == "ERROR":
+        elif web_status in ("ERROR", "RATE_LIMITED"):
             # Khi web check YourAccount gặp lỗi 500/403/timeout -> UNKNOWN, không tự động đoán LIVE/Premium!
             return "UNKNOWN", None
 
-    final_plan = plan_api if plan_api != "VALID" else None
+    final_plan = plan_api if plan_api not in ("VALID", PLAN_CONFLICT) else None
     return "LIVE", final_plan
 
 
@@ -422,7 +370,9 @@ def _get_token_and_plan_api(netflix_id, secure_netflix_id="", proxy_dict=None):
         )
         if response.status_code == 404:
             return "API_DEAD"
-        if response.status_code in [403, 429] or response.status_code >= 500:
+        if response.status_code == 429:
+            return "RATE_LIMITED"
+        if response.status_code == 403 or response.status_code >= 500:
             return "ERROR"
         if not response.ok:
             return "ERROR"
@@ -435,32 +385,15 @@ def _get_token_and_plan_api(netflix_id, secure_netflix_id="", proxy_dict=None):
         if _is_dict_dead(data):
             return None
 
-        # 2. Kiem tra chuoi JSON compact (loai bo khoang trang quanh : va ,)
-        data_compact = json.dumps(data, separators=(',', ':')).lower()
-        exact_die_indicators = [
-            "\"on_hold\"", "\"canceled\"", "\"former_member\"", "\"never_member\"",
-            "\"cancelled\"", "\"delinquent\"", "\"status\":\"hold\"", "\"status\":\"inactive\"",
-            "\"payment_failure\"", "\"warnuserofpaymentfailure\":true", "\"ispaymentfailure\":true",
-            "\"payment_update\"", "\"paymenterror\"", "\"account_on_hold\"", "\"hold_payment\"",
-            "\"membershipstatus\":\"anonymous\"", "\"membershipstatus\":\"former_member\"",
-            "\"membershipstatus\":\"never_member\"", "\"ismembershipactive\":false"
-        ]
-        for indicator in exact_die_indicators:
-            if indicator in data_compact:
-                return None
-
-        token_data = ((((data.get("value") or {}).get("account") or {}).get("token") or {}).get("default") or {})
-        if isinstance(token_data, dict):
-            token = token_data.get("token")
-        elif isinstance(token_data, str):
-            token = token_data
-        else:
-            token = None
-
-        if not token:
+        from app.services.token_service import _extract_verified_token, TokenResponseError
+        try:
+            _extract_verified_token(response)
+        except TokenResponseError:
             return "ERROR"
 
-        return normalize_plan_name("", data_compact) or "VALID"
+        from app.services.plan_parser import _plan_candidates
+        candidates = _plan_candidates(data)
+        return PLAN_CONFLICT if len(candidates) > 1 else next(iter(candidates), "VALID")
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.ProxyError):
         return "ERROR"
     except Exception as e:
