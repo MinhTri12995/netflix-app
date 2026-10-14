@@ -71,3 +71,10 @@ def test_italian_base_from_actual_account_metadata():
     assert normalize_plan('Base') == 'Basic'
     assert html_plan('<script>netflix.reactContext={"models":{"flow":{"data":{"fields":{"currentPlan":{"fields":{"localizedPlanName":"Base"}}}}}}};</script>') == 'Basic'
     assert normalize_plan('Base con pubblicità') is None
+
+
+def test_ad_plan_labels_from_full_demo_list():
+    assert normalize_plan('Estándar con anuncios') == 'Standard with Ads'
+    assert normalize_plan('Paket Standar dengan iklan') == 'Standard with Ads'
+    assert normalize_plan('الخطة القياسية مع إعلانات') == 'Standard with Ads'
+    assert normalize_plan('Smart') is None

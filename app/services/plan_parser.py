@@ -18,7 +18,7 @@ def normalize_plan(raw):
     text = _plan_text(raw)
     if re.search(r'\b(not|upgrade|offer|switch)\b', text):
         return None
-    ads_pattern = _plan_text(r'(standard[ _-]*(with[ _-]*)?ads|standard con anuncios|standard z reklamami|standard avec pub|reklam iceren|standar dengan iklan|tieu chuan co quang cao|広告つきスタンダード)')
+    ads_pattern = _plan_text(r'(standard[ _-]*(with[ _-]*)?ads|standard con anuncios|estandar con anuncios|standard z reklamami|standard avec pub|reklam iceren|(?:paket )?standar dengan iklan|الخطة القياسية مع إعلانات|tieu chuan co quang cao|広告つきスタンダード)')
     if re.fullmatch(ads_pattern, text):
         return 'Standard with Ads'
     aliases = {
