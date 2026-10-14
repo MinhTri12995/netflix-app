@@ -23,7 +23,7 @@ def normalize_plan(raw):
         return 'Standard with Ads'
     aliases = {
         'Premium': ['premium', 'cao cap', 'พรีเมียม', 'プレミアム', 'المميزة', '프리미엄', 'премиум', 'premjum'],
-        'Basic': ['basic', 'basico', 'podstawowy', 'co ban', 'temel', 'mobile', 'ベーシック', '베이식', 'พื้นฐาน'],
+        'Basic': ['basic', 'base', 'basico', 'podstawowy', 'co ban', 'temel', 'mobile', 'ベーシック', '베이식', 'พื้นฐาน'],
         'Standard': ['standard', 'estandar', 'standardowy', 'padrao', 'standar', 'tieu chuan', 'スタンダード', 'القياسية', '스탠다드', 'มาตรฐาน'],
     }
     for plan, names in aliases.items():

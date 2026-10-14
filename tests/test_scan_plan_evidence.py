@@ -65,3 +65,9 @@ def test_conflicting_current_plan_sources_remain_unknown():
 
 def test_window_prefixed_account_context_is_supported():
     assert html_plan('<script>window.netflix.reactContext={"account":{"planName":"Basic"}};</script>') == 'Basic'
+
+
+def test_italian_base_from_actual_account_metadata():
+    assert normalize_plan('Base') == 'Basic'
+    assert html_plan('<script>netflix.reactContext={"models":{"flow":{"data":{"fields":{"currentPlan":{"fields":{"localizedPlanName":"Base"}}}}}}};</script>') == 'Basic'
+    assert normalize_plan('Base con pubblicità') is None
