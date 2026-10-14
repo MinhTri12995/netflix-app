@@ -13,6 +13,8 @@ Chế độ chia sẻ: một tài khoản tối đa hai mã, mỗi mã vẫn ch�
 
 Mỗi tác vụ có tiến trình, tổng đã xử lý, kết quả gần nhất và lịch sử. Chỉ có một tác vụ kho đang chạy; thao tác thêm được báo đang bận, không nhập âm thầm danh sách mới. Có thể tải lại hoặc rời trang sau khi danh sách được lưu thành công. Lịch sử hiển thị 10 tác vụ gần nhất, mỗi tác vụ 20 kết quả gần nhất; tất cả kết quả từng dòng vẫn được lưu trong cơ sở dữ liệu.
 
+Email thiếu hoặc placeholder (`None found`, `N/A`, `Unknown`, `null`) không làm từ chối toàn bộ thư mục: máy chủ tạo định danh ổn định từ NetflixId để retry không tạo định danh mới. Định danh này không phải email đăng nhập đã xác minh. Giao diện bỏ metadata email không hợp lệ trước khi gửi. Sau khi máy chủ tạo tác vụ, cả thanh tiến trình nhập thư mục và bảng lịch sử theo dõi đúng ID mới; phản hồi trễ của tác vụ cũ không ghi đè tiến trình mới.
+
 ## Bảo vệ dữ liệu
 
 Công tắc **Premium 15 ký tự → Standard dự phòng** chỉ áp dụng mã Premium dài đúng 15 ký tự. Ưu tiên tài khoản Premium còn chỗ trước Standard thường; không dùng Basic hoặc Standard có quảng cáo. Tắt công tắc chặn cấp/đổi mới sang Standard, giữ liên kết đã có. Gói tài khoản thực tế vẫn là Standard, gói mã vẫn là Premium. Mã mới tối thiểu 16 ký tự không thuộc công tắc này.

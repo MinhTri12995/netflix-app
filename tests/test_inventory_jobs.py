@@ -17,6 +17,17 @@ def seed():
     conn.commit(); conn.close()
 
 
+def test_placeholder_email_does_not_reject_entire_import(test_app):
+    import hashlib
+    records=[{'email':'None found','netflix_id':'placeholder-demo','secure_netflix_id':''},
+             {'email':'known@example.test','netflix_id':'known-demo','secure_netflix_id':''}]
+    run=jobs.enqueue('import',records)
+    assert jobs.progress(run['id'])['run']['total']==2
+    first=jobs.claim()
+    expected='auto_'+hashlib.sha256(b'placeholder-demo').hexdigest()[:20]+'@netflix.com'
+    assert first['email']==expected
+
+
 def test_two_workers_claim_distinct_items_and_restart_keeps_progress(test_app):
     seed(); run = jobs.enqueue('full_scan')
     assert jobs.enqueue('payment_scan') == {'id':run['id'], 'existing':True}

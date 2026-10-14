@@ -871,6 +871,11 @@
         };
 
         // Bulk Scan Logic
+        function importEmail(...values) {
+            return values.find(value => typeof value === 'string'
+                && value.trim().length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()))?.trim() || null;
+        }
+
         async function startBulkScan() {
             const fileInput = document.getElementById('bulkFolderInput');
             if (!fileInput.files || fileInput.files.length === 0) {
@@ -943,7 +948,7 @@
                                     }
                                     if (j_nid) {
                                         allCookies.push({
-                                            email: fname_email || (fname_clean + "@cookie.com"),
+                                            email: importEmail(fname_email),
                                             expire: 'N/A',
                                             plan: 'Premium',
                                             netflix_id: j_nid,
@@ -964,7 +969,7 @@
 
                         const push_account = () => {
                             if (current_netflix_id) {
-                                const acc_email = current_email || fname_email || ("auto_" + Math.random().toString(36).substr(2, 8) + "@netflix.com");
+                                const acc_email = importEmail(current_email, fname_email);
                                 let acc_plan = current_plan;
                                 if (acc_plan && ['none found', 'none', 'unknown', 'n/a', 'null', ''].includes(acc_plan.trim().toLowerCase())) {
                                     acc_plan = null;
@@ -1093,6 +1098,8 @@
             }
 
             try {
+                document.getElementById('scanCountText').textContent='0 / '+total;
+                document.getElementById('scanStatusText').textContent='Đã đọc '+total+' tài khoản. Đang gửi danh sách…';
                 const response = await fetch('/admin/jobs/import', {
                     method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':'{{ csrf_token() }}'},
                     body:JSON.stringify({accounts:uniqueCookies})
@@ -1100,6 +1107,7 @@
                 if(response.redirected) throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
                 const result=await response.json();
                 if(!response.ok) throw new Error(result.error||'Chưa lưu được danh sách nhập.');
+                window.dispatchEvent(new CustomEvent('inventory-job-created', {detail:{id:result.id}}));
                 document.getElementById('scanStatusText').textContent='Đã lưu danh sách. Theo dõi tại Tiến trình & lịch sử kiểm tra; có thể rời trang.';
                 document.getElementById('inventory-progress').scrollIntoView({behavior:'smooth'});
             } catch(err) {

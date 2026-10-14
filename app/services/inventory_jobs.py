@@ -47,7 +47,9 @@ def enqueue(kind, records=None):
             nid = record.get('netflix_id')
             if not isinstance(nid, str) or not nid.strip() or len(nid) > 20000:
                 raise ValueError('Cookie không hợp lệ.')
-            email = record.get('email') or ('auto_' + hashlib.sha256(nid.encode()).hexdigest()[:20] + '@netflix.com')
+            email = record.get('email')
+            if email is None or (isinstance(email, str) and email.strip().casefold() in ('', 'none', 'none found', 'n/a', 'unknown', 'null')):
+                email = 'auto_' + hashlib.sha256(nid.encode()).hexdigest()[:20] + '@netflix.com'
             if not isinstance(email, str) or len(email) > 254 or '@' not in email:
                 raise ValueError('Email không hợp lệ.')
             snid = record.get('secure_netflix_id') or ''

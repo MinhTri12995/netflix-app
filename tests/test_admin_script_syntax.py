@@ -31,3 +31,11 @@ def test_dashboard_javascript_compiles(test_app, tmp_path):
     for name in ('inventory-jobs.js','admin.js'):
         result=subprocess.run([node,'--check',str(root/'app/static/js'/name)],capture_output=True,text=True)
         assert result.returncode==0,result.stderr
+
+
+def test_folder_import_placeholder_and_progress_behavior():
+    node=shutil.which('node')
+    if not node: pytest.skip('Node unavailable; checked by CI')
+    root=Path(__file__).resolve().parents[1]
+    result=subprocess.run([node,str(root/'tests/js/inventory-import-progress.mjs')],capture_output=True,text=True)
+    assert result.returncode==0,result.stderr
